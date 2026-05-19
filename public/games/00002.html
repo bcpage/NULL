@@ -114,7 +114,109 @@
       .then(r => r.json())
       .then(data => { countEl.textContent = formatCount(data.count); });
 
+    // ── Sound engine ────────────────────────────────────────────────────────
+    let audioCtx = null;
+    function ctx() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      return audioCtx;
+    }
+
+    function osc(type, freq, gainVal, duration, freqEnd) {
+      const c = ctx();
+      const o = c.createOscillator();
+      const g = c.createGain();
+      o.connect(g); g.connect(c.destination);
+      o.type = type;
+      o.frequency.setValueAtTime(freq, c.currentTime);
+      if (freqEnd) o.frequency.exponentialRampToValueAtTime(freqEnd, c.currentTime + duration);
+      g.gain.setValueAtTime(gainVal, c.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + duration);
+      o.start(); o.stop(c.currentTime + duration);
+    }
+
+    function noise(filterType, filterFreq, gainVal, duration, filterFreqEnd) {
+      const c = ctx();
+      const buf = c.createBuffer(1, c.sampleRate * duration, c.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      const src = c.createBufferSource();
+      src.buffer = buf;
+      const f = c.createBiquadFilter();
+      f.type = filterType;
+      f.frequency.setValueAtTime(filterFreq, c.currentTime);
+      if (filterFreqEnd) f.frequency.exponentialRampToValueAtTime(filterFreqEnd, c.currentTime + duration);
+      const g = c.createGain();
+      g.gain.setValueAtTime(gainVal, c.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + duration);
+      src.connect(f); f.connect(g); g.connect(c.destination);
+      src.start(); src.stop(c.currentTime + duration);
+    }
+
+    const sounds = [
+      // 1. pop — classic soft pop
+      () => osc('sine', 320, 0.4, 0.14, 140),
+
+      // 2. crunch — biscuit snap (bandpass noise)
+      () => noise('bandpass', 900, 0.35, 0.13),
+
+      // 3. ding — bright bell
+      () => osc('sine', 1040, 0.25, 0.5, 520),
+
+      // 4. boing — springy bounce
+      () => {
+        const c = ctx();
+        const o = c.createOscillator(); const g = c.createGain();
+        o.connect(g); g.connect(c.destination); o.type = 'triangle';
+        o.frequency.setValueAtTime(90, c.currentTime);
+        o.frequency.exponentialRampToValueAtTime(480, c.currentTime + 0.09);
+        o.frequency.exponentialRampToValueAtTime(180, c.currentTime + 0.28);
+        g.gain.setValueAtTime(0.4, c.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 0.28);
+        o.start(); o.stop(c.currentTime + 0.28);
+      },
+
+      // 5. squish — wet downward slide
+      () => osc('sawtooth', 210, 0.18, 0.18, 55),
+
+      // 6. blip — retro 8-bit tap
+      () => osc('square', 520 + Math.random() * 300, 0.12, 0.07),
+
+      // 7. thud — deep floor thump
+      () => osc('sine', 130, 0.65, 0.11, 38),
+
+      // 8. bubble — rising bubble pop
+      () => osc('sine', 280, 0.3, 0.11, 880),
+
+      // 9. twinkle — three ascending pings
+      () => {
+        const c = ctx();
+        [600, 760, 960].forEach((freq, i) => {
+          const o = c.createOscillator(); const g = c.createGain();
+          o.connect(g); g.connect(c.destination); o.type = 'sine';
+          o.frequency.value = freq;
+          const t = c.currentTime + i * 0.07;
+          g.gain.setValueAtTime(0, t);
+          g.gain.linearRampToValueAtTime(0.28, t + 0.015);
+          g.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+          o.start(t); o.stop(t + 0.18);
+        });
+      },
+
+      // 10. whoosh — airy upward sweep
+      () => noise('highpass', 180, 0.18, 0.22, 3200),
+    ];
+
+    function playSound() {
+      try {
+        sounds[Math.floor(Math.random() * sounds.length)]();
+      } catch (e) {}
+    }
+    // ── End sound engine ─────────────────────────────────────────────────────
+
     cookieBtn.addEventListener('click', () => {
+      playSound();
+
       // Pop animation
       cookieBtn.classList.remove('popping');
       void cookieBtn.offsetWidth;
