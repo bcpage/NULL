@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Tic Tac Toe</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #1a1a2e;
+      color: white;
+      font-family: 'Fredoka One', cursive;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      padding: 8px;
+      gap: 10px;
+    }
+
+    #player-select {
+      display: flex;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    .player-btn {
+      font-family: 'Fredoka One', cursive;
+      font-size: 1rem;
+      padding: 6px 22px;
+      border: 2px solid #555;
+      border-radius: 20px;
+      cursor: pointer;
+      background: transparent;
+      color: #aaa;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+    }
+    .player-btn:hover { border-color: #888; color: white; }
+    .player-btn.active-x { background: #e94560; color: white; border-color: #e94560; }
+    .player-btn.active-o { background: #4488ff; color: white; border-color: #4488ff; }
+
+    #status {
+      font-size: clamp(1rem, 4vw, 1.4rem);
+      color: #666;
+      text-align: center;
+      flex-shrink: 0;
+      min-height: 1.8em;
+      display: flex;
+      align-items: center;
+    }
+    #status.x-turn  { color: #e94560; }
+    #status.o-turn  { color: #4488ff; }
+    #status.won     { color: #ffcc00; font-size: clamp(1.2rem, 5vw, 1.8rem); }
+    #status.draw    { color: #aaa; }
+    #status.warn    { color: #e94560; }
+
+    #game-area {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+    }
+
+    #ttt-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: clamp(6px, 2vmin, 14px);
+      width: min(75vw, 48vh, 360px);
+    }
+
+    .cell {
+      aspect-ratio: 1;
+      background: #252545;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: clamp(2.5rem, 12vmin, 5rem);
+      cursor: pointer;
+      transition: background 0.12s, transform 0.1s, box-shadow 0.2s;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .cell:hover:not(.taken) { background: #2e2e58; transform: scale(1.05); }
+    .cell.taken { cursor: default; }
+    .cell.x { color: #e94560; }
+    .cell.o { color: #4488ff; }
+    .cell.winning {
+      background: #2a2818;
+      animation: glow-win 0.7s ease-in-out infinite alternate;
+    }
+
+    @keyframes glow-win {
+      from { box-shadow: 0 0 10px rgba(255, 204, 0, 0.4); }
+      to   { box-shadow: 0 0 30px rgba(255, 204, 0, 1); }
+    }
+
+    @keyframes place {
+      0%   { transform: scale(0.4); opacity: 0; }
+      60%  { transform: scale(1.15); }
+      100% { transform: scale(1);   opacity: 1; }
+    }
+    .cell.just-placed { animation: place 0.2s ease-out; }
+  </style>
+</head>
+<body data-game="00003">
+
+  <div id="player-select">
+    <button class="player-btn" id="btn-x">Play as X</button>
+    <button class="player-btn" id="btn-o">Play as O</button>
+  </div>
+
+  <div id="status">Connecting…</div>
+
+  <div id="game-area">
+    <div id="ttt-grid"></div>
+  </div>
+
+  <script src="/shared/nav.js"></script>
+  <script>
+    let myRole = null;
+    let gameState = { board: Array(9).fill(null), turn: 'X', status: 'playing', winner: null, winLine: null };
+    let warnTimer = null;
+
+    const statusEl  = document.getElementById('status');
+    const gridEl    = document.getElementById('ttt-grid');
+    const btnX      = document.getElementById('btn-x');
+    const btnO      = document.getElementById('btn-o');
+
+    // Build 9 cells
+    const cells = Array.from({ length: 9 }, (_, i) => {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      cell.addEventListener('click', () => handleClick(i));
+      gridEl.appendChild(cell);
+      return cell;
+    });
+
+    function selectRole(role) {
+      myRole = role;
+      btnX.className = 'player-btn' + (role === 'X' ? ' active-x' : '');
+      btnO.className = 'player-btn' + (role === 'O' ? ' active-o' : '');
+      renderStatus(gameState);
+    }
+    btnX.addEventListener('click', () => selectRole('X'));
+    btnO.addEventListener('click', () => selectRole('O'));
+
+    function renderStatus(state) {
+      if (warnTimer) return;
+      if (state.status === 'won') {
+        statusEl.className = 'won';
+        statusEl.textContent = state.winner + ' wins! 🎉';
+      } else if (state.status === 'draw') {
+        statusEl.className = 'draw';
+        statusEl.textContent = "It's a draw! 🤝";
+      } else if (!myRole) {
+        statusEl.className = '';
+        statusEl.textContent = 'Pick a player above to join';
+      } else {
+        statusEl.className = state.turn === 'X' ? 'x-turn' : 'o-turn';
+        const whose = state.turn === myRole ? 'Your turn' : (state.turn + "'s turn");
+        statusEl.textContent = whose;
+      }
+    }
+
+    function renderState(state) {
+      gameState = state;
+      state.board.forEach((val, i) => {
+        const cell = cells[i];
+        const prev = cell.textContent;
+        cell.textContent = val === 'X' ? '✕' : val === 'O' ? '○' : '';
+        cell.className = 'cell' + (val ? ' taken ' + val.toLowerCase() : '');
+        if (val && !prev) cell.classList.add('just-placed');
+        if (state.winLine && state.winLine.includes(i)) cell.classList.add('winning');
+      });
+      renderStatus(state);
+    }
+
+    function warn(msg) {
+      if (warnTimer) clearTimeout(warnTimer);
+      statusEl.className = 'warn';
+      statusEl.textContent = msg;
+      warnTimer = setTimeout(() => { warnTimer = null; renderStatus(gameState); }, 1500);
+    }
+
+    function handleClick(index) {
+      if (!myRole)                          return warn('Pick a player first!');
+      if (gameState.status !== 'playing')   return;
+      if (gameState.turn !== myRole)        return warn("It's " + gameState.turn + "'s turn, not yours!");
+      if (gameState.board[index] !== null)  return;
+      ws.send(JSON.stringify({ game: 'ttt', type: 'move', cell: index, player: myRole }));
+    }
+
+    let ws;
+    function connect() {
+      ws = new WebSocket(`ws://${window.location.host}`);
+      ws.onopen  = () => renderStatus(gameState);
+      ws.onclose = () => { statusEl.className = ''; statusEl.textContent = 'Disconnected — retrying…'; setTimeout(connect, 3000); };
+      ws.onerror = () => ws.close();
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        if (data.game === 'ttt' && data.type === 'state') renderState(data);
+      };
+    }
+    connect();
+  </script>
+</body>
+</html>

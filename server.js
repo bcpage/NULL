@@ -7,7 +7,7 @@ const { networkInterfaces } = require('os');
 const PORT = 3000;
 
 // ─── Game registry ────────────────────────────────────────────────────────────
-const GAMES = ['00001', '00002'];
+const GAMES = ['00001', '00002', '00003'];
 
 // ─── Cookie persistence ───────────────────────────────────────────────────────
 const DATA_DIR = path.join(__dirname, 'data');
@@ -17,6 +17,38 @@ if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR);
 let cookieCount = 0;
 try { cookieCount = JSON.parse(fs.readFileSync(COOKIE_FILE, 'utf8')).count || 0; } catch (e) {}
 function saveCookie() { fs.writeFileSync(COOKIE_FILE, JSON.stringify({ count: cookieCount })); }
+
+// ─── Tic Tac Toe state ───────────────────────────────────────────────────────
+const WIN_LINES = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+let tttBoard = Array(9).fill(null);
+let tttTurn = 'X';
+let tttStatus = 'playing';
+let tttWinner = null;
+let tttWinLine = null;
+let tttResetTimer = null;
+
+function tttCheck(board) {
+  for (const line of WIN_LINES) {
+    const [a, b, c] = line;
+    if (board[a] && board[a] === board[b] && board[a] === board[c])
+      return { winner: board[a], line };
+  }
+  if (board.every(c => c !== null)) return { draw: true };
+  return null;
+}
+
+function tttStateMsg() {
+  return { game: 'ttt', type: 'state', board: tttBoard, turn: tttTurn, status: tttStatus, winner: tttWinner, winLine: tttWinLine };
+}
+
+function tttReset() {
+  tttBoard = Array(9).fill(null);
+  tttTurn = 'X';
+  tttStatus = 'playing';
+  tttWinner = null;
+  tttWinLine = null;
+  broadcast(tttStateMsg());
+}
 
 // ─── Colour game state ────────────────────────────────────────────────────────
 const COLS = 30, ROWS = 20, TOTAL_CELLS = COLS * ROWS;
@@ -98,10 +130,13 @@ const wss = new WebSocket.Server({ server: httpServer });
 wss.on('connection', (ws) => {
   console.log(`Player connected. Total: ${wss.clients.size}`);
   ws.send(JSON.stringify({ type: 'init', grid }));
+  ws.send(JSON.stringify(tttStateMsg()));
 
   ws.on('message', (message) => {
     try {
       const data = JSON.parse(message);
+
+      // ── Colour game ──
       if (data.type === 'paint') {
         const { index, color } = data;
         if (typeof index !== 'number' || index < 0 || index >= TOTAL_CELLS) return;
@@ -113,6 +148,35 @@ wss.on('connection', (ws) => {
         grid = new Array(TOTAL_CELLS).fill('#ffffff');
         broadcast({ type: 'init', grid });
       }
+
+      // ── Tic Tac Toe ──
+      if (data.game === 'ttt' && data.type === 'move') {
+        if (tttStatus !== 'playing') return;
+        const cell = data.cell;
+        if (typeof cell !== 'number' || cell < 0 || cell > 8) return;
+        if (data.player !== 'X' && data.player !== 'O') return;
+        if (data.player !== tttTurn) return;
+        if (tttBoard[cell] !== null) return;
+
+        tttBoard[cell] = tttTurn;
+        const result = tttCheck(tttBoard);
+
+        if (result) {
+          if (result.draw) {
+            tttStatus = 'draw';
+          } else {
+            tttStatus = 'won';
+            tttWinner = result.winner;
+            tttWinLine = result.line;
+          }
+          broadcast(tttStateMsg());
+          tttResetTimer = setTimeout(tttReset, 3000);
+        } else {
+          tttTurn = tttTurn === 'X' ? 'O' : 'X';
+          broadcast(tttStateMsg());
+        }
+      }
+
     } catch (e) {}
   });
 
