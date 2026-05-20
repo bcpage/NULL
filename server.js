@@ -185,10 +185,16 @@ const httpServer = http.createServer((req, res) => {
   const pathname = req.url.split('?')[0];
   const method = req.method;
 
-  // Root → redirect to first game
+  // Root → welcome screen
   if (pathname === '/' || pathname === '/index.html') {
-    res.writeHead(302, { Location: '/game/00001' });
+    res.writeHead(302, { Location: '/game/00000' });
     res.end();
+    return;
+  }
+
+  // Welcome screen (not part of the game nav loop)
+  if (pathname === '/game/00000' && method === 'GET') {
+    serveFile(res, path.join(__dirname, 'public', 'games', '00000', 'index.html'), 'text/html');
     return;
   }
 

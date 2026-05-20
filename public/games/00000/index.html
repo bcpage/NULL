@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>NULL</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #1a1a2e;
+      color: white;
+      font-family: 'Fredoka One', cursive;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      padding: 24px;
+      text-align: center;
+    }
+
+    #content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 28px;
+      max-width: 500px;
+      width: 100%;
+      opacity: 1;
+      transition: opacity 0.6s ease;
+    }
+
+    #content.fading { opacity: 0; }
+
+    #title {
+      font-size: clamp(1rem, 4vw, 1.5rem);
+      color: #e94560;
+      text-shadow: 0 0 20px rgba(233,69,96,0.4);
+      letter-spacing: 2px;
+      line-height: 1.4;
+    }
+
+    #welcome-text {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      font-size: clamp(0.85rem, 2.2vw, 1rem);
+      color: #aaaaaa;
+      line-height: 1.8;
+    }
+
+    #enter-btn {
+      font-family: 'Fredoka One', cursive;
+      font-size: clamp(0.85rem, 2.2vw, 1rem);
+      padding: 10px 32px;
+      border: 2px solid #e94560;
+      border-radius: 30px;
+      background: transparent;
+      color: #e94560;
+      cursor: pointer;
+      letter-spacing: 1px;
+      transition: background 0.2s, color 0.2s, transform 0.1s;
+    }
+
+    #enter-btn:hover { background: #e94560; color: white; }
+    #enter-btn:active { transform: scale(0.97); }
+
+    #footer-text {
+      font-size: 0.7rem;
+      color: #333;
+      letter-spacing: 1px;
+      min-height: 1em;
+    }
+  </style>
+</head>
+<body>
+
+<div id="content">
+  <div id="title"></div>
+  <div id="welcome-text"></div>
+  <button id="enter-btn"></button>
+  <div id="footer-text"></div>
+</div>
+
+<script>
+  // ── Device identity ───────────────────────────────────────────────────────
+  (function () {
+    if (!/(?:^|;\s*)device=[a-f0-9-]{36}/.test(document.cookie)) {
+      const id = crypto.randomUUID();
+      document.cookie = 'device=' + id + '; path=/; max-age=31536000; SameSite=Lax';
+    }
+  })();
+
+  // ── Title pool ────────────────────────────────────────────────────────────
+  const TITLES = [
+    // Liminal / eerie
+    'The Backrooms','Level 0','The Endless Halls','Sub-Level 4','The Threshold',
+    'The Between','Fluorescent Hum','Yellow Room 7','The Unreachable Floor','Level Unknown',
+    'The Droning','Behind the Walls','Wet Carpet Division','The Interstitial','No-Clip Zone',
+    'The Flickering','Sub-Basement C','The Complex','The Hum','Room at the End of the Hall',
+
+    // Murder Drones — bureaucratic horror
+    'Department of Rooms','Room Allocation System v2','The Registry','Sector 00000',
+    'Sub-Division 4','The Index','Clearance Level Zero','The Catalogue','Room Assignment Office',
+    'The Facility','Lower Administration','Worker Recreation Portal','Approved Activity Zone',
+    'Compliance Hub','Recreational Containment Wing','Employee Engagement System',
+    'Authorized Access Only','The Management','Processing Area 7','Unit Recreation Terminal',
+    'Sector Undefined','Morale Maintenance Division','The Orientation Room',
+    'Standard Recreation Protocol','Welcome to Your Assignment',
+
+    // Amazing Digital Circus — cheerful containment
+    'The Wonderful Room System','Everything Is Great Here!','Your Fun Is Important To Us',
+    'Welcome to the Show','All Performers Present','The Big Top Loading...',
+    'Curtain Never Closes','Applause.exe','The Audience Is Watching','Smile For The Cameras',
+    "Today's Performance: Ongoing",'The Stage Is Everywhere','Fun Detected. Proceeding.',
+    'You Are Having A Good Time','The Entertainment Continues','Engagement Metrics: Optimal',
+    'Please Enjoy The Experience','The Show Must Go On','Happiness Protocol Active',
+    'This Has Always Been Here',
+
+    // Glitchy / digital decay
+    '[REDACTED]','System/Rooms','rooms_v0.0.1','undefined','The Server',
+    'packet_loss.wav','/dev/null/rooms','Connection Established','Room Data Corrupted',
+    'The Process','null_room.exe','Signal: Stable (Mostly)','404: Room Not Found',
+    'Unexpected Disconnect','Render Error: Continuing Anyway','The Grid',
+    'Memory Leak Detected','Instance #00000','Session Resumed','Unknown Build',
+
+    // Corporate dystopia hybrid
+    'Mandatory Recreation In Progress','Your Participation Has Been Logged',
+    'This Room Has Always Existed','Please Do Not Acknowledge The Hum',
+    'Productivity Zone Alpha','Fun Quota: Pending','The Volunteer Experience',
+    'Reminder: Exits Are Decorative','Recreational Compliance Active',
+    'All Anomalies Within Tolerance','Do Not Look For The Door',
+    'Your Enjoyment Is Contractually Required','The Assigned Amusement Area',
+    'Scheduled Fun: Now','Observation Mode: Passive',
+
+    // Portal / GLaDOS
+    'Enrichment Center Recreation Wing','Test Chamber 00000','Subject Recreational Period: Active',
+    'The Relaxation Vault','Aperture Family Entertainment System','Please Remain Calm',
+    'Core Integrity: Nominal','You Are Being Observed','Weighted Companion Room',
+    'Test Subjects: Present','Science Is Happening','Aperture Recreational Protocol v4',
+    'This Was A Triumph','Huge Success','For The Good Of All Of Us',
+    'The Cake Is In Another Room','Authorized Fun Zone','Subject Wellbeing: Acceptable',
+    'Testing Will Resume Shortly','Do Not Destroy The Equipment','The Experiment Continues',
+    'We Are Still Collecting Data','Your Feedback Has Been Ignored',
+    'Aperture Science Enjoymant [sic] Suite','No Hard Feelings',
+
+    // Alice: Madness Returns
+    "The Dollmaker's Workshop",'Wonderland Recreational Facility','Down the Rabbit Hole Again',
+    'Hysteria Ward B','The Queensland Sanatorium','Curioser and Curioser',
+    'Tea Time Is Mandatory',"The Hatter's Department",'Off With Their —',
+    "We're All Mad Here (Staff Included)",'Asylum Entertainment Division',
+    'The Looking Glass Initiative','A Perfectly Normal Wonderland','The Cheshire Protocol',
+    'Patience Is A Virtue We Will Install','Treatment Room 00000',
+    'Your Imagination Is Being Managed','The Card Guard Recreation Zone',
+    "The Red Queen's Productivity Suite",'Madness Returns: Recreational Build',
+
+    // Logo / early computing
+    'IBM 7094 READY','Project MAC Session 00000','BATCH JOB SUBMITTED',
+    'TIME-SHARING UNIT 4','OPERATOR CONSOLE','YOUR SESSION WILL EXPIRE','CORE DUMP',
+    'MAGNETIC TAPE REWIND IN PROGRESS','SYSTEM: READY','PUNCH YOUR CARD',
+    'Turtle at Origin','FORWARD 50','The Turtle Is Patient','CS','HOME',
+    'REPEAT FOREVER','The Pen Is Down','Waiting at 0,0','It Has Been Waiting Since 1967',
+
+    // Labyrinth
+    'The Labyrinth Rearranges Itself','You Have No Power Over Me',
+    'The Castle Is Closer Than It Appears','Bog of Eternal Stench','The Helping Hands',
+    "It's Not Fair",'The Cleaners Are Coming','Turn Back',
+    'Everything You See Is Not As It Seems','The Rules Have Changed',
+
+    // WarGames
+    'Shall We Play a Game?','Greetings Professor Falken','Simulation In Progress',
+    'The Only Winning Move','Running All Scenarios','No Winner Detected',
+    'Global Thermonuclear Recreation','Still Running','Awaiting Input',
+    'WOPR Recreation Division','Joshua Is Thinking','Every Outcome Has Been Considered',
+    'The Game Continues','A Strange Game',
+
+    // Observation / surveillance
+    'Observation In Progress','Subject Currently Active','Monitoring Station 3',
+    'The Feed Is Live','Someone Is In The Building','You Are Not Alone In Here',
+    'Presence Confirmed','Active Subjects: 2','The Facility Is Watching',
+
+    // Recursive
+    'Depth: 1','Depth: Unknown','You Are Already Inside','The Room Contains The Room',
+    'Recursion Detected','Stack Overflow Imminent','Going Deeper','The Facility Contains Itself',
+
+    // Invisible Characters
+    'U+00A0','This Room Appears Empty','Not Empty. Never Empty.','Hidden Characters Detected',
+    'Zero Width','The BOM Was Always There','Invisible Does Not Mean Absent',
+    'U+200B','Something Is Here','Contents: Not Nothing',
+
+    // ASCII Panel
+    '00000000','01111111','00000111','Ring the Bell','NULL','ESC',
+    'The Bell Has Been Rung','DEL','Select Nothing','There Is A Way Out',
+    'Eight Switches','One Hundred And Fifty-Six','The Machines Are Gone','The Characters Remain',
+
+    // NULL / repo name
+    'U+0000','The Null Character','Reserved Word','The Absence of a Value',
+    'Something That Means Nothing',
+
+    // MS-DOS / utilities
+    'C:\\NULL>','HELP.HLP','QBASIC.EXE','Type HELP for help.',
+    '1748000000','Unix Epoch','Counting Since 1970','The Number Continues','Seconds Elapsed',
+    'Under Construction','████░░░░░░','TODO','Content Pending','Please Wait',
+    'Take A Number','Your Number Has Been Assigned','The Fish Is Fine',
+    'The Pet Needs Feeding','The Trolley Is Coming','Pull The Lever','Do Not Pull The Lever',
+    'Information Is Provided','Accuracy Is Assumed','The Clock Is Still Here',
+    'The Metronome Is Already Running',
+
+    // Myst
+    'Linking Book','The Age of Rooms','Riven','Atrus Was Here','Do Not Write In The Book',
+    "The Descriptive Age",'Channelwood',"D'ni",
+
+    // Zork / Wizard of Frobozz
+    'The Underground Empire','Sub-Level Frobozz','Wizard Detected',
+    'Spell Failed Successfully','The Dungeon Master Is Unavailable',
+  ];
+
+  // ── Welcome blocks ────────────────────────────────────────────────────────
+  const BLOCKS = [
+    {
+      lines: [
+        'You have arrived.',
+        'This place has been here for some time.',
+        'It was here before you found it.',
+        'It will be here after you leave.',
+        'Entry is voluntary.',
+        'The door was already open.',
+      ],
+      button: 'Enter',
+      footer: 'Your arrival has been noted.',
+    },
+    {
+      lines: [
+        'Welcome to the facility.',
+        'Entry is permitted.',
+        'Entry is voluntary.',
+        'Both of these things are true simultaneously.',
+        'You are not required to provide your name.',
+        'The facility does not require it.',
+        'The facility already has what it needs.',
+      ],
+      button: 'Proceed',
+      footer: '',
+    },
+    {
+      lines: [
+        'You found this.',
+        "That's good. That's exactly what was supposed to happen.",
+        'Please enter at your own free will.',
+        "We want to make sure you know it's your choice.",
+        'It is your choice.',
+        "We're noting that you made it.",
+      ],
+      button: 'Enter at your own free will',
+      footer: 'Thank you for your voluntary participation.',
+    },
+  ];
+
+  // ── DOM refs ──────────────────────────────────────────────────────────────
+  const content  = document.getElementById('content');
+  const titleEl  = document.getElementById('title');
+  const textEl   = document.getElementById('welcome-text');
+  const btnEl    = document.getElementById('enter-btn');
+  const footerEl = document.getElementById('footer-text');
+
+  let timer;
+
+  function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+  function render() {
+    const title = pick(TITLES);
+    const block = pick(BLOCKS);
+    titleEl.textContent = title;
+    document.title = title;
+    textEl.innerHTML = '';
+    block.lines.forEach(line => {
+      const p = document.createElement('p');
+      p.textContent = line;
+      textEl.appendChild(p);
+    });
+    btnEl.textContent = block.button;
+    footerEl.textContent = block.footer;
+  }
+
+  function cycle() {
+    content.classList.add('fading');
+    setTimeout(() => {
+      render();
+      content.classList.remove('fading');
+      scheduleNext();
+    }, 650);
+  }
+
+  function scheduleNext() {
+    const delay = 15000 + Math.random() * 30000;
+    timer = setTimeout(cycle, delay);
+  }
+
+  btnEl.addEventListener('click', () => {
+    clearTimeout(timer);
+    window.location.href = '/game/00001';
+  });
+
+  render();
+  scheduleNext();
+</script>
+</body>
+</html>
