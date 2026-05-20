@@ -10,14 +10,15 @@ const PORT = 3000;
 const GAMES = ['00001', '00002', '00003', '00004', '00005', '00006', '00007', '00008', '00009'];
 
 // ─── Cookie persistence ───────────────────────────────────────────────────────
-const DATA_DIR = path.join(__dirname, 'data');
-const COOKIE_FILE = path.join(DATA_DIR, 'cookie.json');
-if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR);
+const COOKIE_DATA_DIR = path.join(__dirname, 'public', 'games', '00002', 'data');
+const COOKIE_FILE = path.join(COOKIE_DATA_DIR, 'cookie.json');
+if (!fs.existsSync(COOKIE_DATA_DIR)) fs.mkdirSync(COOKIE_DATA_DIR, { recursive: true });
 
 // ─── Recordings persistence ───────────────────────────────────────────────────
-const REC_DIR  = path.join(DATA_DIR, 'recordings');
-const REC_META = path.join(DATA_DIR, 'recordings.json');
-if (!fs.existsSync(REC_DIR)) fs.mkdirSync(REC_DIR);
+const REC_DATA_DIR = path.join(__dirname, 'public', 'games', '00008', 'data');
+const REC_DIR  = path.join(REC_DATA_DIR, 'recordings');
+const REC_META = path.join(REC_DATA_DIR, 'recordings.json');
+if (!fs.existsSync(REC_DIR)) fs.mkdirSync(REC_DIR, { recursive: true });
 let recordings = [];
 try { recordings = JSON.parse(fs.readFileSync(REC_META, 'utf8')); } catch (e) {}
 function saveRecMeta() { fs.writeFileSync(REC_META, JSON.stringify(recordings)); }
