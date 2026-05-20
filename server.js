@@ -196,7 +196,7 @@ const httpServer = http.createServer((req, res) => {
   if (gameMatch && method === 'GET') {
     const id = gameMatch[1].padStart(5, '0');
     if (!GAMES.includes(id)) { res.writeHead(404); res.end('Game not found'); return; }
-    serveFile(res, path.join(__dirname, 'public', 'games', id + '.html'), 'text/html');
+    serveFile(res, path.join(__dirname, 'public', 'games', id, 'index.html'), 'text/html');
     return;
   }
 
