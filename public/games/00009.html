@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Dice Roller</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #1a1a2e;
+      color: white;
+      font-family: 'Fredoka One', cursive;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      padding: 8px;
+      gap: 8px;
+    }
+
+    #type-row {
+      display: flex;
+      gap: 8px;
+      flex-shrink: 0;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .type-btn {
+      font-family: 'Fredoka One', cursive;
+      font-size: 1.05rem;
+      padding: 6px 18px;
+      border-radius: 20px;
+      border: 2px solid #444;
+      background: transparent;
+      color: #777;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .type-btn:hover { border-color: #888; color: #ccc; }
+
+    #canvas-wrap {
+      flex: 1;
+      min-height: 0;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    canvas { display: block; }
+
+    #result {
+      font-size: clamp(1rem, 3.5vw, 1.5rem);
+      color: #777;
+      flex-shrink: 0;
+      min-height: 2.2em;
+      display: flex;
+      align-items: center;
+      text-align: center;
+    }
+
+    #roll-btn {
+      font-family: 'Fredoka One', cursive;
+      font-size: 1.2rem;
+      padding: 10px 44px;
+      border-radius: 30px;
+      border: none;
+      background: #4488ff;
+      color: white;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background 0.12s, transform 0.1s;
+      margin-bottom: 4px;
+    }
+    #roll-btn:hover { background: #2266dd; }
+    #roll-btn:active { transform: scale(0.95); }
+    #roll-btn:disabled { background: #2a2a4a; color: #555; cursor: default; }
+  </style>
+</head>
+<body data-game="00009">
+
+  <div id="type-row">
+    <button class="type-btn" data-type="d4">d4</button>
+    <button class="type-btn" data-type="d6">d6</button>
+    <button class="type-btn" data-type="d8">d8</button>
+    <button class="type-btn" data-type="d10">d10</button>
+    <button class="type-btn" data-type="d12">d12</button>
+    <button class="type-btn" data-type="d20">d20</button>
+  </div>
+
+  <div id="canvas-wrap"><canvas id="cv"></canvas></div>
+
+  <div id="result">Choose a die and roll!</div>
+  <button id="roll-btn">🎲 Roll</button>
+
+  <script src="/shared/nav.js"></script>
+  <script>
+    // ── Config ───────────────────────────────────────────────────────────────
+    const CFG = {
+      d4:  { sides:4,  c:[220, 60, 95]  },
+      d6:  { sides:6,  c:[60,  135, 255] },
+      d8:  { sides:8,  c:[45,  200, 130] },
+      d10: { sides:10, c:[255, 145, 50]  },
+      d12: { sides:12, c:[175, 65,  255] },
+      d20: { sides:20, c:[255, 200, 0]   },
+    };
+
+    // ── State ────────────────────────────────────────────────────────────────
+    let dieType  = 'd20';
+    let dispVal  = 20;
+    let rollState = null;  // { start, finalVal, sides, type }
+    let lastNumTs = 0;
+    let landTs    = 0;
+
+    // ── DOM ──────────────────────────────────────────────────────────────────
+    const cv       = document.getElementById('cv');
+    const ctx      = cv.getContext('2d');
+    const wrap     = document.getElementById('canvas-wrap');
+    const resultEl = document.getElementById('result');
+    const rollBtn  = document.getElementById('roll-btn');
+
+    // ── Color helpers ────────────────────────────────────────────────────────
+    const clamp = (v,lo,hi) => Math.max(lo, Math.min(hi, Math.round(v)));
+    const shade = ([r,g,b], a) => [clamp(r+a,0,255), clamp(g+a,0,255), clamp(b+a,0,255)];
+    const rgba  = ([r,g,b], a=1) => `rgba(${r},${g},${b},${a})`;
+
+    function radGrad(x, y, r, c) {
+      const g = ctx.createRadialGradient(x-r*0.3, y-r*0.35, r*0.04, x, y, r*1.1);
+      g.addColorStop(0,   rgba(shade(c, 115)));
+      g.addColorStop(0.45, rgba(c));
+      g.addColorStop(1,   rgba(shade(c,-105)));
+      return g;
+    }
+
+    // ── Canvas geometry ──────────────────────────────────────────────────────
+    let S = 100; // die "size" radius in px
+
+    function resize() {
+      cv.width  = wrap.clientWidth;
+      cv.height = wrap.clientHeight;
+      S = Math.min(cv.width, cv.height) * 0.38;
+    }
+    window.addEventListener('resize', resize);
+
+    // ── Polygon helper ───────────────────────────────────────────────────────
+    function poly(pts) {
+      ctx.beginPath();
+      ctx.moveTo(pts[0][0], pts[0][1]);
+      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+      ctx.closePath();
+    }
+
+    function shadow(s, ox=0.05, oy=0.09) {
+      ctx.shadowColor = 'rgba(0,0,0,0.75)';
+      ctx.shadowBlur  = s * 0.2;
+      ctx.shadowOffsetX = s * ox;
+      ctx.shadowOffsetY = s * oy;
+    }
+    function noShadow() { ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0; }
+
+    function numLabel(val, x, y, sz) {
+      ctx.save();
+      ctx.shadowColor = 'rgba(0,0,0,0.95)'; ctx.shadowBlur = sz * 0.12;
+      ctx.fillStyle = 'white';
+      ctx.font = `bold ${Math.round(sz)}px Fredoka One, cursive`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(val, x, y);
+      ctx.restore();
+    }
+
+    function topHighlight(a, b, c, s) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+      ctx.lineWidth = s * 0.03;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(a[0],a[1]); ctx.lineTo(b[0],b[1]);
+      if (c) ctx.lineTo(c[0],c[1]);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function facetLines(lines, s) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+      ctx.lineWidth = s * 0.016;
+      for (const [a,b] of lines) {
+        ctx.beginPath(); ctx.moveTo(a[0],a[1]); ctx.lineTo(b[0],b[1]); ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    // ── Die draw functions ───────────────────────────────────────────────────
+
+    function drawD4(val) {
+      const c = CFG.d4.c, r = S * 0.86;
+      const top = [0, -r];
+      const br  = [ r*0.866,  r*0.5];
+      const bl  = [-r*0.866,  r*0.5];
+
+      // Bottom depth edge
+      poly([bl, br, [br[0]+S*0.05, br[1]+S*0.11], [bl[0]-S*0.05, bl[1]+S*0.11]]);
+      ctx.fillStyle = rgba(shade(c,-140), 0.9); ctx.fill();
+
+      // Main face
+      ctx.save(); shadow(S);
+      poly([top, br, bl]);
+      ctx.fillStyle = radGrad(0, -r*0.2, r*0.85, c);
+      ctx.fill(); ctx.restore();
+
+      // Outline
+      ctx.strokeStyle = rgba(shade(c,-80), 0.7); ctx.lineWidth = S*0.025;
+      poly([top, br, bl]); ctx.stroke();
+
+      // Facet lines from centroid to midpoints
+      const cen = [0, (top[1]+br[1]+bl[1])/3];
+      const mTR = [(top[0]+br[0])/2, (top[1]+br[1])/2];
+      const mTL = [(top[0]+bl[0])/2, (top[1]+bl[1])/2];
+      const mB  = [(br[0]+bl[0])/2,  (br[1]+bl[1])/2];
+      facetLines([[cen,mTR],[cen,mTL],[cen,mB]], S);
+
+      topHighlight(bl, top, br, S);
+      numLabel(val, cen[0], cen[1]+S*0.06, S*0.38);
+    }
+
+    function drawD6(val) {
+      const c = CFG.d6.c;
+      const q = Math.sqrt(3)/2, a = S * 0.78;
+      const topV = [0,-a], midR = [a*q,-a/2], midL = [-a*q,-a/2];
+      const ctr  = [0,0],  botR = [a*q, a/2], botL = [-a*q, a/2], botV = [0,a];
+
+      // Full silhouette shadow
+      ctx.save(); shadow(S);
+      poly([topV, midR, botR, botV, botL, midL]);
+      ctx.fillStyle = rgba(c); ctx.fill(); noShadow(); ctx.restore();
+
+      // Top face — lightest
+      const gT = ctx.createLinearGradient(-a*q,-a, a*q,-a*0.2);
+      gT.addColorStop(0, rgba(shade(c,135))); gT.addColorStop(1, rgba(shade(c,65)));
+      poly([topV, midR, ctr, midL]); ctx.fillStyle = gT; ctx.fill();
+
+      // Left face — mid
+      const gL = ctx.createLinearGradient(-a*q,-a/2, 0, a);
+      gL.addColorStop(0, rgba(shade(c,15))); gL.addColorStop(1, rgba(shade(c,-55)));
+      poly([midL, ctr, botV, botL]); ctx.fillStyle = gL; ctx.fill();
+
+      // Right face — front / darkest
+      const gR = ctx.createLinearGradient(a*q,-a/2, 0, a);
+      gR.addColorStop(0, rgba(shade(c,-20))); gR.addColorStop(1, rgba(shade(c,-95)));
+      poly([midR, botR, botV, ctr]); ctx.fillStyle = gR; ctx.fill();
+
+      // Edges
+      ctx.strokeStyle = rgba(shade(c,-90), 0.6); ctx.lineWidth = a*0.028;
+      for (const f of [[topV,midR,ctr,midL],[midL,ctr,botV,botL],[midR,botR,botV,ctr]]) {
+        poly(f); ctx.stroke();
+      }
+
+      topHighlight(midL, topV, midR, S);
+
+      // Number centred on right face
+      numLabel(val, (midR[0]+botR[0]+botV[0]+ctr[0])/4, (midR[1]+botR[1]+botV[1]+ctr[1])/4, a*0.5);
+    }
+
+    function drawD8(val) {
+      const c = CFG.d8.c;
+      const top = [0,-S*0.9], r = [S*0.62,0], bot = [0,S*0.9], l = [-S*0.62,0];
+
+      // Lower pyramid
+      ctx.save(); shadow(S);
+      poly([l, bot, r]); ctx.fillStyle = rgba(shade(c,-75)); ctx.fill(); noShadow(); ctx.restore();
+
+      // Upper pyramid
+      ctx.save(); shadow(S, 0.04, 0.06);
+      poly([l, top, r]);
+      ctx.fillStyle = radGrad(0, -S*0.3, S*0.85, c);
+      ctx.fill(); noShadow(); ctx.restore();
+
+      // Outer outline
+      ctx.strokeStyle = rgba(shade(c,-80), 0.65); ctx.lineWidth = S*0.022;
+      poly([top,r,bot,l]); ctx.stroke();
+
+      // Equator
+      ctx.beginPath(); ctx.moveTo(l[0],l[1]); ctx.lineTo(r[0],r[1]);
+      ctx.strokeStyle = rgba(shade(c,-60), 0.7); ctx.lineWidth = S*0.022; ctx.stroke();
+
+      facetLines([[top,l],[top,r],[bot,l],[bot,r]], S);
+      topHighlight(l, top, r, S);
+      numLabel(val, 0, -S*0.15, S*0.4);
+    }
+
+    function drawD10(val) {
+      const c = CFG.d10.c;
+      const top  = [0, -S*0.88];
+      const mR   = [ S*0.53, -S*0.06];
+      const bR   = [ S*0.36,  S*0.52];
+      const bot  = [0,  S*0.85];
+      const bL   = [-S*0.36,  S*0.52];
+      const mL   = [-S*0.53, -S*0.06];
+      const pts  = [top, mR, bR, bot, bL, mL];
+
+      // Depth offset
+      const dp = pts.map(([x,y]) => [x+S*0.06, y+S*0.1]);
+      ctx.save(); shadow(S);
+      poly(dp); ctx.fillStyle = rgba(shade(c,-135), 0.8); ctx.fill(); noShadow(); ctx.restore();
+
+      // Main face
+      poly(pts); ctx.fillStyle = radGrad(0,-S*0.2,S,c); ctx.fill();
+
+      ctx.strokeStyle = rgba(shade(c,-80), 0.65); ctx.lineWidth = S*0.022;
+      poly(pts); ctx.stroke();
+
+      facetLines([[top,bR],[top,bL],[top,bot],[mR,mL]], S);
+      topHighlight(mL, top, mR, S);
+      numLabel(val, 0, -S*0.1, S*0.38);
+    }
+
+    function drawD12(val) {
+      const c = CFG.d12.c;
+      const pts = Array.from({length:5}, (_,i) => {
+        const a = (i*72 - 90) * Math.PI/180;
+        return [Math.cos(a)*S*0.88, Math.sin(a)*S*0.88];
+      });
+
+      // Depth
+      const dp = pts.map(([x,y]) => [x+S*0.05, y+S*0.1]);
+      ctx.save(); shadow(S);
+      poly(dp); ctx.fillStyle = rgba(shade(c,-135), 0.8); ctx.fill(); noShadow(); ctx.restore();
+
+      // Main face
+      poly(pts); ctx.fillStyle = radGrad(0,-S*0.15,S*0.85,c); ctx.fill();
+
+      ctx.strokeStyle = rgba(shade(c,-80), 0.65); ctx.lineWidth = S*0.022;
+      poly(pts); ctx.stroke();
+
+      // Spokes from centre
+      facetLines(pts.map(p => [[0,0], p]), S);
+
+      topHighlight(pts[4], pts[0], pts[1], S);
+      numLabel(val, 0, S*0.08, S*0.4);
+    }
+
+    function drawD20(val) {
+      const c = CFG.d20.c;
+      const r = S * 0.88;
+      const top = [0, -r], br = [r*0.866, r*0.5], bl = [-r*0.866, r*0.5];
+      const mTR = [(top[0]+br[0])/2, (top[1]+br[1])/2];
+      const mTL = [(top[0]+bl[0])/2, (top[1]+bl[1])/2];
+      const mB  = [(br[0]+bl[0])/2,  (br[1]+bl[1])/2];
+
+      // Depth
+      const dOff = [S*0.05, S*0.09];
+      const tdp = [[top[0]+dOff[0],top[1]+dOff[1]],[br[0]+dOff[0],br[1]+dOff[1]],[bl[0]+dOff[0],bl[1]+dOff[1]]];
+      ctx.save(); shadow(S);
+      poly(tdp); ctx.fillStyle = rgba(shade(c,-140), 0.75); ctx.fill(); noShadow(); ctx.restore();
+
+      // Full triangle background
+      ctx.save(); shadow(S,0.03,0.06);
+      poly([top,br,bl]); ctx.fillStyle = rgba(shade(c,-25)); ctx.fill(); noShadow(); ctx.restore();
+
+      // 4 sub-triangles with distinct shading
+      const subTris = [
+        { pts:[top,mTR,mTL], boost: 80 },   // top
+        { pts:[mTR,br,mB],   boost: 20 },   // bottom-right
+        { pts:[mTL,mB,bl],   boost: 30 },   // bottom-left
+        { pts:[mTR,mB,mTL],  boost:-20 },   // centre inverted
+      ];
+      for (const { pts: sp, boost } of subTris) {
+        const cx = sp.reduce((s,p)=>s+p[0],0)/3;
+        const cy = sp.reduce((s,p)=>s+p[1],0)/3;
+        const g = ctx.createRadialGradient(cx-S*0.08, cy-S*0.08, 0, cx, cy, S*0.6);
+        g.addColorStop(0, rgba(shade(c, boost+65)));
+        g.addColorStop(1, rgba(shade(c, boost-35)));
+        poly(sp); ctx.fillStyle = g; ctx.fill();
+      }
+
+      // All edges
+      ctx.strokeStyle = rgba(shade(c,-80), 0.65); ctx.lineWidth = S*0.022;
+      poly([top,br,bl]); ctx.stroke();
+      for (const [a,b] of [[mTR,mTL],[mTL,mB],[mB,mTR]]) {
+        ctx.beginPath(); ctx.moveTo(a[0],a[1]); ctx.lineTo(b[0],b[1]); ctx.stroke();
+      }
+
+      topHighlight(bl, top, br, S);
+
+      // Number in centre of inverted sub-triangle
+      const cx = (mTR[0]+mB[0]+mTL[0])/3;
+      const cy = (mTR[1]+mB[1]+mTL[1])/3;
+      numLabel(val, cx, cy+S*0.02, S*0.4);
+    }
+
+    function drawDie(type, val) {
+      switch(type) {
+        case 'd4':  drawD4(val);  break;
+        case 'd6':  drawD6(val);  break;
+        case 'd8':  drawD8(val);  break;
+        case 'd10': drawD10(val); break;
+        case 'd12': drawD12(val); break;
+        case 'd20': drawD20(val); break;
+      }
+    }
+
+    // ── Roll logic ───────────────────────────────────────────────────────────
+    function startRoll() {
+      if (rollState) return;
+      const cfg = CFG[dieType];
+      rollState = {
+        start:    performance.now(),
+        finalVal: Math.floor(Math.random() * cfg.sides) + 1,
+        sides:    cfg.sides,
+        type:     dieType,
+      };
+      rollBtn.disabled = true;
+      resultEl.textContent = '…';
+    }
+
+    // ── Animation loop ───────────────────────────────────────────────────────
+    function loop(ts) {
+      requestAnimationFrame(loop);
+
+      let wobble = 0, sy = 1;
+
+      if (rollState) {
+        const dur = 1500;
+        const p   = Math.min((ts - rollState.start) / dur, 1);
+
+        // Wobble decays and oscillates
+        wobble = 0.27 * (1 - p) * Math.sin(p * 28);
+
+        // Number changes — starts fast, slows to a stop
+        const interval = 50 + p * 260;
+        if (ts - lastNumTs > interval) {
+          dispVal   = Math.floor(Math.random() * rollState.sides) + 1;
+          lastNumTs = ts;
+        }
+
+        // Landing
+        if (p >= 1) {
+          dispVal  = rollState.finalVal;
+          landTs   = ts;
+          const final = rollState.finalVal;
+          const sides = rollState.sides;
+          const col   = rgba(CFG[rollState.type].c);
+          let emoji = '';
+          if (final === sides) emoji = ' 🎉';
+          else if (final === 1) emoji = ' 💀';
+          resultEl.innerHTML = `You rolled <span style="color:${col};font-size:1.4em">${final}</span> on ${rollState.type.toUpperCase()}!${emoji}`;
+          rollState = null;
+          rollBtn.disabled = false;
+        }
+      } else {
+        // Idle bob + landing squish
+        wobble = 0.012 * Math.sin(ts * 0.0012);
+        const sinceLand = ts - landTs;
+        if (sinceLand < 600) {
+          sy = 1 - 0.07 * Math.sin(sinceLand * Math.PI / 200) * Math.exp(-sinceLand * 0.006);
+        }
+        sy += 0.007 * Math.sin(ts * 0.0018);
+      }
+
+      ctx.clearRect(0, 0, cv.width, cv.height);
+      ctx.save();
+      ctx.translate(cv.width/2, cv.height/2);
+      ctx.rotate(wobble);
+      ctx.scale(1, sy);
+      drawDie(dieType, dispVal);
+      ctx.restore();
+    }
+
+    // ── Type buttons ─────────────────────────────────────────────────────────
+    const typeBtns = document.querySelectorAll('.type-btn');
+
+    function selectType(type) {
+      if (rollState) return;
+      dieType = type;
+      dispVal = Math.ceil(CFG[type].sides / 2);
+      resultEl.textContent = 'Click the die or press Roll!';
+      typeBtns.forEach(b => {
+        const col = CFG[b.dataset.type].c;
+        if (b.dataset.type === type) {
+          b.style.cssText = `border-color:${rgba(col)};color:${rgba(col)};background:${rgba(col,0.15)}`;
+        } else {
+          b.style.cssText = '';
+        }
+      });
+    }
+
+    typeBtns.forEach(b => b.addEventListener('click', () => selectType(b.dataset.type)));
+    rollBtn.addEventListener('click', startRoll);
+    wrap.addEventListener('click', startRoll);
+    wrap.addEventListener('touchend', e => { e.preventDefault(); startRoll(); });
+
+    // ── Boot ─────────────────────────────────────────────────────────────────
+    requestAnimationFrame(() => {
+      resize();
+      selectType('d20');
+      requestAnimationFrame(loop);
+    });
+  </script>
+</body>
+</html>
