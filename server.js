@@ -7,7 +7,7 @@ const { networkInterfaces } = require('os');
 const PORT = 3000;
 
 // ─── Game registry ────────────────────────────────────────────────────────────
-const GAMES = ['00001', '00002', '00003', '00004', '00005', '00006', '00007', '00008', '00009', '00010', '00011', '00012', '00013', '00014', '00015', '00016', '00017'];
+const GAMES = ['00001', '00002', '00003', '00004', '00005', '00006', '00007', '00008', '00009', '00010', '00011', '00012', '00013', '00014', '00015', '00016', '00017', '00018', '00019', '00020'];
 
 // ─── Cookie persistence ───────────────────────────────────────────────────────
 const COOKIE_DATA_DIR = path.join(__dirname, 'public', 'games', '00002', 'data');
@@ -194,6 +194,9 @@ let chatHistory = [];
 function chatMsg(name, text) {
   return { game:'chat', type:'msg', name, text, time: Date.now() };
 }
+
+// ─── ASCII Panel state ────────────────────────────────────────────────────────
+let asciiBits = [0,0,0,0,0,0,0,0]; // bits[0]=bit7 (MSB) … bits[7]=bit0 (LSB)
 
 // ─── Colour game state ────────────────────────────────────────────────────────
 const COLS = 30, ROWS = 20, TOTAL_CELLS = COLS * ROWS;
@@ -415,6 +418,7 @@ wss.on('connection', (ws) => {
   ws.send(JSON.stringify(pongStateMsg()));
   ws.send(JSON.stringify(c4StateMsg()));
   ws.send(JSON.stringify({ game:'chat', type:'history', messages: chatHistory }));
+  ws.send(JSON.stringify({ game: 'ascii', type: 'state', bits: asciiBits }));
 
   ws.on('message', (message) => {
     try {
@@ -482,6 +486,14 @@ wss.on('connection', (ws) => {
         chatHistory.push(msg);
         if (chatHistory.length > CHAT_MAX) chatHistory.shift();
         broadcast(msg);
+      }
+
+      // ── ASCII Panel ──
+      if (data.game === 'ascii' && data.type === 'flip') {
+        const bit = data.bit;
+        if (typeof bit !== 'number' || bit < 0 || bit > 7) return;
+        asciiBits[bit] ^= 1;
+        broadcast({ game: 'ascii', type: 'state', bits: asciiBits });
       }
 
       // ── Cowsay ──

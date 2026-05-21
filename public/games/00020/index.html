@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Grade School Clock</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #07070f;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      gap: 18px;
+    }
+
+    canvas {
+      display: block;
+      max-height: calc(100dvh - 80px);
+      max-width: calc(100vw - 32px);
+      width: auto;
+      height: auto;
+    }
+
+    #footer {
+      font-family: 'Fredoka One', cursive;
+      font-size: clamp(0.6rem, 1.6vw, 0.72rem);
+      color: #1a1a28;
+      letter-spacing: 2px;
+      text-align: center;
+      line-height: 2;
+    }
+  </style>
+</head>
+<body data-game="00020">
+  <canvas id="canvas" width="440" height="440"></canvas>
+  <div id="footer">
+    This clock was used to teach you something.<br>
+    You learned it.<br>
+    The clock is still here.
+  </div>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const W = 440, H = 440;
+const CX = W / 2, CY = H / 2;
+const R = 196; // outer face radius
+
+// 12 sector colors — one per hour segment, classroom rainbow
+const SECTOR_COLORS = [
+  '#e63946', // 12→1  red
+  '#f4722b', // 1→2   orange-red
+  '#f4a226', // 2→3   orange
+  '#f9c74f', // 3→4   yellow
+  '#90be6d', // 4→5   yellow-green
+  '#43aa8b', // 5→6   green
+  '#4cc9f0', // 6→7   cyan
+  '#4361ee', // 7→8   blue
+  '#3a0ca3', // 8→9   indigo
+  '#7b2d8b', // 9→10  purple
+  '#c77dff', // 10→11 violet
+  '#f72585', // 11→12 pink
+];
+
+function drawSectors() {
+  for (let i = 0; i < 12; i++) {
+    const startAngle = (i / 12) * Math.PI * 2 - Math.PI / 2;
+    const endAngle   = ((i + 1) / 12) * Math.PI * 2 - Math.PI / 2;
+    ctx.beginPath();
+    ctx.moveTo(CX, CY);
+    ctx.arc(CX, CY, R, startAngle, endAngle);
+    ctx.closePath();
+    ctx.fillStyle = SECTOR_COLORS[i];
+    ctx.globalAlpha = 0.22;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+}
+
+function drawFace() {
+  // Outer bezel
+  ctx.beginPath();
+  ctx.arc(CX, CY, R + 14, 0, Math.PI * 2);
+  const bezelGrd = ctx.createRadialGradient(CX, CY, R + 2, CX, CY, R + 14);
+  bezelGrd.addColorStop(0, '#2a2a38');
+  bezelGrd.addColorStop(1, '#16161f');
+  ctx.fillStyle = bezelGrd;
+  ctx.fill();
+
+  // Clock face
+  ctx.beginPath();
+  ctx.arc(CX, CY, R, 0, Math.PI * 2);
+  ctx.fillStyle = '#f9f7f0';
+  ctx.fill();
+
+  drawSectors();
+
+  // Face rim
+  ctx.beginPath();
+  ctx.arc(CX, CY, R, 0, Math.PI * 2);
+  ctx.strokeStyle = '#c8c4b4';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+}
+
+function drawTicks() {
+  for (let i = 0; i < 60; i++) {
+    const angle = (i / 60) * Math.PI * 2 - Math.PI / 2;
+    const cos = Math.cos(angle), sin = Math.sin(angle);
+
+    let innerR, outerR, lw, color;
+    if (i % 15 === 0) {
+      // Quarter marks
+      innerR = R - 22; outerR = R - 2; lw = 3; color = '#1a1a2e';
+    } else if (i % 5 === 0) {
+      // 5-minute marks
+      innerR = R - 16; outerR = R - 2; lw = 2; color = '#2a2a3e';
+    } else {
+      // 1-minute marks
+      innerR = R - 8; outerR = R - 2; lw = 1; color = '#8a8a9e';
+    }
+
+    ctx.beginPath();
+    ctx.moveTo(CX + cos * innerR, CY + sin * innerR);
+    ctx.lineTo(CX + cos * outerR, CY + sin * outerR);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = lw;
+    ctx.stroke();
+  }
+}
+
+function drawMinuteNumbers() {
+  // Red minute labels 5,10,15...55 on outer ring
+  ctx.font = 'bold 13px Arial, sans-serif';
+  ctx.fillStyle = '#cc2040';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const minuteLabelR = R - 30;
+  for (let i = 1; i <= 11; i++) {
+    const angle = (i / 12) * Math.PI * 2 - Math.PI / 2;
+    const label = String(i * 5);
+    const x = CX + Math.cos(angle) * minuteLabelR;
+    const y = CY + Math.sin(angle) * minuteLabelR;
+    ctx.fillText(label, x, y);
+  }
+}
+
+function drawHourNumbers() {
+  // Dark navy hour numbers on inner ring
+  ctx.font = 'bold 22px Arial, sans-serif';
+  ctx.fillStyle = '#1a2e5e';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const hourR = R * 0.56;
+  for (let i = 1; i <= 12; i++) {
+    const angle = (i / 12) * Math.PI * 2 - Math.PI / 2;
+    const x = CX + Math.cos(angle) * hourR;
+    const y = CY + Math.sin(angle) * hourR;
+    ctx.fillText(String(i), x, y);
+  }
+}
+
+function drawHand(angle, length, width, color, hasTail) {
+  const cos = Math.cos(angle), sin = Math.sin(angle);
+  ctx.beginPath();
+  if (hasTail) {
+    ctx.moveTo(CX - cos * length * 0.18, CY - sin * length * 0.18);
+  } else {
+    ctx.moveTo(CX, CY);
+  }
+  ctx.lineTo(CX + cos * length, CY + sin * length);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width;
+  ctx.lineCap = 'round';
+  ctx.stroke();
+}
+
+function drawHub() {
+  // Outer hub cap
+  ctx.beginPath();
+  ctx.arc(CX, CY, 9, 0, Math.PI * 2);
+  ctx.fillStyle = '#1a1a2e';
+  ctx.fill();
+  // Inner accent dot
+  ctx.beginPath();
+  ctx.arc(CX, CY, 4, 0, Math.PI * 2);
+  ctx.fillStyle = '#e94560';
+  ctx.fill();
+}
+
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+
+  const now = new Date();
+  const ms  = now.getMilliseconds();
+  const sec = now.getSeconds() + ms / 1000;
+  const min = now.getMinutes() + sec / 60;
+  const hr  = (now.getHours() % 12) + min / 60;
+
+  const secAngle = (sec / 60)  * Math.PI * 2 - Math.PI / 2;
+  const minAngle = (min / 60)  * Math.PI * 2 - Math.PI / 2;
+  const hrAngle  = (hr  / 12)  * Math.PI * 2 - Math.PI / 2;
+
+  drawFace();
+  drawTicks();
+  drawMinuteNumbers();
+  drawHourNumbers();
+
+  // Hour hand — dark blue, thick, short
+  drawHand(hrAngle,  R * 0.50, 7, '#1a4a8e', true);
+  // Minute hand — dark red, medium, long
+  drawHand(minAngle, R * 0.76, 4.5, '#cc2040', true);
+  // Second hand — accent, thin, long
+  drawHand(secAngle, R * 0.85, 1.5, '#e94560', true);
+
+  drawHub();
+
+  requestAnimationFrame(draw);
+}
+
+requestAnimationFrame(draw);
+</script>
+
+<script src="/shared/nav.js"></script>
+</body>
+</html>

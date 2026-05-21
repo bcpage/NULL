@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Unix Epoch</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #07070f;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      gap: 24px;
+    }
+
+    #ts {
+      font-family: 'Courier New', Courier, monospace;
+      font-size: clamp(2.6rem, 11vw, 7.5rem);
+      color: #c8c8be;
+      letter-spacing: 0.06em;
+      font-variant-numeric: tabular-nums;
+      user-select: all;
+    }
+
+    #footer {
+      font-family: 'Fredoka One', cursive;
+      font-size: clamp(0.6rem, 1.8vw, 0.74rem);
+      color: #1a1a28;
+      letter-spacing: 2px;
+      text-align: center;
+      line-height: 2;
+    }
+  </style>
+</head>
+<body data-game="00019">
+
+  <div id="ts">0</div>
+  <div id="footer">
+    Seconds since January 1, 1970, 00:00:00 UTC.<br>
+    The count began before you did.<br>
+    It will continue after.
+  </div>
+
+<script>
+const el = document.getElementById('ts');
+
+function tick() {
+  el.textContent = Math.floor(Date.now() / 1000);
+}
+
+tick();
+setInterval(tick, 1000);
+</script>
+
+<script src="/shared/nav.js"></script>
+</body>
+</html>

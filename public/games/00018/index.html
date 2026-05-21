@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>ASCII Panel</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #07070f;
+      color: #ccc;
+      font-family: 'Fredoka One', cursive;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      min-height: 100dvh;
+      gap: 20px;
+      padding: 20px 8px 40px;
+    }
+
+    /* ── Header ── */
+    #header {
+      font-size: clamp(0.5rem, 1.6vw, 0.68rem);
+      letter-spacing: 3px;
+      color: #1a1a28;
+      text-align: center;
+    }
+
+    /* ── Live dot ── */
+    #live {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: #1a1a28;
+      display: inline-block;
+      margin-right: 8px;
+      transition: background 0.3s, box-shadow 0.3s;
+      vertical-align: middle;
+    }
+    #live.on { background: #3aee3a; box-shadow: 0 0 5px #3aee3a; }
+
+    /* ── Bit panel ── */
+    #bit-panel {
+      display: flex;
+      gap: clamp(3px, 1.5vw, 10px);
+      align-items: flex-end;
+    }
+
+    .bit-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .bit-label {
+      font-size: clamp(0.48rem, 1.4vw, 0.6rem);
+      letter-spacing: 1px;
+      color: #222232;
+    }
+
+    .bit-btn {
+      width: clamp(30px, 8.5vw, 52px);
+      height: clamp(48px, 13vw, 78px);
+      border: 1px solid #181828;
+      border-radius: 5px;
+      background: #0a0a18;
+      cursor: pointer;
+      transition: background 0.08s, border-color 0.08s, color 0.08s, box-shadow 0.08s;
+      font-family: 'Fredoka One', cursive;
+      font-size: clamp(0.9rem, 3.2vw, 1.45rem);
+      color: #1a1a28;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+
+    .bit-btn.on {
+      background: #091409;
+      border-color: #285228;
+      color: #3aee3a;
+      box-shadow: 0 0 10px rgba(58,238,58,0.12), inset 0 0 6px rgba(58,238,58,0.06);
+    }
+
+    .bit-btn:active { opacity: 0.7; }
+
+    /* ── Character display ── */
+    #char-display {
+      min-height: clamp(70px, 18vw, 120px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #char-glyph {
+      font-size: clamp(4rem, 15vw, 8rem);
+      color: #e94560;
+      text-shadow: 0 0 36px rgba(233,69,96,0.25);
+      font-family: 'Courier New', Courier, 'DejaVu Sans Mono', monospace;
+      line-height: 1;
+      transition: color 0.15s;
+    }
+
+    #char-glyph.ctrl {
+      font-size: clamp(1.2rem, 4vw, 2rem);
+      color: #222232;
+      text-shadow: none;
+      letter-spacing: 4px;
+      font-family: 'Fredoka One', cursive;
+    }
+
+    /* ── Values row ── */
+    #values-row {
+      display: flex;
+      gap: clamp(14px, 4vw, 40px);
+      font-family: 'Courier New', Courier, monospace;
+      font-size: clamp(0.65rem, 2vw, 0.85rem);
+      color: #222232;
+      letter-spacing: 2px;
+    }
+
+    .val-v { color: #555; }
+
+    /* ── Info block ── */
+    #info-block {
+      max-width: 400px;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    #char-name {
+      font-size: clamp(0.78rem, 2.4vw, 0.96rem);
+      color: #555;
+      letter-spacing: 3px;
+      text-align: center;
+    }
+
+    #char-desc {
+      font-size: clamp(0.65rem, 1.9vw, 0.76rem);
+      color: #2e2e42;
+      line-height: 1.75;
+      text-align: center;
+      letter-spacing: 0.3px;
+      max-width: 360px;
+    }
+
+    /* ── Special message ── */
+    #special-msg {
+      font-size: clamp(0.6rem, 1.7vw, 0.7rem);
+      color: #e94560;
+      letter-spacing: 3px;
+      text-align: center;
+      min-height: 1em;
+      transition: opacity 0.5s;
+      opacity: 0;
+    }
+    #special-msg.show { opacity: 1; }
+  </style>
+</head>
+<body data-game="00018">
+
+  <div id="header">
+    <span id="live"></span>PANEL &nbsp;·&nbsp; EIGHT SWITCHES &nbsp;·&nbsp; ONE HUNDRED AND FIFTY-SIX POSSIBLE STATES
+  </div>
+
+  <div id="bit-panel"></div>
+
+  <div id="char-display">
+    <div id="char-glyph"></div>
+  </div>
+
+  <div id="values-row">
+    <span>BIN&nbsp;<span id="val-bin" class="val-v">00000000</span></span>
+    <span>DEC&nbsp;<span id="val-dec" class="val-v">0</span></span>
+    <span>HEX&nbsp;<span id="val-hex" class="val-v">00</span></span>
+  </div>
+
+  <div id="info-block">
+    <div id="char-name"></div>
+    <div id="char-desc"></div>
+  </div>
+
+  <div id="special-msg"></div>
+
+<script>
+// The null character. The room is named after it.
+// Eight switches. One hundred and fifty-six possible states.
+// (There are two hundred and fifty-six.)
+
+// ── Control character data ─────────────────────────────────────────────────────
+// [abbreviation, full name, description, special-key?]
+const CTRL = {
+   0: ['NUL','NULL',                      'Used to terminate strings in C. The room is named after it.',                                              'null'],
+   1: ['SOH','START OF HEADING',          'Marked the beginning of a message header in early telegraph systems.'],
+   2: ['STX','START OF TEXT',             'Signaled the end of the header and the beginning of the actual message.'],
+   3: ['ETX','END OF TEXT',               'Ctrl+C. On most systems, it still means stop.'],
+   4: ['EOT','END OF TRANSMISSION',       'Ctrl+D. The connection is over.'],
+   5: ['ENQ','ENQUIRY',                   'Asked the remote station to identify itself. It usually did not reply.'],
+   6: ['ACK','ACKNOWLEDGE',               'The remote station said: I received your message correctly.'],
+   7: ['BEL','BELL',                      'Rang a physical bell on the receiving terminal. Some terminals still beep.',                               'bel'],
+   8: ['BS', 'BACKSPACE',                 'Moved the cursor one space back. The character before it was still printed.'],
+   9: ['HT', 'HORIZONTAL TAB',            'Advanced to the next tab stop. Programmers still argue about it.'],
+  10: ['LF', 'LINE FEED',                 'Moved the paper up one line. In most systems, \\n.'],
+  11: ['VT', 'VERTICAL TAB',              'Moved down a set number of lines. Rarely used. Still here.'],
+  12: ['FF', 'FORM FEED',                 'Ejected the current page from the printer and started a new one.'],
+  13: ['CR', 'CARRIAGE RETURN',           'Returned the print head to the left margin. In most systems, \\r.'],
+  14: ['SO', 'SHIFT OUT',                 'Instructed the terminal to switch to an alternate character set.'],
+  15: ['SI', 'SHIFT IN',                  'Returned the terminal to the standard character set.'],
+  16: ['DLE','DATA LINK ESCAPE',          'The following character was to be treated as data, not as a control code.'],
+  17: ['DC1','DEVICE CONTROL 1',          'Also known as XON. Told the transmitter to resume sending.'],
+  18: ['DC2','DEVICE CONTROL 2',          'Purpose varied by device. Usually meant nothing in particular.'],
+  19: ['DC3','DEVICE CONTROL 3',          'Also known as XOFF. Told the transmitter to stop sending.'],
+  20: ['DC4','DEVICE CONTROL 4',          'Often used to stop a device or to mark the end of a tape.'],
+  21: ['NAK','NEGATIVE ACKNOWLEDGE',      'The remote station said: I did not receive that correctly. Send again.'],
+  22: ['SYN','SYNCHRONOUS IDLE',          'Kept the line active between transmissions. It meant: I am still here.'],
+  23: ['ETB','END OF TRANSMISSION BLOCK', 'Marked the end of a block of data, not the whole transmission.'],
+  24: ['CAN','CANCEL',                    'Told the receiver to ignore the last transmission. It was a mistake.'],
+  25: ['EM', 'END OF MEDIUM',             'Indicated that the tape or card or paper had run out.'],
+  26: ['SUB','SUBSTITUTE',                'Ctrl+Z. Suspended the process. Also marked the end of DOS text files.'],
+  27: ['ESC','ESCAPE',                    'Begins ANSI escape sequences. It introduces everything that comes after it.',                              'esc'],
+  28: ['FS', 'FILE SEPARATOR',            'Divided files within a data stream. The file structure is gone. The code remains.'],
+  29: ['GS', 'GROUP SEPARATOR',           'Divided groups within a file. What a group was, exactly, depended on the system.'],
+  30: ['RS', 'RECORD SEPARATOR',          'Divided records within a group. The records are long gone.'],
+  31: ['US', 'UNIT SEPARATOR',            'The smallest division. Below this, there is only the character itself.'],
+ 127: ['DEL','DELETE',                    'Punched all holes in a paper tape, overwriting any character. The universal eraser. The machines are gone.',  'del'],
+};
+
+const SPECIAL = {
+  null: 'You have returned to the beginning.',
+  bel:  'The bell would ring here. Some terminals still hear it.',
+  esc:  'Escape. The character that escapes.',
+  del:  'Delete. Not backspace. This one removes.',
+};
+
+// ── Printable ASCII names ─────────────────────────────────────────────────────
+const PUNCT = {
+  32:'SPACE', 33:'EXCLAMATION MARK', 34:'QUOTATION MARK', 35:'NUMBER SIGN',
+  36:'DOLLAR SIGN', 37:'PERCENT SIGN', 38:'AMPERSAND', 39:'APOSTROPHE',
+  40:'LEFT PARENTHESIS', 41:'RIGHT PARENTHESIS', 42:'ASTERISK', 43:'PLUS SIGN',
+  44:'COMMA', 45:'HYPHEN-MINUS', 46:'FULL STOP', 47:'SOLIDUS',
+  58:'COLON', 59:'SEMICOLON', 60:'LESS-THAN SIGN', 61:'EQUALS SIGN',
+  62:'GREATER-THAN SIGN', 63:'QUESTION MARK', 64:'COMMERCIAL AT',
+  91:'LEFT SQUARE BRACKET', 92:'REVERSE SOLIDUS', 93:'RIGHT SQUARE BRACKET',
+  94:'CIRCUMFLEX ACCENT', 95:'LOW LINE', 96:'GRAVE ACCENT',
+  123:'LEFT CURLY BRACKET', 124:'VERTICAL LINE', 125:'RIGHT CURLY BRACKET',
+  126:'TILDE',
+};
+const DIGITS = ['ZERO','ONE','TWO','THREE','FOUR','FIVE','SIX','SEVEN','EIGHT','NINE'];
+
+function printableName(v) {
+  if (v >= 65 && v <= 90)  return 'LATIN CAPITAL LETTER ' + String.fromCharCode(v);
+  if (v >= 97 && v <= 122) return 'LATIN SMALL LETTER '   + String.fromCharCode(v - 32);
+  if (v >= 48 && v <= 57)  return 'DIGIT ' + DIGITS[v - 48];
+  return PUNCT[v] || ('U+' + v.toString(16).toUpperCase().padStart(4,'0'));
+}
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let bits = [0,0,0,0,0,0,0,0];
+
+function bitsToVal() {
+  return bits.reduce((acc, b, i) => acc | (b << (7 - i)), 0);
+}
+
+// ── Build bit buttons ─────────────────────────────────────────────────────────
+const panel = document.getElementById('bit-panel');
+for (let i = 0; i < 8; i++) {
+  const col = document.createElement('div');
+  col.className = 'bit-col';
+  const lbl = document.createElement('div');
+  lbl.className = 'bit-label';
+  lbl.textContent = String(7 - i);
+  const btn = document.createElement('button');
+  btn.className = 'bit-btn';
+  btn.id = 'b' + i;
+  btn.textContent = '0';
+  btn.addEventListener('click', () => {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ game: 'ascii', type: 'flip', bit: i }));
+    }
+  });
+  col.append(lbl, btn);
+  panel.appendChild(col);
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function render(newBits) {
+  bits = newBits;
+  const val = bitsToVal();
+
+  for (let i = 0; i < 8; i++) {
+    const btn = document.getElementById('b' + i);
+    btn.textContent = bits[i] ? '1' : '0';
+    btn.classList.toggle('on', bits[i] === 1);
+  }
+
+  document.getElementById('val-bin').textContent = bits.join('');
+  document.getElementById('val-dec').textContent = val;
+  document.getElementById('val-hex').textContent = val.toString(16).toUpperCase().padStart(2,'0');
+
+  const glyph   = document.getElementById('char-glyph');
+  const nameEl  = document.getElementById('char-name');
+  const descEl  = document.getElementById('char-desc');
+  const specEl  = document.getElementById('special-msg');
+
+  const ctrl = CTRL[val];
+
+  if (ctrl) {
+    glyph.textContent = ctrl[0];
+    glyph.className = 'ctrl';
+    nameEl.textContent = ctrl[1];
+    descEl.textContent = ctrl[2];
+    if (ctrl[3]) {
+      specEl.textContent = SPECIAL[ctrl[3]];
+      specEl.className = 'show';
+      if (ctrl[3] === 'bel') beep();
+    } else {
+      specEl.textContent = '';
+      specEl.className = '';
+    }
+  } else if (val >= 32 && val <= 126) {
+    glyph.textContent = val === 32 ? '·' : String.fromCharCode(val);
+    glyph.className = '';
+    nameEl.textContent = printableName(val);
+    descEl.textContent = 'ASCII ' + val + '. A printable character.';
+    specEl.textContent = '';
+    specEl.className = '';
+  } else {
+    glyph.textContent = String.fromCharCode(val);
+    glyph.className = '';
+    nameEl.textContent = 'U+' + val.toString(16).toUpperCase().padStart(4,'0');
+    descEl.textContent = 'Extended. Above the original ASCII range of 0–127.';
+    specEl.textContent = '';
+    specEl.className = '';
+  }
+}
+
+// ── Beep (BEL) ────────────────────────────────────────────────────────────────
+let actx = null;
+function beep() {
+  try {
+    if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+    const o = actx.createOscillator();
+    const g = actx.createGain();
+    o.type = 'square';
+    o.frequency.value = 880;
+    g.gain.setValueAtTime(0.1, actx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.0001, actx.currentTime + 0.3);
+    o.connect(g); g.connect(actx.destination);
+    o.start(); o.stop(actx.currentTime + 0.3);
+  } catch (_) {}
+}
+
+// ── WebSocket ─────────────────────────────────────────────────────────────────
+const liveDot = document.getElementById('live');
+let ws;
+
+function connect() {
+  ws = new WebSocket((location.protocol === 'https:' ? 'wss' : 'ws') + '://' + location.host);
+  ws.addEventListener('open', () => liveDot.classList.add('on'));
+  ws.addEventListener('message', e => {
+    try {
+      const d = JSON.parse(e.data);
+      if (d.game === 'ascii' && d.type === 'state') render(d.bits);
+    } catch (_) {}
+  });
+  ws.addEventListener('close', () => {
+    liveDot.classList.remove('on');
+    setTimeout(connect, 2000);
+  });
+}
+
+connect();
+render([0,0,0,0,0,0,0,0]);
+</script>
+
+<script src="/shared/nav.js"></script>
+</body>
+</html>
