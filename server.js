@@ -7,7 +7,7 @@ const { networkInterfaces } = require('os');
 const PORT = 3000;
 
 // ─── Game registry ────────────────────────────────────────────────────────────
-const GAMES = ['00001', '00002', '00003', '00004', '00005', '00006', '00007', '00008', '00009', '00010', '00011', '00012', '00013'];
+const GAMES = ['00001', '00002', '00003', '00004', '00005', '00006', '00007', '00008', '00009', '00010', '00011', '00012', '00013', '00014'];
 
 // ─── Cookie persistence ───────────────────────────────────────────────────────
 const COOKIE_DATA_DIR = path.join(__dirname, 'public', 'games', '00002', 'data');
@@ -28,6 +28,22 @@ const REC_MAX_CLIPS = 50;
 let cookieCount = 0;
 try { cookieCount = JSON.parse(fs.readFileSync(COOKIE_FILE, 'utf8')).count || 0; } catch (e) {}
 function saveCookie() { fs.writeFileSync(COOKIE_FILE, JSON.stringify({ count: cookieCount })); }
+
+// ─── 52! card shuffle counter ────────────────────────────────────────────────
+const CARD_DATA_DIR = path.join(__dirname, 'public', 'games', '00014', 'data');
+const CARD_FILE = path.join(CARD_DATA_DIR, 'cards.json');
+if (!fs.existsSync(CARD_DATA_DIR)) fs.mkdirSync(CARD_DATA_DIR, { recursive: true });
+let cardData = { count: 0, lastShuffle: null };
+try { cardData = JSON.parse(fs.readFileSync(CARD_FILE, 'utf8')); } catch (e) {}
+function saveCards() { fs.writeFileSync(CARD_FILE, JSON.stringify(cardData)); }
+function freshShuffle() {
+  const deck = Array.from({ length: 52 }, (_, i) => i);
+  for (let i = 51; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [deck[i], deck[j]] = [deck[j], deck[i]];
+  }
+  return deck;
+}
 
 // ─── Ticket dispenser ────────────────────────────────────────────────────────
 const TICKET_DATA_DIR = path.join(__dirname, 'public', 'games', '00011', 'data');
@@ -310,6 +326,23 @@ const httpServer = http.createServer((req, res) => {
     try { fs.unlinkSync(path.join(REC_DIR, filename)); } catch (_) {}
     broadcast({ game:'rec', type:'deleted', filename });
     sendJSON(res, { ok: true });
+    return;
+  }
+
+  // API: card shuffle state
+  if (pathname === '/api/cards/state' && method === 'GET') {
+    sendJSON(res, { count: cardData.count, lastShuffle: cardData.lastShuffle });
+    return;
+  }
+
+  // API: new shuffle
+  if (pathname === '/api/cards/shuffle' && method === 'POST') {
+    cardData.lastShuffle = freshShuffle();
+    cardData.count++;
+    saveCards();
+    const payload = { game: 'cards', type: 'shuffle', count: cardData.count, lastShuffle: cardData.lastShuffle };
+    broadcast(payload);
+    sendJSON(res, payload);
     return;
   }
 

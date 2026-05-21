@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>52!</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #1a1a2e;
+      color: white;
+      font-family: 'Fredoka One', cursive;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      min-height: 100dvh;
+      padding: 24px 16px 40px;
+      gap: 32px;
+    }
+
+    h1 {
+      font-size: clamp(1.8rem, 8vw, 3rem);
+      color: #e94560;
+      text-shadow: 0 0 20px rgba(233,69,96,0.4);
+      letter-spacing: 2px;
+    }
+
+    /* ── Card deck ── */
+    #deck {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      justify-content: center;
+      max-width: 680px;
+      width: 100%;
+    }
+
+    .card {
+      width: clamp(36px, 9vw, 52px);
+      aspect-ratio: 0.69;
+      border-radius: 5px;
+      border: 1px solid #333;
+      background: #0d0d1a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: clamp(0.55rem, 1.5vw, 0.78rem);
+      line-height: 1.1;
+      gap: 1px;
+      transition: transform 0.15s;
+      cursor: default;
+    }
+    .card:hover { transform: translateY(-4px); }
+    .card.red  { color: #e94560; border-color: #3a1a22; }
+    .card.black { color: #ccc; }
+
+    .card-rank { font-size: 1.1em; font-weight: bold; }
+    .card-suit { font-size: 1.2em; }
+
+    /* ── Counter block ── */
+    #counter-block {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      max-width: 680px;
+      width: 100%;
+    }
+
+    #shuffle-count {
+      font-size: clamp(1rem, 3vw, 1.3rem);
+      color: #888;
+      letter-spacing: 1px;
+      text-align: center;
+    }
+    #shuffle-count span {
+      color: white;
+    }
+
+    /* ── 52! display ── */
+    #factorial-block {
+      max-width: 680px;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .block-label {
+      font-size: 0.7rem;
+      letter-spacing: 4px;
+      color: #444;
+      text-align: center;
+    }
+
+    #factorial-number {
+      font-family: 'Courier New', Courier, monospace;
+      font-size: clamp(0.55rem, 1.8vw, 0.82rem);
+      color: #555;
+      word-break: break-all;
+      text-align: center;
+      line-height: 1.6;
+      letter-spacing: 1px;
+    }
+
+    /* ── Scale text ── */
+    #scale-block {
+      max-width: 540px;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .scale-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      border-left: 2px solid #222;
+      padding-left: 14px;
+    }
+
+    .scale-fact {
+      font-size: clamp(0.8rem, 2.5vw, 0.92rem);
+      color: #aaa;
+      line-height: 1.5;
+    }
+
+    .scale-number {
+      font-family: 'Courier New', Courier, monospace;
+      font-size: clamp(0.65rem, 1.8vw, 0.75rem);
+      color: #444;
+      letter-spacing: 1px;
+    }
+
+    /* ── Shuffle button ── */
+    #shuffle-btn {
+      font-family: 'Fredoka One', cursive;
+      font-size: clamp(1rem, 3vw, 1.15rem);
+      padding: 14px 40px;
+      border: 2px solid #e94560;
+      border-radius: 30px;
+      background: transparent;
+      color: #e94560;
+      cursor: pointer;
+      letter-spacing: 1px;
+      transition: background 0.2s, color 0.2s, transform 0.1s;
+    }
+    #shuffle-btn:hover { background: #e94560; color: white; }
+    #shuffle-btn:active { transform: scale(0.97); }
+    #shuffle-btn:disabled { opacity: 0.4; cursor: default; }
+
+    /* ── Footer ── */
+    #footer {
+      font-size: clamp(0.7rem, 2vw, 0.8rem);
+      color: #2a2a3e;
+      letter-spacing: 1px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body data-game="00014">
+
+  <h1>52!</h1>
+
+  <div id="deck"></div>
+
+  <div id="counter-block">
+    <div id="shuffle-count">
+      This server has produced <span id="count-num">—</span> unique arrangement<span id="count-s">s</span>.
+    </div>
+  </div>
+
+  <button id="shuffle-btn">Shuffle</button>
+
+  <div id="factorial-block">
+    <div class="block-label">52! WRITTEN IN FULL</div>
+    <div id="factorial-number">
+      80658175170943878571660636856403766975289505440883277824000000000000
+    </div>
+    <div class="block-label">68 DIGITS &nbsp;·&nbsp; A NUMBER WITH NO NAME</div>
+  </div>
+
+  <div id="scale-block">
+
+    <div class="scale-item">
+      <div class="scale-fact">
+        Every time you shuffle a deck, you almost certainly hold an arrangement
+        that has never existed before in history — and never will again.
+      </div>
+    </div>
+
+    <div class="scale-item">
+      <div class="scale-fact">
+        If a million people each shuffled once per second since the Big Bang,
+        they would have produced roughly this many arrangements:
+      </div>
+      <div class="scale-number" id="million-count">calculating...</div>
+    </div>
+
+    <div class="scale-item">
+      <div class="scale-fact">
+        That is approximately <span id="percent-of-factorial">—</span> of all possible arrangements.
+        The rest remain unseen.
+      </div>
+    </div>
+
+    <div class="scale-item">
+      <div class="scale-fact">
+        The number of atoms in the observable universe is roughly 10<sup>80</sup>.
+        52! is approximately 8 × 10<sup>67</sup>.
+        There are more ways to arrange a deck of cards than there are
+        atoms in 100 million Earths.
+      </div>
+    </div>
+
+  </div>
+
+  <div id="footer">
+    Each shuffle on this server is unique.<br>
+    They are not stored. Only the count remains.
+  </div>
+
+<script>
+// ── Card definitions ──────────────────────────────────────────────────────────
+const RANKS = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+const SUITS = [
+  { sym: '♠', cls: 'black' },
+  { sym: '♥', cls: 'red'   },
+  { sym: '♦', cls: 'red'   },
+  { sym: '♣', cls: 'black' },
+];
+
+function cardInfo(idx) {
+  const rank = RANKS[idx % 13];
+  const suit = SUITS[Math.floor(idx / 13)];
+  return { rank, suit };
+}
+
+// ── Render deck ───────────────────────────────────────────────────────────────
+function renderDeck(shuffle) {
+  const deck = document.getElementById('deck');
+  deck.innerHTML = '';
+  (shuffle || Array.from({ length: 52 }, (_, i) => i)).forEach(idx => {
+    const { rank, suit } = cardInfo(idx);
+    const card = document.createElement('div');
+    card.className = 'card ' + suit.cls;
+    card.innerHTML = `<span class="card-rank">${rank}</span><span class="card-suit">${suit.sym}</span>`;
+    deck.appendChild(card);
+  });
+}
+
+// ── BigInt scale math ─────────────────────────────────────────────────────────
+const FACTORIAL_52 = 80658175170943878571660636856403766975289505440883277824000000000000n;
+
+// Age of universe in seconds ≈ 4.35 × 10^17
+// 1 million people each shuffling once per second
+// Total ≈ 4.35 × 10^23
+const MILLION_SHUFFLES = 435000000000000000000000n; // ~4.35 × 10^23
+
+function formatBigInt(n) {
+  return n.toLocaleString('en-US');
+}
+
+function computePercent(count) {
+  // percent = count / 52! × 100
+  // Use floating point — absolute precision not needed here
+  const c = Number(count);
+  const f = Number(FACTORIAL_52);
+  const pct = (c / f) * 100;
+  if (pct === 0) return '0%';
+  if (pct < 1e-40) return '< 10⁻⁴⁰%';
+  // Express as "X × 10^-N%"
+  const exp = Math.floor(Math.log10(pct));
+  const man = pct / Math.pow(10, exp);
+  return `${man.toFixed(1)} × 10<sup>${exp}</sup>%`;
+}
+
+// ── Update UI ─────────────────────────────────────────────────────────────────
+function updateCount(count) {
+  document.getElementById('count-num').textContent = count.toLocaleString('en-US');
+  document.getElementById('count-s').textContent = count === 1 ? '' : 's';
+  document.getElementById('percent-of-factorial').innerHTML = computePercent(count);
+}
+
+function applyState(data) {
+  if (data.lastShuffle) renderDeck(data.lastShuffle);
+  if (typeof data.count === 'number') updateCount(data.count);
+}
+
+// ── Scale fact ────────────────────────────────────────────────────────────────
+document.getElementById('million-count').textContent =
+  MILLION_SHUFFLES.toLocaleString('en-US');
+
+// ── Fetch initial state ───────────────────────────────────────────────────────
+fetch('/api/cards/state')
+  .then(r => r.json())
+  .then(data => {
+    if (data.lastShuffle) {
+      applyState(data);
+    } else {
+      // No shuffles yet — show ordered deck
+      renderDeck(null);
+      updateCount(0);
+    }
+  })
+  .catch(() => { renderDeck(null); updateCount(0); });
+
+// ── WebSocket for live updates ────────────────────────────────────────────────
+let ws;
+function connect() {
+  ws = new WebSocket((location.protocol === 'https:' ? 'wss' : 'ws') + '://' + location.host);
+  ws.addEventListener('message', e => {
+    try {
+      const data = JSON.parse(e.data);
+      if (data.game === 'cards' && data.type === 'shuffle') applyState(data);
+    } catch (_) {}
+  });
+  ws.addEventListener('close', () => setTimeout(connect, 2000));
+}
+connect();
+
+// ── Shuffle button ────────────────────────────────────────────────────────────
+document.getElementById('shuffle-btn').addEventListener('click', () => {
+  const btn = document.getElementById('shuffle-btn');
+  btn.disabled = true;
+  fetch('/api/cards/shuffle', { method: 'POST' })
+    .then(r => r.json())
+    .then(data => applyState(data))
+    .catch(() => {})
+    .finally(() => { btn.disabled = false; });
+});
+</script>
+
+<script src="/shared/nav.js"></script>
+</body>
+</html>
