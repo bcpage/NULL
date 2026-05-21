@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Galton Board</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #1a1a2e;
+      color: white;
+      font-family: 'Fredoka One', cursive;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      padding: 8px;
+      gap: 8px;
+    }
+    h1 { font-size: clamp(18px, 3.5vw, 26px); margin-top: 4px; }
+    canvas { border-radius: 8px; background: #0d0d1a; display: block; }
+    #controls { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; justify-content: center; }
+    button {
+      background: #4488ff;
+      border: none;
+      border-radius: 10px;
+      color: white;
+      font-family: 'Fredoka One', cursive;
+      font-size: clamp(14px, 2.5vw, 18px);
+      padding: 8px 20px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:hover { background: #2266cc; }
+    button.red { background: #e94560; }
+    button.red:hover { background: #c73050; }
+    #info { font-size: clamp(11px, 2vw, 14px); color: #666; }
+  </style>
+</head>
+<body data-game="00028">
+  <h1>Galton Board</h1>
+  <canvas id="c"></canvas>
+  <div id="controls">
+    <button id="drop1">Drop 1</button>
+    <button id="drop10">Drop 10</button>
+    <button id="drop100">Drop 100</button>
+    <button class="red" id="reset">Reset</button>
+  </div>
+  <div id="info">Balls fall through pegs and collect — a normal distribution emerges</div>
+
+  <script src="/shared/nav.js"></script>
+  <script>
+    const canvas = document.getElementById('c');
+    const ctx = canvas.getContext('2d');
+
+    const ROWS = 10;
+    const BINS = ROWS + 1;
+    let bins = new Array(BINS).fill(0);
+    let balls = [];
+    let total = 0;
+    let animId;
+
+    function resize() {
+      const maxW = Math.min(window.innerWidth - 16, 600);
+      const maxH = window.innerHeight - 200;
+      const size = Math.min(maxW, maxH * 0.85);
+      canvas.width = size;
+      canvas.height = size;
+    }
+
+    function pegPos(row, col) {
+      const W = canvas.width, H = canvas.height * 0.55;
+      const xStep = W / (ROWS + 2);
+      const yStep = H / (ROWS + 1);
+      const x = W/2 + (col - row/2) * xStep;
+      const y = 30 + row * yStep;
+      return { x, y };
+    }
+
+    function drawFrame() {
+      const W = canvas.width, H = canvas.height;
+      ctx.clearRect(0, 0, W, H);
+
+      // Pegs
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c <= r; c++) {
+          const { x, y } = pegPos(r, c);
+          ctx.beginPath();
+          ctx.arc(x, y, 4, 0, Math.PI*2);
+          ctx.fillStyle = '#4488ff88';
+          ctx.fill();
+        }
+      }
+
+      // Bin area
+      const binTop = H * 0.6;
+      const binH = H - binTop - 8;
+      const binW = W / BINS;
+      const maxBin = Math.max(...bins, 1);
+
+      for (let i = 0; i < BINS; i++) {
+        const bx = i * binW;
+        const bh = (bins[i] / maxBin) * binH;
+        const hue = 200 + (i / BINS) * 60;
+        ctx.fillStyle = `hsl(${hue},70%,55%)`;
+        ctx.fillRect(bx + 2, binTop + binH - bh, binW - 4, bh);
+        if (bins[i] > 0) {
+          ctx.fillStyle = '#fff';
+          ctx.font = `${Math.max(9, binW * 0.4)}px Fredoka One`;
+          ctx.textAlign = 'center';
+          ctx.fillText(bins[i], bx + binW/2, binTop + binH - bh - 4);
+        }
+      }
+
+      // Active balls
+      for (const b of balls) {
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, 5, 0, Math.PI*2);
+        ctx.fillStyle = '#ffcc00';
+        ctx.fill();
+      }
+
+      if (total > 0) {
+        ctx.fillStyle = '#555';
+        ctx.font = '13px Fredoka One';
+        ctx.textAlign = 'right';
+        ctx.fillText(`n = ${total}`, W - 8, H - 4);
+      }
+    }
+
+    function dropBall(n) {
+      for (let i = 0; i < n; i++) {
+        let col = 0;
+        for (let r = 0; r < ROWS; r++) col += Math.random() < 0.5 ? 1 : 0;
+        bins[col]++;
+        total++;
+
+        // Animate a few balls (skip animation for mass drops)
+        if (n <= 10 || Math.random() < 0.05) {
+          const path = [{ row: -1, col: 0 }];
+          let c = 0;
+          for (let r = 0; r < ROWS; r++) {
+            const go = Math.random() < 0.5;
+            if (go) c++;
+            path.push({ row: r, col: c });
+          }
+          path.push({ final: col });
+          balls.push({ path, step: 0, x: canvas.width/2, y: 10, final: col });
+        }
+      }
+    }
+
+    function animate() {
+      const W = canvas.width, H = canvas.height;
+      const binTop = H * 0.6;
+      const binW = W / BINS;
+
+      balls = balls.filter(b => {
+        b.step++;
+        if (b.step < b.path.length) {
+          const p = b.path[b.step];
+          if (p.row >= 0) {
+            const { x, y } = pegPos(p.row, p.col);
+            b.x += (x - b.x) * 0.3;
+            b.y += (y - b.y) * 0.3;
+          }
+        } else {
+          const tx = b.final * binW + binW/2;
+          b.x += (tx - b.x) * 0.2;
+          b.y += (binTop - b.y) * 0.2;
+          if (Math.abs(b.y - binTop) < 3) return false;
+        }
+        return b.step < b.path.length + 30;
+      });
+
+      drawFrame();
+      animId = requestAnimationFrame(animate);
+    }
+
+    resize();
+    animate();
+
+    document.getElementById('drop1').onclick = () => dropBall(1);
+    document.getElementById('drop10').onclick = () => dropBall(10);
+    document.getElementById('drop100').onclick = () => dropBall(100);
+    document.getElementById('reset').onclick = () => { bins = new Array(BINS).fill(0); balls = []; total = 0; };
+
+    window.addEventListener('resize', () => { resize(); });
+  </script>
+</body>
+</html>

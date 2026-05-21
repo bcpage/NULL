@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>The Plant</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0d1a0d;
+      color: white;
+      font-family: 'Fredoka One', cursive;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      padding: 8px;
+      gap: 8px;
+    }
+    h1 { font-size: clamp(20px, 4vw, 30px); margin-top: 4px; color: #88cc66; }
+    #stage {
+      flex: 1;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      width: 100%;
+      max-width: 400px;
+    }
+    canvas { display: block; }
+    #status { font-size: clamp(14px, 3vw, 20px); color: #aaa; text-align: center; }
+    #status.wilted { color: #cc6644; }
+    #btn-row { display: flex; gap: 12px; align-items: center; }
+    button {
+      background: #44aa33;
+      border: none;
+      border-radius: 12px;
+      color: white;
+      font-family: 'Fredoka One', cursive;
+      font-size: clamp(16px, 3.5vw, 22px);
+      padding: 12px 28px;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+    }
+    button:hover { background: #339922; }
+    button:active { transform: scale(0.96); }
+    button:disabled { background: #335533; cursor: default; }
+    #info { font-size: clamp(11px, 2vw, 14px); color: #336633; text-align: center; }
+    #growth-bar-wrap {
+      width: 100%;
+      max-width: 300px;
+      background: #1a2a1a;
+      border-radius: 8px;
+      height: 12px;
+      overflow: hidden;
+    }
+    #growth-bar {
+      height: 100%;
+      background: #44cc33;
+      border-radius: 8px;
+      transition: width 0.5s;
+    }
+    #growth-bar.wilted { background: #996633; }
+  </style>
+</head>
+<body data-game="00026">
+  <h1>The Plant</h1>
+  <div id="stage"><canvas id="c" width="200" height="220"></canvas></div>
+  <div id="growth-bar-wrap"><div id="growth-bar" style="width:10%"></div></div>
+  <div id="status">connecting…</div>
+  <div id="btn-row">
+    <button id="water" disabled>💧 Water</button>
+  </div>
+  <div id="info">a shared plant — everyone keeps it alive together</div>
+
+  <script src="/shared/nav.js"></script>
+  <script>
+    const canvas = document.getElementById('c');
+    const ctx = canvas.getContext('2d');
+    const statusEl = document.getElementById('status');
+    const waterBtn = document.getElementById('water');
+    const barEl = document.getElementById('growth-bar');
+    let ws, state = { growth: 10, wilted: false, waterings: 0, lastWatered: 0 };
+    let waterCooldown = false;
+
+    function drawPlant(growth, wilted) {
+      ctx.clearRect(0, 0, 200, 220);
+      const g = Math.min(100, Math.max(0, growth));
+      const h = 20 + (g / 100) * 160;
+      const leafSize = 10 + (g / 100) * 30;
+
+      // Pot
+      ctx.fillStyle = '#664433';
+      ctx.beginPath();
+      ctx.moveTo(70, 210); ctx.lineTo(130, 210);
+      ctx.lineTo(125, 180); ctx.lineTo(75, 180);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#885544';
+      ctx.fillRect(65, 178, 70, 8);
+
+      // Soil
+      ctx.fillStyle = wilted ? '#3a2a1a' : '#2a1a0a';
+      ctx.fillRect(76, 174, 48, 8);
+
+      // Stem
+      const stemColor = wilted ? '#668844' : '#44aa22';
+      ctx.strokeStyle = stemColor;
+      ctx.lineWidth = 4;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(100, 175);
+      if (wilted) {
+        ctx.bezierCurveTo(100, 175 - h*0.3, 110, 175 - h*0.5, 115, 175 - h*0.8);
+      } else {
+        ctx.bezierCurveTo(100, 175 - h*0.4, 96, 175 - h*0.7, 100, 175 - h);
+      }
+      ctx.stroke();
+
+      if (g < 5) return;
+
+      // Leaves
+      ctx.fillStyle = wilted ? '#667755' : '#44cc22';
+      const tipX = wilted ? 115 : 100;
+      const tipY = 175 - h;
+
+      function leaf(ox, oy, angle, size) {
+        ctx.save();
+        ctx.translate(ox, oy);
+        ctx.rotate(angle);
+        ctx.beginPath();
+        ctx.ellipse(size/2, 0, size, size*0.4, 0, 0, Math.PI*2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      if (g > 15) leaf(tipX - 10, tipY + h*0.3, -0.6, leafSize * 0.6);
+      if (g > 25) leaf(tipX + 8, tipY + h*0.4, 0.5, leafSize * 0.7);
+      if (g > 40) leaf(tipX - 12, tipY + h*0.6, -0.4, leafSize * 0.8);
+      if (g > 55) leaf(tipX + 10, tipY + h*0.65, 0.6, leafSize);
+      if (g > 70) leaf(tipX - 8, tipY + h*0.8, -0.3, leafSize);
+      if (g > 85) leaf(tipX + 6, tipY + h*0.15, 0.8, leafSize * 0.7);
+
+      // Flower at top
+      if (g >= 80 && !wilted) {
+        ctx.fillStyle = '#ffcc00';
+        for (let i = 0; i < 6; i++) {
+          ctx.beginPath();
+          ctx.ellipse(tipX + Math.cos(i/6*Math.PI*2)*8, tipY + Math.sin(i/6*Math.PI*2)*8, 5, 3, i/6*Math.PI*2, 0, Math.PI*2);
+          ctx.fill();
+        }
+        ctx.fillStyle = '#ff6600';
+        ctx.beginPath();
+        ctx.arc(tipX, tipY, 5, 0, Math.PI*2);
+        ctx.fill();
+      }
+    }
+
+    function update(s) {
+      state = s;
+      drawPlant(s.growth, s.wilted);
+      barEl.style.width = s.growth + '%';
+      barEl.className = s.wilted ? 'wilted' : '';
+      const minAgo = Math.round((Date.now() - s.lastWatered) / 60000);
+      if (s.wilted) {
+        statusEl.textContent = `wilted — needs water! (${minAgo}m ago)`;
+        statusEl.className = 'wilted';
+      } else {
+        statusEl.textContent = `growth ${s.growth}% — watered ${minAgo === 0 ? 'just now' : minAgo + 'm ago'} — ${s.waterings || 0} total waterings`;
+        statusEl.className = '';
+      }
+      waterBtn.disabled = false;
+    }
+
+    function connect() {
+      ws = new WebSocket(`ws://${window.location.host}`);
+      ws.onmessage = (e) => {
+        const d = JSON.parse(e.data);
+        if (d.game === 'plant' && d.type === 'state') update(d);
+      };
+      ws.onopen = () => { waterBtn.disabled = false; };
+      ws.onclose = () => { waterBtn.disabled = true; statusEl.textContent = 'disconnected'; setTimeout(connect, 3000); };
+    }
+
+    waterBtn.addEventListener('click', () => {
+      if (!ws || ws.readyState !== WebSocket.OPEN || waterCooldown) return;
+      waterCooldown = true;
+      waterBtn.disabled = true;
+      ws.send(JSON.stringify({ game: 'plant', type: 'water' }));
+      setTimeout(() => { waterCooldown = false; waterBtn.disabled = false; }, 2000);
+    });
+
+    connect();
+    drawPlant(10, false);
+  </script>
+</body>
+</html>

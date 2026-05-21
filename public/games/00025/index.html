@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>ELIZA</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0a0a0a;
+      color: #33ff33;
+      font-family: 'Courier New', monospace;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      padding: 8px;
+    }
+    #header {
+      font-family: 'Fredoka One', cursive;
+      color: #33ff33;
+      text-align: center;
+      font-size: clamp(16px, 3vw, 22px);
+      padding: 6px;
+      border-bottom: 1px solid #1a4a1a;
+      margin-bottom: 6px;
+      flex-shrink: 0;
+    }
+    #chat {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px 4px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      scrollbar-width: thin;
+      scrollbar-color: #1a4a1a #000;
+    }
+    .line { font-size: clamp(12px, 2.3vw, 16px); line-height: 1.5; }
+    .eliza { color: #33ff33; }
+    .eliza::before { content: 'ELIZA: '; opacity: 0.6; }
+    .user { color: #aaffaa; }
+    .user::before { content: '> '; opacity: 0.5; }
+    #input-row {
+      display: flex;
+      gap: 8px;
+      padding: 8px 0 4px;
+      border-top: 1px solid #1a4a1a;
+      flex-shrink: 0;
+    }
+    #input-row span { color: #33ff33; font-size: clamp(14px, 2.5vw, 18px); flex-shrink: 0; }
+    #input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: #aaffaa;
+      font-family: 'Courier New', monospace;
+      font-size: clamp(14px, 2.5vw, 18px);
+      caret-color: #33ff33;
+    }
+    #cursor-blink {
+      display: inline-block;
+      width: 9px;
+      height: 1em;
+      background: #33ff33;
+      animation: blink 1s step-end infinite;
+      vertical-align: text-bottom;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+  </style>
+</head>
+<body data-game="00025">
+  <div id="header">ELIZA — Weizenbaum, 1966</div>
+  <div id="chat"></div>
+  <div id="input-row">
+    <span>&gt;</span>
+    <input id="input" type="text" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="say something…" maxlength="200">
+  </div>
+
+  <script src="/shared/nav.js"></script>
+  <script>
+    const RULES = [
+      [/\b(i am|i'm)\s+(.*)/i, [
+        "How long have you been $2?",
+        "Why do you say you are $2?",
+        "Does being $2 bother you?",
+        "Do you believe it is normal to be $2?",
+      ]],
+      [/\bi feel\s+(.*)/i, [
+        "Tell me more about feeling $1.",
+        "Do you often feel $1?",
+        "When do you feel $1?",
+        "Why do you feel $1?",
+      ]],
+      [/\b(my mother|my father|my family|my parents)\b/i, [
+        "Tell me more about your family.",
+        "How does that make you feel?",
+        "Who else in your family does this affect?",
+      ]],
+      [/\bi (want|need|wish)\s+(.*)/i, [
+        "Why do you $1 $2?",
+        "What would it mean to you if you got $2?",
+        "Suppose you got $2 — then what?",
+      ]],
+      [/\b(yes|yeah|yep)\b/i, [
+        "You seem quite positive.",
+        "Are you sure?",
+        "I see. And why is that?",
+      ]],
+      [/\b(no|nope|not really)\b/i, [
+        "Why not?",
+        "Are you sure?",
+        "You seem quite negative.",
+      ]],
+      [/\bi (think|believe|suppose)\s+(.*)/i, [
+        "Do you really think so?",
+        "Why do you $1 $2?",
+        "What makes you $1 that?",
+      ]],
+      [/\b(sorry|apologize|apologies)\b/i, [
+        "Please don't apologize.",
+        "Apologies are not necessary. Why do you feel that way?",
+      ]],
+      [/\bwhy\b/i, [
+        "Why do you ask?",
+        "Does that question interest you?",
+        "What is it you really want to know?",
+      ]],
+      [/\bhow\b/i, [
+        "How what?",
+        "What is it you are really asking?",
+      ]],
+      [/\b(always|never|everyone|nobody)\b/i, [
+        "Can you think of a specific example?",
+        "Really? $1?",
+        "What makes you say $1?",
+      ]],
+      [/\b(dream|dreams|dreamed|dreamt)\b/i, [
+        "What did you dream about?",
+        "Do you dream often?",
+        "What does that dream suggest to you?",
+      ]],
+      [/\b(computer|machine|program|ai|robot)\b/i, [
+        "Are you uncomfortable talking to a machine?",
+        "Do computers worry you?",
+        "What do you think machines cannot do?",
+      ]],
+      [/.*/i, [
+        "Please go on.",
+        "Tell me more.",
+        "That is interesting. Please continue.",
+        "I see.",
+        "Can you elaborate on that?",
+        "Why do you say that?",
+        "How does that make you feel?",
+        "Let's explore that further.",
+        "And how does that relate to you?",
+      ]],
+    ];
+
+    function eliza(input) {
+      for (const [pat, responses] of RULES) {
+        const m = input.match(pat);
+        if (m) {
+          let resp = responses[Math.floor(Math.random() * responses.length)];
+          // Fill back-references
+          resp = resp.replace(/\$(\d+)/g, (_, n) => (m[+n] || '').toLowerCase());
+          return resp;
+        }
+      }
+      return "Please continue.";
+    }
+
+    const chatEl = document.getElementById('chat');
+    const inputEl = document.getElementById('input');
+
+    function addLine(text, cls) {
+      const div = document.createElement('div');
+      div.className = 'line ' + cls;
+      div.textContent = text;
+      chatEl.appendChild(div);
+      chatEl.scrollTop = chatEl.scrollHeight;
+    }
+
+    addLine("Hello. I am ELIZA. How are you feeling today?", "eliza");
+
+    inputEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        const text = inputEl.value.trim();
+        if (!text) return;
+        addLine(text, "user");
+        inputEl.value = '';
+        setTimeout(() => {
+          addLine(eliza(text), "eliza");
+        }, 400 + Math.random() * 600);
+      }
+    });
+
+    inputEl.focus();
+  </script>
+</body>
+</html>

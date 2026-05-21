@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>The Typewriter</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #1a1a2e;
+      color: white;
+      font-family: 'Fredoka One', cursive;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      padding: 8px;
+      gap: 8px;
+    }
+    h1 { font-size: clamp(18px, 4vw, 28px); color: #aaa; margin-top: 4px; }
+    #page {
+      flex: 1;
+      width: 100%;
+      max-width: 700px;
+      background: #f5f0e8;
+      border-radius: 4px;
+      padding: 40px;
+      overflow: hidden;
+      position: relative;
+      box-shadow: 0 4px 24px #0008;
+    }
+    #text {
+      font-family: 'Courier New', monospace;
+      font-size: clamp(14px, 2.5vw, 18px);
+      color: #222;
+      white-space: pre-wrap;
+      word-break: break-word;
+      line-height: 1.7;
+    }
+    #cursor {
+      display: inline-block;
+      width: 10px;
+      height: 1.2em;
+      background: #333;
+      vertical-align: text-bottom;
+      animation: blink 1s step-end infinite;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+    #hint {
+      font-size: clamp(11px, 2vw, 14px);
+      color: #555;
+      padding: 4px 0;
+    }
+    #silence {
+      font-size: clamp(10px, 1.8vw, 13px);
+      color: #e94560;
+    }
+    #input {
+      position: fixed;
+      left: -9999px;
+      opacity: 0;
+      width: 1px;
+      height: 1px;
+    }
+  </style>
+</head>
+<body data-game="00022">
+  <h1>The Typewriter</h1>
+  <div id="page"><span id="text"></span><span id="cursor"></span></div>
+  <div id="hint">click the page and start typing — everyone shares this page</div>
+  <div id="silence"></div>
+  <input id="input" type="text" autocomplete="off">
+
+  <script src="/shared/nav.js"></script>
+  <script>
+    const textEl = document.getElementById('text');
+    const silenceEl = document.getElementById('silence');
+    const inputEl = document.getElementById('input');
+    let ws;
+    let silenceTimer = null;
+    let silenceCountdown = null;
+    let secondsLeft = 0;
+
+    function connect() {
+      ws = new WebSocket(`ws://${window.location.host}`);
+      ws.onopen = () => {};
+      ws.onmessage = (e) => {
+        const data = JSON.parse(e.data);
+        if (data.game !== 'type') return;
+        if (data.type === 'page') { textEl.textContent = data.text; }
+        if (data.type === 'key') { textEl.textContent += data.char; resetSilence(); }
+        if (data.type === 'backspace') { textEl.textContent = textEl.textContent.slice(0, -1); resetSilence(); }
+        if (data.type === 'clear') {
+          textEl.textContent = '';
+          silenceEl.textContent = '';
+          clearInterval(silenceCountdown);
+        }
+      };
+      ws.onclose = () => setTimeout(connect, 3000);
+    }
+
+    function resetSilence() {
+      clearTimeout(silenceTimer);
+      clearInterval(silenceCountdown);
+      silenceEl.textContent = '';
+      silenceTimer = setTimeout(() => {
+        secondsLeft = 90;
+        silenceCountdown = setInterval(() => {
+          secondsLeft--;
+          silenceEl.textContent = `page feeds in ${secondsLeft}s of silence`;
+          if (secondsLeft <= 0) clearInterval(silenceCountdown);
+        }, 1000);
+      }, 0);
+    }
+
+    document.getElementById('page').addEventListener('click', () => inputEl.focus());
+
+    document.addEventListener('keydown', (e) => {
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+      if (e.key === 'Backspace') {
+        e.preventDefault();
+        ws.send(JSON.stringify({ game: 'type', type: 'backspace' }));
+      } else if (e.key.length === 1) {
+        ws.send(JSON.stringify({ game: 'type', type: 'key', char: e.key }));
+      } else if (e.key === 'Enter') {
+        ws.send(JSON.stringify({ game: 'type', type: 'key', char: '\n' }));
+      }
+    });
+
+    connect();
+  </script>
+</body>
+</html>

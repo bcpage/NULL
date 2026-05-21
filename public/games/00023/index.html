@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>UUID Generator</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #1a1a2e;
+      color: white;
+      font-family: 'Fredoka One', cursive;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      padding: 8px;
+      gap: 12px;
+    }
+    h1 { font-size: clamp(20px, 4vw, 32px); margin-top: 8px; }
+    #uuid-box {
+      background: #0d0d1a;
+      border: 2px solid #333;
+      border-radius: 12px;
+      padding: 24px 32px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      max-width: 680px;
+      width: 100%;
+    }
+    #uuid-box:hover { border-color: #4488ff; box-shadow: 0 0 20px #4488ff33; }
+    #uuid {
+      font-family: 'Courier New', monospace;
+      font-size: clamp(14px, 3vw, 22px);
+      color: #4488ff;
+      letter-spacing: 0.05em;
+      word-break: break-all;
+    }
+    #copy-hint { font-size: clamp(11px, 2vw, 14px); color: #555; margin-top: 8px; }
+    #copied {
+      font-size: clamp(14px, 2.5vw, 18px);
+      color: #44cc88;
+      height: 24px;
+      transition: opacity 0.3s;
+    }
+    button {
+      background: #e94560;
+      border: none;
+      border-radius: 10px;
+      color: white;
+      font-family: 'Fredoka One', cursive;
+      font-size: clamp(16px, 3vw, 22px);
+      padding: 12px 36px;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+    }
+    button:hover { background: #c73050; }
+    button:active { transform: scale(0.97); }
+    #history {
+      width: 100%;
+      max-width: 680px;
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .hist-item {
+      font-family: 'Courier New', monospace;
+      font-size: clamp(11px, 2vw, 14px);
+      color: #555;
+      padding: 4px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: color 0.15s;
+    }
+    .hist-item:hover { color: #aaa; }
+    #count { font-size: clamp(11px, 2vw, 13px); color: #444; }
+  </style>
+</head>
+<body data-game="00023">
+  <h1>UUID Generator</h1>
+  <div id="uuid-box" title="Click to copy">
+    <div id="uuid">click generate</div>
+    <div id="copy-hint">click to copy</div>
+  </div>
+  <div id="copied"></div>
+  <button id="btn">Generate</button>
+  <div id="count"></div>
+  <div id="history"></div>
+
+  <script src="/shared/nav.js"></script>
+  <script>
+    const uuidEl = document.getElementById('uuid');
+    const copiedEl = document.getElementById('copied');
+    const historyEl = document.getElementById('history');
+    const countEl = document.getElementById('count');
+    let generated = 0;
+    let copyTimeout = null;
+
+    function uuidv4() {
+      if (crypto && crypto.randomUUID) return crypto.randomUUID();
+      return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
+        (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16));
+    }
+
+    function generate() {
+      const id = uuidv4();
+      uuidEl.textContent = id;
+      generated++;
+      countEl.textContent = `${generated} generated this session`;
+      const item = document.createElement('div');
+      item.className = 'hist-item';
+      item.textContent = id;
+      item.title = 'click to copy';
+      item.addEventListener('click', () => copy(id));
+      historyEl.prepend(item);
+      if (historyEl.children.length > 20) historyEl.lastElementChild.remove();
+    }
+
+    function copy(text) {
+      navigator.clipboard.writeText(text).then(() => {
+        copiedEl.textContent = 'copied!';
+        clearTimeout(copyTimeout);
+        copyTimeout = setTimeout(() => { copiedEl.textContent = ''; }, 1500);
+      }).catch(() => {});
+    }
+
+    document.getElementById('btn').addEventListener('click', generate);
+    document.getElementById('uuid-box').addEventListener('click', () => {
+      if (uuidEl.textContent !== 'click generate') copy(uuidEl.textContent);
+    });
+
+    generate();
+  </script>
+</body>
+</html>

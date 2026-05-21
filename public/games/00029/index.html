@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>The Terminal</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0a0a0a;
+      color: #33ff33;
+      font-family: 'Courier New', monospace;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      padding: 8px;
+    }
+    #bar {
+      font-family: 'Fredoka One', cursive;
+      color: #33ff33;
+      font-size: clamp(13px, 2.5vw, 18px);
+      text-align: center;
+      padding: 4px;
+      border-bottom: 1px solid #1a4a1a;
+      margin-bottom: 4px;
+      flex-shrink: 0;
+    }
+    #output {
+      flex: 1;
+      overflow-y: auto;
+      padding: 4px;
+      font-size: clamp(12px, 2.2vw, 15px);
+      line-height: 1.6;
+      scrollbar-width: thin;
+      scrollbar-color: #1a4a1a #000;
+    }
+    .out-line { white-space: pre-wrap; word-break: break-word; }
+    .out-line.err { color: #ff4444; }
+    .out-line.sys { color: #888; }
+    .out-line.warn { color: #ffcc00; }
+    .out-line.cmd { color: #aaffaa; }
+    #prompt-row {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      border-top: 1px solid #1a4a1a;
+      padding: 6px 4px 2px;
+      flex-shrink: 0;
+    }
+    #prompt-label {
+      color: #33ff33;
+      font-size: clamp(12px, 2.2vw, 15px);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    #input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: #aaffaa;
+      font-family: 'Courier New', monospace;
+      font-size: clamp(12px, 2.2vw, 15px);
+      caret-color: #33ff33;
+    }
+  </style>
+</head>
+<body data-game="00029">
+  <div id="bar">C:\NULL&gt; The Terminal</div>
+  <div id="output"></div>
+  <div id="prompt-row">
+    <span id="prompt-label">C:\NULL&gt;</span>
+    <input id="input" type="text" autocomplete="off" autocorrect="off" spellcheck="false" maxlength="120">
+  </div>
+
+  <script src="/shared/nav.js"></script>
+  <script>
+    const outputEl = document.getElementById('output');
+    const inputEl = document.getElementById('input');
+
+    const WRONG = {
+      'help': [
+        'For help, please consult the manual.',
+        'The manual is not available.',
+        'Help is defined as: the act of helping.',
+        'Have you tried not needing help?',
+      ],
+      'dir': [
+        'Volume in drive C has no label.',
+        'Directory of C:\\NULL',
+        '',
+        '03/14/2012  02:00 AM    <DIR>          .',
+        '03/14/2012  02:00 AM    <DIR>          ..',
+        '03/14/2012  02:00 AM               0   nothing.txt',
+        '03/14/2012  02:00 AM    <DIR>          somewhere',
+        '               1 File(s)              0 bytes',
+        '               2 Dir(s)  ?,???,??? bytes free',
+      ],
+      'ls': ['\'ls\' is not recognized. This is DOS.', 'Try DIR instead.', 'Wrong operating system.'],
+      'cd': ['Current directory is C:\\NULL', 'Changed directory to C:\\NULL'],
+      'cd ..': ['You are already at the top.', 'There is nowhere above here.'],
+      'cls': ['__CLEAR__'],
+      'clear': ['__CLEAR__'],
+      'date': ['The current date is: Thu 03-14-2012', 'The new date is: Thu 03-14-2012'],
+      'time': ['The current time is:  2:06:13.07AM', 'Enter the new time:'],
+      'ver': ['Microsoft(R) MS-DOS(R) Version 6.22', '             Revision 1.00'],
+      'echo': ['ECHO is on.', 'ECHO is on.', 'Your words echo back wrong.', 'Please stop.'],
+      'ping': ['Pinging 0.0.0.0 with 32 bytes of data:', 'Reply from 0.0.0.0: bytes=32 time<1ms TTL=128', 'No reply. It hung up.', 'Destination host unreachable (but not for long).'],
+      'exit': ['Cannot exit.', 'Exit is disabled.', 'Please remain.', 'Where would you go?'],
+      'whoami': ['user', 'unknown', 'you', 'irrelevant'],
+      'pwd': ['C:\\NULL', 'C:\\SOMEWHERE', 'C:\\'],
+      'type nothing.txt': ['This file intentionally left blank.', '', '(nothing)', '.'],
+      'format c:': ['Are you sure? (Y/N)', 'y', 'Formatting...', 'Format complete.', 'Nothing changed.'],
+      'del': ['Deleting... done.', 'File not found.', '0 file(s) deleted.'],
+      'copy': ['0 file(s) copied.', 'Copy failed.', '1 file(s) copied. (nothing happened)'],
+      'tree': ['C:\\NULL', '└── (empty)'],
+      'attrib': ['+R +H +S  C:\\NULL\\nothing.txt'],
+      'chkdsk': ['The type of the file system is FAT.', 'Errors found.', '0 bytes in bad sectors.', '0 bytes available on disk.'],
+      'ipconfig': ['Windows IP Configuration', '', 'Ethernet adapter:', '   IP Address. . . . . .: 0.0.0.0', '   Subnet Mask . . . . .: 255.255.255.0', '   Default Gateway . . .: (none)'],
+    };
+
+    const FALLBACK = [
+      (cmd) => `'${cmd}' is not recognized as an internal or external command.`,
+      (cmd) => `Bad command or file name.`,
+      (cmd) => `'${cmd}' was found but refused to run.`,
+      (cmd) => `Access denied.`,
+      (cmd) => `Error executing ${cmd}: unknown reason.`,
+      (cmd) => `${cmd}: command not found (but also not lost).`,
+      (cmd) => `Syntax error in command.`,
+    ];
+
+    let history = [];
+    let histIdx = -1;
+
+    function print(text, cls='out-line') {
+      if (text === '__CLEAR__') { outputEl.innerHTML = ''; return; }
+      const d = document.createElement('div');
+      d.className = cls;
+      d.textContent = text;
+      outputEl.appendChild(d);
+      outputEl.scrollTop = outputEl.scrollHeight;
+    }
+
+    function respond(cmd) {
+      const key = cmd.trim().toLowerCase();
+      let lines = null;
+      for (const [k, v] of Object.entries(WRONG)) {
+        if (key === k || key.startsWith(k + ' ')) { lines = v; break; }
+      }
+      if (!lines) {
+        const fb = FALLBACK[Math.floor(Math.random() * FALLBACK.length)];
+        lines = [fb(cmd.split(' ')[0])];
+      }
+      setTimeout(() => {
+        for (const l of lines) {
+          if (l === '__CLEAR__') { outputEl.innerHTML = ''; }
+          else print(l, l.startsWith('Bad') || l.includes('not recognized') || l.includes('denied') || l.includes('Error') ? 'out-line err' : 'out-line');
+        }
+      }, 120 + Math.random() * 200);
+    }
+
+    print('Microsoft(R) MS-DOS(R) Version 6.22', 'out-line sys');
+    print('             (C)Copyright Microsoft Corp 1981-1994.', 'out-line sys');
+    print('', 'out-line');
+    print('Type HELP for help.', 'out-line sys');
+    print('', 'out-line');
+
+    inputEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        const cmd = inputEl.value;
+        if (!cmd.trim()) return;
+        history.unshift(cmd);
+        histIdx = -1;
+        print(`C:\\NULL> ${cmd}`, 'out-line cmd');
+        inputEl.value = '';
+        respond(cmd);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (histIdx < history.length - 1) histIdx++;
+        inputEl.value = history[histIdx] || '';
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (histIdx > 0) histIdx--;
+        else { histIdx = -1; inputEl.value = ''; return; }
+        inputEl.value = history[histIdx] || '';
+      }
+    });
+
+    inputEl.focus();
+    document.body.addEventListener('click', () => inputEl.focus());
+  </script>
+</body>
+</html>

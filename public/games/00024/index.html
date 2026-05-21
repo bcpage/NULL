@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Monty Hall</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #1a1a2e;
+      color: white;
+      font-family: 'Fredoka One', cursive;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      padding: 8px;
+      gap: 10px;
+    }
+    h1 { font-size: clamp(20px, 4vw, 30px); margin-top: 6px; }
+    #msg {
+      font-size: clamp(13px, 2.5vw, 18px);
+      color: #ccc;
+      text-align: center;
+      min-height: 2.2em;
+      max-width: 600px;
+    }
+    #doors {
+      display: flex;
+      gap: clamp(12px, 4vw, 32px);
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+      max-height: 260px;
+    }
+    .door {
+      width: clamp(80px, 22vw, 150px);
+      height: clamp(130px, 36vw, 240px);
+      border-radius: 12px 12px 0 0;
+      background: #3a1a5e;
+      border: 3px solid #6644aa;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: clamp(28px, 8vw, 60px);
+      transition: background 0.2s, border-color 0.2s, transform 0.15s;
+      position: relative;
+      user-select: none;
+    }
+    .door:hover:not(.disabled) { background: #4a2a6e; border-color: #9966dd; transform: translateY(-4px); }
+    .door.selected { border-color: #ffcc00; background: #3a2a00; }
+    .door.revealed { border-color: #e94560; background: #1a0a0e; cursor: default; }
+    .door.winner { border-color: #44cc88; background: #0a2a1a; }
+    .door.disabled { cursor: default; }
+    .door-num {
+      position: absolute;
+      top: 10px;
+      font-size: clamp(12px, 2.5vw, 18px);
+      color: #aaa;
+    }
+    #buttons { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
+    button {
+      background: #4488ff;
+      border: none;
+      border-radius: 10px;
+      color: white;
+      font-family: 'Fredoka One', cursive;
+      font-size: clamp(14px, 2.5vw, 18px);
+      padding: 10px 24px;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+    }
+    button:hover { background: #2266cc; }
+    button:active { transform: scale(0.97); }
+    button.stay { background: #e94560; }
+    button.stay:hover { background: #c73050; }
+    button.switch { background: #44cc88; color: #000; }
+    button.switch:hover { background: #22aa66; }
+    #stats {
+      display: flex;
+      gap: clamp(16px, 4vw, 40px);
+      font-size: clamp(13px, 2.5vw, 18px);
+    }
+    .stat { text-align: center; }
+    .stat-val { font-size: clamp(22px, 5vw, 36px); color: #ffcc00; }
+    .stat-val.green { color: #44cc88; }
+    .stat-val.red { color: #e94560; }
+    #advice { font-size: clamp(11px, 2vw, 14px); color: #555; text-align: center; }
+  </style>
+</head>
+<body data-game="00024">
+  <h1>Monty Hall</h1>
+  <div id="msg">Pick a door — one hides a car, two hide goats.</div>
+  <div id="doors">
+    <div class="door" id="d0"><span class="door-num">1</span>🚪</div>
+    <div class="door" id="d1"><span class="door-num">2</span>🚪</div>
+    <div class="door" id="d2"><span class="door-num">3</span>🚪</div>
+  </div>
+  <div id="buttons"></div>
+  <div id="stats">
+    <div class="stat"><div class="stat-val green" id="sw-wins">0</div><div>switch wins</div></div>
+    <div class="stat"><div class="stat-val" id="sw-pct">—</div><div>switch %</div></div>
+    <div class="stat"><div class="stat-val red" id="st-wins">0</div><div>stay wins</div></div>
+    <div class="stat"><div class="stat-val" id="st-pct">—</div><div>stay %</div></div>
+  </div>
+  <div id="advice">switching wins ~66% of the time — stay wins ~33%</div>
+
+  <script src="/shared/nav.js"></script>
+  <script>
+    const doors = [0,1,2];
+    let car, chosen, revealed, phase;
+    let stats = { sw: {w:0,t:0}, st: {w:0,t:0} };
+    try { stats = JSON.parse(localStorage.getItem('monty_stats')) || stats; } catch(_){}
+
+    const msgEl = document.getElementById('msg');
+    const btnEl = document.getElementById('buttons');
+
+    function save() { try { localStorage.setItem('monty_stats', JSON.stringify(stats)); } catch(_){} }
+    function updateStats() {
+      document.getElementById('sw-wins').textContent = stats.sw.w;
+      document.getElementById('st-wins').textContent = stats.st.w;
+      document.getElementById('sw-pct').textContent = stats.sw.t ? Math.round(stats.sw.w/stats.sw.t*100)+'%' : '—';
+      document.getElementById('st-pct').textContent = stats.st.t ? Math.round(stats.st.w/stats.st.t*100)+'%' : '—';
+    }
+
+    function reset() {
+      car = Math.floor(Math.random()*3);
+      chosen = null; revealed = null; phase = 'pick';
+      doors.forEach(i => {
+        const d = document.getElementById('d'+i);
+        d.className = 'door';
+        d.innerHTML = `<span class="door-num">${i+1}</span>🚪`;
+        d.onclick = () => pick(i);
+      });
+      btnEl.innerHTML = '';
+      msgEl.textContent = 'Pick a door — one hides a car, two hide goats.';
+      updateStats();
+    }
+
+    function pick(i) {
+      if (phase !== 'pick') return;
+      chosen = i;
+      phase = 'reveal';
+      document.getElementById('d'+i).className = 'door selected disabled';
+
+      // Host reveals a goat door (not chosen, not car)
+      const goatDoors = doors.filter(d => d !== chosen && d !== car);
+      revealed = goatDoors[Math.floor(Math.random()*goatDoors.length)];
+      const rd = document.getElementById('d'+revealed);
+      rd.className = 'door revealed disabled';
+      rd.innerHTML = `<span class="door-num">${revealed+1}</span>🐐`;
+
+      msgEl.textContent = `Door ${revealed+1} has a goat! Stay with door ${chosen+1}, or switch?`;
+
+      const stay = document.createElement('button');
+      stay.className = 'stay';
+      stay.textContent = `Stay (door ${chosen+1})`;
+      stay.onclick = () => resolve(false);
+
+      const other = doors.find(d => d !== chosen && d !== revealed);
+      const sw = document.createElement('button');
+      sw.className = 'switch';
+      sw.textContent = `Switch (door ${other+1})`;
+      sw.onclick = () => resolve(true);
+
+      btnEl.appendChild(stay);
+      btnEl.appendChild(sw);
+      phase = 'decide';
+    }
+
+    function resolve(switched) {
+      if (phase !== 'decide') return;
+      phase = 'done';
+      btnEl.innerHTML = '';
+
+      const final = switched ? doors.find(d => d !== chosen && d !== revealed) : chosen;
+      const won = final === car;
+
+      if (switched) { stats.sw.t++; if (won) stats.sw.w++; }
+      else { stats.st.t++; if (won) stats.st.w++; }
+      save();
+
+      doors.forEach(i => {
+        const d = document.getElementById('d'+i);
+        if (i === car) {
+          d.className = 'door winner disabled';
+          d.innerHTML = `<span class="door-num">${i+1}</span>🚗`;
+        } else if (i !== revealed) {
+          d.className = 'door revealed disabled';
+          d.innerHTML = `<span class="door-num">${i+1}</span>🐐`;
+        }
+      });
+
+      msgEl.textContent = won
+        ? `You ${switched?'switched':'stayed'} and won the car! 🎉`
+        : `You ${switched?'switched':'stayed'} and got a goat. 🐐`;
+
+      const again = document.createElement('button');
+      again.textContent = 'Play again';
+      again.onclick = reset;
+      btnEl.appendChild(again);
+      updateStats();
+    }
+
+    reset();
+  </script>
+</body>
+</html>

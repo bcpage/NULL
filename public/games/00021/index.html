@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>The Countdown</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #1a1a2e;
+      color: white;
+      font-family: 'Fredoka One', cursive;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      gap: 24px;
+      padding: 8px;
+    }
+    #label {
+      font-size: clamp(14px, 3vw, 20px);
+      color: #aaa;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+    }
+    #timer {
+      font-size: clamp(60px, 18vw, 160px);
+      color: #e94560;
+      letter-spacing: 0.05em;
+      line-height: 1;
+      text-align: center;
+      text-shadow: 0 0 40px #e9456066;
+      transition: color 0.3s;
+    }
+    #timer.low { color: #ff8800; text-shadow: 0 0 40px #ff880066; }
+    #timer.critical { color: #ff2222; text-shadow: 0 0 60px #ff222299; }
+    #subtitle {
+      font-size: clamp(12px, 2.5vw, 16px);
+      color: #555;
+      letter-spacing: 0.1em;
+    }
+    #event {
+      font-size: clamp(16px, 3.5vw, 24px);
+      color: #4488ff;
+      letter-spacing: 0.08em;
+    }
+  </style>
+</head>
+<body data-game="00021">
+  <div id="label">countdown to</div>
+  <div id="event"></div>
+  <div id="timer">--:--:--</div>
+  <div id="subtitle">until something</div>
+
+  <script src="/shared/nav.js"></script>
+  <script>
+    const EVENTS = [
+      { name: 'the event', duration: 3600 },
+      { name: 'it', duration: 7200 },
+      { name: 'everything', duration: 5400 },
+      { name: 'the end', duration: 9000 },
+      { name: 'nothing in particular', duration: 1800 },
+      { name: 'the thing', duration: 4500 },
+      { name: 'whatever comes next', duration: 6300 },
+    ];
+
+    const SUBTITLES = [
+      'until something',
+      'until it happens',
+      'prepare accordingly',
+      'you have been warned',
+      'not that it matters',
+    ];
+
+    const KEY = 'countdown_state';
+    let target = null;
+    let eventName = '';
+
+    function pickEvent() {
+      const e = EVENTS[Math.floor(Math.random() * EVENTS.length)];
+      target = Date.now() + e.duration * 1000;
+      eventName = e.name;
+      document.getElementById('subtitle').textContent = SUBTITLES[Math.floor(Math.random() * SUBTITLES.length)];
+      try { localStorage.setItem(KEY, JSON.stringify({ target, eventName })); } catch(_) {}
+    }
+
+    function init() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(KEY));
+        if (saved && saved.target > Date.now()) {
+          target = saved.target;
+          eventName = saved.eventName;
+        } else {
+          pickEvent();
+        }
+      } catch(_) { pickEvent(); }
+      document.getElementById('event').textContent = eventName;
+    }
+
+    function pad(n) { return String(Math.floor(n)).padStart(2, '0'); }
+
+    function tick() {
+      const remaining = Math.max(0, target - Date.now());
+      const h = Math.floor(remaining / 3600000);
+      const m = Math.floor((remaining % 3600000) / 60000);
+      const s = Math.floor((remaining % 60000) / 1000);
+      const el = document.getElementById('timer');
+      el.textContent = `${pad(h)}:${pad(m)}:${pad(s)}`;
+      el.className = remaining < 60000 ? 'critical' : remaining < 600000 ? 'low' : '';
+
+      if (remaining === 0) {
+        setTimeout(() => {
+          pickEvent();
+          document.getElementById('event').textContent = eventName;
+        }, 2000);
+      }
+    }
+
+    init();
+    tick();
+    setInterval(tick, 1000);
+  </script>
+</body>
+</html>

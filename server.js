@@ -7,7 +7,7 @@ const { networkInterfaces } = require('os');
 const PORT = 3000;
 
 // ─── Game registry ────────────────────────────────────────────────────────────
-const GAMES = ['00001', '00002', '00003', '00004', '00005', '00006', '00007', '00008', '00009', '00010', '00011', '00012', '00013', '00014', '00015', '00016', '00017', '00018', '00019', '00020'];
+const GAMES = ['00001', '00002', '00003', '00004', '00005', '00006', '00007', '00008', '00009', '00010', '00011', '00012', '00013', '00014', '00015', '00016', '00017', '00018', '00019', '00020', '00021', '00022', '00023', '00024', '00025', '00026', '00027', '00028', '00029', '00030'];
 
 // ─── Cookie persistence ───────────────────────────────────────────────────────
 const COOKIE_DATA_DIR = path.join(__dirname, 'public', 'games', '00002', 'data');
@@ -66,6 +66,81 @@ function getDeviceId(req) {
   const match = cookie.match(/(?:^|;\s*)device=([a-f0-9-]{36})/);
   return match ? match[1] : null;
 }
+
+// ─── Typewriter (00022) ───────────────────────────────────────────────────────
+let typeText = '';
+let typeLastKey = 0;
+let typeWiltTimer = null;
+function typeScheduleClear() {
+  clearTimeout(typeWiltTimer);
+  typeWiltTimer = setTimeout(() => {
+    typeText = '';
+    broadcast({ game: 'type', type: 'clear' });
+  }, 90000);
+}
+
+// ─── Plant (00026) ────────────────────────────────────────────────────────────
+const PLANT_DATA_DIR = path.join(__dirname, 'public', 'games', '00026', 'data');
+const PLANT_FILE = path.join(PLANT_DATA_DIR, 'plant.json');
+if (!fs.existsSync(PLANT_DATA_DIR)) fs.mkdirSync(PLANT_DATA_DIR, { recursive: true });
+let plantData = { growth: 10, lastWatered: Date.now(), wilted: false, waterings: 0 };
+try { plantData = JSON.parse(fs.readFileSync(PLANT_FILE, 'utf8')); } catch (e) {}
+function savePlant() { fs.writeFileSync(PLANT_FILE, JSON.stringify(plantData)); }
+setInterval(() => {
+  const age = Date.now() - plantData.lastWatered;
+  if (!plantData.wilted && age > 3600000) {
+    plantData.wilted = true;
+    plantData.growth = Math.max(0, plantData.growth - 5);
+    savePlant();
+    broadcast({ game: 'plant', type: 'state', ...plantData });
+  }
+}, 60000);
+
+// ─── Shooting Gallery (00030) ─────────────────────────────────────────────────
+let galleryTargets = [];
+let galleryScores = new Map();
+let galleryClientIds = new WeakMap();
+let galleryNextId = 1;
+let galleryNextTarget = 1;
+let galleryRoundEnd = 0;
+let galleryPhase = 'between';
+
+function galleryStateMsg() {
+  return { game: 'gallery', type: 'state', targets: galleryTargets, phase: galleryPhase, roundEnd: galleryRoundEnd };
+}
+function galleryScoreMsg() {
+  return { game: 'gallery', type: 'scores', scores: [...galleryScores.entries()].map(([id, s]) => s) };
+}
+function gallerySpawnTarget() {
+  const t = {
+    id: galleryNextTarget++,
+    x: 5 + Math.random() * 90,
+    y: 10 + Math.random() * 70,
+    size: 4 + Math.random() * 6,
+    points: 1,
+    alive: true,
+  };
+  galleryTargets.push(t);
+  broadcast({ game: 'gallery', type: 'spawn', target: t });
+}
+function galleryStartRound() {
+  galleryPhase = 'active';
+  galleryRoundEnd = Date.now() + 60000;
+  galleryTargets = [];
+  galleryScores.forEach(s => { s.roundScore = 0; });
+  for (let i = 0; i < 6; i++) gallerySpawnTarget();
+  broadcast(galleryStateMsg());
+  setTimeout(() => {
+    galleryPhase = 'between';
+    broadcast({ game: 'gallery', type: 'roundEnd', scores: [...galleryScores.values()] });
+    setTimeout(galleryStartRound, 8000);
+  }, 60000);
+}
+setInterval(() => {
+  if (galleryPhase === 'active' && galleryTargets.filter(t => t.alive).length < 4) {
+    gallerySpawnTarget();
+  }
+}, 2000);
 
 // ─── Tic Tac Toe state ───────────────────────────────────────────────────────
 const WIN_LINES = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
@@ -419,6 +494,17 @@ wss.on('connection', (ws) => {
   ws.send(JSON.stringify(c4StateMsg()));
   ws.send(JSON.stringify({ game:'chat', type:'history', messages: chatHistory }));
   ws.send(JSON.stringify({ game: 'ascii', type: 'state', bits: asciiBits }));
+  ws.send(JSON.stringify({ game: 'type', type: 'page', text: typeText }));
+  ws.send(JSON.stringify({ game: 'plant', type: 'state', ...plantData }));
+
+  // Assign gallery client ID
+  const clientId = galleryNextId++;
+  const clientName = `Player ${clientId}`;
+  galleryClientIds.set(ws, clientId);
+  galleryScores.set(clientId, { id: clientId, name: clientName, score: 0, roundScore: 0 });
+  ws.send(JSON.stringify(galleryStateMsg()));
+  ws.send(JSON.stringify(galleryScoreMsg()));
+  if (galleryPhase === 'between' && galleryRoundEnd === 0) setTimeout(galleryStartRound, 3000);
 
   ws.on('message', (message) => {
     try {
@@ -496,6 +582,49 @@ wss.on('connection', (ws) => {
         broadcast({ game: 'ascii', type: 'state', bits: asciiBits });
       }
 
+      // ── Typewriter ──
+      if (data.game === 'type' && data.type === 'key') {
+        const char = String(data.char || '');
+        if (char.length === 1 || char === '\n') {
+          if (typeText.length < 2000) typeText += char;
+          broadcast({ game: 'type', type: 'key', char });
+          typeScheduleClear();
+        }
+      }
+      if (data.game === 'type' && data.type === 'backspace') {
+        typeText = typeText.slice(0, -1);
+        broadcast({ game: 'type', type: 'backspace' });
+        if (typeText.length > 0) typeScheduleClear();
+      }
+
+      // ── Plant ──
+      if (data.game === 'plant' && data.type === 'water') {
+        plantData.lastWatered = Date.now();
+        plantData.waterings = (plantData.waterings || 0) + 1;
+        if (plantData.wilted) {
+          plantData.wilted = false;
+          plantData.growth = Math.min(100, plantData.growth + 5);
+        } else {
+          plantData.growth = Math.min(100, plantData.growth + 2);
+        }
+        savePlant();
+        broadcast({ game: 'plant', type: 'state', ...plantData });
+      }
+
+      // ── Shooting Gallery ──
+      if (data.game === 'gallery' && data.type === 'shoot') {
+        if (galleryPhase !== 'active') return;
+        const tid = data.id;
+        const target = galleryTargets.find(t => t.id === tid && t.alive);
+        if (!target) return;
+        target.alive = false;
+        const cid = galleryClientIds.get(ws);
+        const score = galleryScores.get(cid);
+        if (score) { score.score += target.points; score.roundScore += target.points; }
+        broadcast({ game: 'gallery', type: 'hit', id: tid, clientId: cid });
+        broadcast(galleryScoreMsg());
+      }
+
       // ── Cowsay ──
       if (data.game === 'cowsay' && data.type === 'say') {
         const text = String(data.text || '').slice(0, 200).trim();
@@ -529,7 +658,11 @@ wss.on('connection', (ws) => {
     } catch (e) {}
   });
 
-  ws.on('close', () => console.log(`Player disconnected. Total: ${wss.clients.size}`));
+  ws.on('close', () => {
+    const cid = galleryClientIds.get(ws);
+    if (cid) galleryScores.delete(cid);
+    console.log(`Player disconnected. Total: ${wss.clients.size}`);
+  });
 });
 
 function broadcast(data) {

@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Calculator</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #1a1a2e;
+      color: white;
+      font-family: 'Fredoka One', cursive;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      padding: 8px;
+      gap: 16px;
+    }
+    h1 { font-size: clamp(18px, 3.5vw, 26px); }
+    #calc {
+      background: #0d0d1a;
+      border-radius: 16px;
+      padding: clamp(12px, 3vw, 20px);
+      width: min(340px, 95vw);
+      box-shadow: 0 8px 32px #0008;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    #display {
+      background: #0a0a18;
+      border-radius: 10px;
+      padding: 12px 16px;
+      text-align: right;
+      min-height: 80px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      gap: 4px;
+    }
+    #expr {
+      font-size: clamp(12px, 2.5vw, 16px);
+      color: #555;
+      min-height: 1.2em;
+      word-break: break-all;
+    }
+    #result {
+      font-size: clamp(28px, 8vw, 44px);
+      color: white;
+      word-break: break-all;
+    }
+    #result.error { color: #e94560; font-size: clamp(18px, 4vw, 24px); }
+    #grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+    .btn {
+      border: none;
+      border-radius: 10px;
+      font-family: 'Fredoka One', cursive;
+      font-size: clamp(16px, 4vw, 22px);
+      padding: clamp(14px, 4vw, 20px) 0;
+      cursor: pointer;
+      transition: filter 0.1s, transform 0.1s;
+      color: white;
+    }
+    .btn:active { transform: scale(0.93); filter: brightness(0.8); }
+    .btn.num { background: #2a2a44; }
+    .btn.op  { background: #4488ff; }
+    .btn.eq  { background: #e94560; }
+    .btn.clr { background: #e94560; }
+    .btn.fn  { background: #333355; }
+    .btn.zero { grid-column: span 2; }
+  </style>
+</head>
+<body data-game="00027">
+  <h1>Calculator</h1>
+  <div id="calc">
+    <div id="display">
+      <div id="expr"></div>
+      <div id="result">0</div>
+    </div>
+    <div id="grid">
+      <button class="btn clr" data-key="AC">AC</button>
+      <button class="btn fn"  data-key="+/-">+/-</button>
+      <button class="btn fn"  data-key="%">%</button>
+      <button class="btn op"  data-key="÷">÷</button>
+
+      <button class="btn num" data-key="7">7</button>
+      <button class="btn num" data-key="8">8</button>
+      <button class="btn num" data-key="9">9</button>
+      <button class="btn op"  data-key="×">×</button>
+
+      <button class="btn num" data-key="4">4</button>
+      <button class="btn num" data-key="5">5</button>
+      <button class="btn num" data-key="6">6</button>
+      <button class="btn op"  data-key="-">−</button>
+
+      <button class="btn num" data-key="1">1</button>
+      <button class="btn num" data-key="2">2</button>
+      <button class="btn num" data-key="3">3</button>
+      <button class="btn op"  data-key="+">+</button>
+
+      <button class="btn num zero" data-key="0">0</button>
+      <button class="btn num" data-key=".">.</button>
+      <button class="btn eq"  data-key="=">=</button>
+    </div>
+  </div>
+
+  <script src="/shared/nav.js"></script>
+  <script>
+    const exprEl = document.getElementById('expr');
+    const resultEl = document.getElementById('result');
+
+    let display = '0';
+    let expr = '';
+    let justEvaled = false;
+    let pendingOp = null;
+    let stored = null;
+
+    function fmt(n) {
+      if (!isFinite(n)) return 'Error';
+      const s = String(n);
+      if (s.length > 12) return parseFloat(n.toPrecision(10)).toString();
+      return s;
+    }
+
+    function setDisplay(v) {
+      display = v;
+      resultEl.textContent = v;
+      resultEl.className = (v === 'Error') ? 'error' : '';
+    }
+
+    function compute(a, op, b) {
+      switch(op) {
+        case '+': return a + b;
+        case '-': return a - b;
+        case '×': return a * b;
+        case '÷': return b === 0 ? NaN : a / b;
+      }
+      return b;
+    }
+
+    function press(key) {
+      if (key === 'AC') {
+        display = '0'; expr = ''; stored = null; pendingOp = null; justEvaled = false;
+        setDisplay('0'); exprEl.textContent = '';
+        return;
+      }
+      if (display === 'Error') { display = '0'; stored = null; pendingOp = null; justEvaled = false; }
+
+      if ('0123456789'.includes(key)) {
+        if (justEvaled) { display = key; expr = ''; justEvaled = false; }
+        else if (display === '0') display = key;
+        else if (display.length < 12) display += key;
+        setDisplay(display);
+      } else if (key === '.') {
+        if (justEvaled) { display = '0.'; justEvaled = false; }
+        if (!display.includes('.')) display += '.';
+        setDisplay(display);
+      } else if (key === '+/-') {
+        display = display.startsWith('-') ? display.slice(1) : '-' + display;
+        setDisplay(display);
+      } else if (key === '%') {
+        setDisplay(fmt(parseFloat(display) / 100));
+      } else if (['+','-','×','÷'].includes(key)) {
+        if (pendingOp && !justEvaled) {
+          const result = compute(stored, pendingOp, parseFloat(display));
+          stored = isFinite(result) ? result : 0;
+          setDisplay(fmt(stored));
+        } else {
+          stored = parseFloat(display);
+        }
+        pendingOp = key;
+        expr = fmt(stored) + ' ' + key;
+        exprEl.textContent = expr;
+        justEvaled = true;
+      } else if (key === '=') {
+        if (!pendingOp) return;
+        const b = justEvaled ? stored : parseFloat(display);
+        const result = compute(stored, pendingOp, b);
+        exprEl.textContent = expr + ' ' + fmt(b) + ' =';
+        stored = isFinite(result) ? result : null;
+        setDisplay(isFinite(result) ? fmt(result) : 'Error');
+        pendingOp = null;
+        justEvaled = true;
+      }
+    }
+
+    document.getElementById('grid').addEventListener('click', e => {
+      const btn = e.target.closest('.btn');
+      if (btn) press(btn.dataset.key);
+    });
+
+    document.addEventListener('keydown', e => {
+      const map = { 'Enter':'=', 'Backspace':'AC', 'Escape':'AC', '*':'×', '/':'÷' };
+      const k = map[e.key] || e.key;
+      if ('0123456789.+-×÷=%'.includes(k) || ['AC'].includes(k)) press(k);
+    });
+  </script>
+</body>
+</html>

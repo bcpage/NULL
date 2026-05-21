@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Shooting Gallery</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #1a1a2e;
+      color: white;
+      font-family: 'Fredoka One', cursive;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      padding: 8px;
+      gap: 6px;
+    }
+    #top { display: flex; align-items: center; gap: 16px; justify-content: center; flex-wrap: wrap; }
+    h1 { font-size: clamp(18px, 3.5vw, 26px); }
+    #timer { font-size: clamp(16px, 3vw, 22px); color: #ffcc00; }
+    #my-score { font-size: clamp(16px, 3vw, 22px); color: #44cc88; }
+    #arena {
+      flex: 1;
+      width: 100%;
+      max-width: 700px;
+      position: relative;
+      background: #0d0d1a;
+      border-radius: 10px;
+      overflow: hidden;
+      cursor: crosshair;
+      border: 2px solid #333;
+    }
+    .target {
+      position: absolute;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      cursor: crosshair;
+      transition: transform 0.05s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      color: white;
+      font-weight: bold;
+      box-shadow: 0 0 12px currentColor;
+    }
+    .target:active { transform: translate(-50%, -50%) scale(0.85); }
+    .hit-flash {
+      position: absolute;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      animation: burst 0.4s ease-out forwards;
+    }
+    @keyframes burst {
+      0%   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+      100% { opacity: 0; transform: translate(-50%, -50%) scale(3); }
+    }
+    #scoreboard {
+      width: 100%;
+      max-width: 700px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .score-chip {
+      background: #1a1a3a;
+      border-radius: 8px;
+      padding: 4px 12px;
+      font-size: clamp(12px, 2.5vw, 16px);
+      border: 1px solid #333;
+    }
+    .score-chip.me { border-color: #44cc88; color: #44cc88; }
+    #overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #000a;
+      font-size: clamp(18px, 4vw, 30px);
+      gap: 12px;
+    }
+    #overlay.hidden { display: none; }
+    #overlay-scores { font-size: clamp(12px, 2.5vw, 16px); color: #aaa; }
+  </style>
+</head>
+<body data-game="00030">
+  <div id="top">
+    <h1>Shooting Gallery</h1>
+    <div id="timer">–:––</div>
+    <div id="my-score">0 pts</div>
+  </div>
+  <div id="arena">
+    <div id="overlay">
+      <div id="overlay-msg">Waiting for players…</div>
+      <div id="overlay-scores"></div>
+    </div>
+  </div>
+  <div id="scoreboard"></div>
+
+  <script src="/shared/nav.js"></script>
+  <script>
+    const arena = document.getElementById('arena');
+    const overlay = document.getElementById('overlay');
+    const overlayMsg = document.getElementById('overlay-msg');
+    const overlayScores = document.getElementById('overlay-scores');
+    const timerEl = document.getElementById('timer');
+    const myScoreEl = document.getElementById('my-score');
+    const scoreboard = document.getElementById('scoreboard');
+
+    const TARGET_COLORS = ['#e94560','#4488ff','#44cc88','#ffcc00','#ff8800','#cc44ff'];
+    let myClientId = null;
+    let myScore = 0;
+    let roundEnd = 0;
+    let phase = 'between';
+    let targets = {};
+    let ws;
+
+    function pad2(n) { return String(n).padStart(2,'0'); }
+
+    function updateTimer() {
+      if (phase !== 'active') { timerEl.textContent = '–:––'; return; }
+      const left = Math.max(0, roundEnd - Date.now());
+      timerEl.textContent = `${Math.floor(left/60000)}:${pad2(Math.floor((left%60000)/1000))}`;
+      timerEl.style.color = left < 10000 ? '#e94560' : '#ffcc00';
+    }
+    setInterval(updateTimer, 250);
+
+    function renderTarget(t) {
+      let el = document.getElementById('t' + t.id);
+      if (!el) {
+        el = document.createElement('div');
+        el.id = 't' + t.id;
+        el.className = 'target';
+        arena.appendChild(el);
+      }
+      const size = t.size * 2 * (Math.min(arena.clientWidth, arena.clientHeight) / 100);
+      el.style.left = t.x + '%';
+      el.style.top = t.y + '%';
+      el.style.width = size + 'px';
+      el.style.height = size + 'px';
+      el.style.background = TARGET_COLORS[t.id % TARGET_COLORS.length];
+      el.style.color = TARGET_COLORS[t.id % TARGET_COLORS.length];
+      el.onclick = () => shoot(t.id, el);
+    }
+
+    function removeTarget(id) {
+      const el = document.getElementById('t' + id);
+      if (el) el.remove();
+      delete targets[id];
+    }
+
+    function flashHit(x, y, color) {
+      const fl = document.createElement('div');
+      fl.className = 'hit-flash';
+      fl.style.left = x + '%';
+      fl.style.top = y + '%';
+      fl.style.width = '40px';
+      fl.style.height = '40px';
+      fl.style.background = color;
+      arena.appendChild(fl);
+      setTimeout(() => fl.remove(), 400);
+    }
+
+    function shoot(id, el) {
+      if (!ws || ws.readyState !== WebSocket.OPEN || phase !== 'active') return;
+      ws.send(JSON.stringify({ game: 'gallery', type: 'shoot', id }));
+    }
+
+    function updateScoreboard(scores) {
+      scoreboard.innerHTML = '';
+      scores.sort((a, b) => b.score - a.score);
+      for (const s of scores) {
+        const chip = document.createElement('div');
+        chip.className = 'score-chip' + (s.id === myClientId ? ' me' : '');
+        chip.textContent = `${s.name}: ${s.score}`;
+        scoreboard.appendChild(chip);
+        if (s.id === myClientId) {
+          myScore = s.score;
+          myScoreEl.textContent = `${myScore} pts`;
+        }
+      }
+    }
+
+    function showOverlay(msg, scores) {
+      overlay.classList.remove('hidden');
+      overlayMsg.textContent = msg;
+      if (scores && scores.length) {
+        const top = [...scores].sort((a,b)=>b.roundScore-a.roundScore).slice(0,5);
+        overlayScores.innerHTML = top.map(s => `${s.name}: ${s.roundScore||0} this round`).join('<br>');
+      } else {
+        overlayScores.textContent = '';
+      }
+    }
+
+    function connect() {
+      ws = new WebSocket(`ws://${window.location.host}`);
+      ws.onmessage = (e) => {
+        const d = JSON.parse(e.data);
+        if (d.game !== 'gallery') return;
+
+        if (d.type === 'state') {
+          phase = d.phase;
+          roundEnd = d.roundEnd;
+          targets = {};
+          document.querySelectorAll('.target').forEach(el => el.remove());
+          if (phase === 'active') {
+            overlay.classList.add('hidden');
+            d.targets.forEach(t => { targets[t.id] = t; if (t.alive) renderTarget(t); });
+          } else {
+            showOverlay('Round starting soon…');
+          }
+        }
+        if (d.type === 'scores') {
+          updateScoreboard(d.scores);
+          if (!myClientId) {
+            for (const s of d.scores) {
+              if (s.id === myClientId) { myClientId = s.id; break; }
+            }
+          }
+        }
+        if (d.type === 'spawn') {
+          targets[d.target.id] = d.target;
+          renderTarget(d.target);
+        }
+        if (d.type === 'hit') {
+          const t = targets[d.id];
+          if (t) {
+            t.alive = false;
+            flashHit(t.x, t.y, TARGET_COLORS[d.id % TARGET_COLORS.length]);
+            removeTarget(d.id);
+          }
+        }
+        if (d.type === 'roundEnd') {
+          phase = 'between';
+          document.querySelectorAll('.target').forEach(el => el.remove());
+          targets = {};
+          showOverlay('Round over!', d.scores);
+          setTimeout(() => { overlay.classList.add('hidden'); }, 7500);
+        }
+      };
+      ws.onopen = () => {};
+      ws.onclose = () => setTimeout(connect, 3000);
+    }
+
+    // Store my ID from score updates
+    const _origUpdateScoreboard = updateScoreboard;
+
+    connect();
+  </script>
+</body>
+</html>
