@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Something Under the Bed</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #050508;
+      color: white;
+      font-family: 'Fredoka One', cursive;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      padding: 24px;
+      gap: 32px;
+    }
+    #question {
+      font-size: clamp(16px, 3.5vw, 26px);
+      text-align: center;
+      max-width: 500px;
+      line-height: 1.6;
+      color: #aaa;
+      min-height: 2em;
+      transition: opacity 0.8s;
+    }
+    #question.hidden { opacity: 0; }
+    #buttons { display: flex; gap: 24px; }
+    .answer-btn {
+      background: #0d0d1a;
+      border: 2px solid #222;
+      border-radius: 12px;
+      color: #666;
+      font-family: 'Fredoka One', cursive;
+      font-size: clamp(16px, 3.5vw, 24px);
+      padding: clamp(12px, 3vw, 18px) clamp(20px, 5vw, 36px);
+      cursor: pointer;
+      transition: border-color 0.3s, color 0.3s;
+    }
+    .answer-btn:hover { border-color: #444; color: #aaa; }
+    #silence {
+      font-size: clamp(12px, 2.5vw, 16px);
+      color: #111;
+      text-align: center;
+      max-width: 400px;
+      line-height: 1.8;
+      min-height: 3em;
+      transition: color 2s;
+    }
+    #silence.visible { color: #333; }
+    #silence.more-visible { color: #666; }
+  </style>
+</head>
+<body data-game="00047">
+  <div id="question"></div>
+  <div id="buttons">
+    <button class="answer-btn" id="yes">Yes</button>
+    <button class="answer-btn" id="no">No</button>
+  </div>
+  <div id="silence"></div>
+
+  <script src="/shared/nav.js"></script>
+  <script>
+    const questionEl = document.getElementById('question');
+    const silenceEl = document.getElementById('silence');
+    const yesBtn = document.getElementById('yes');
+    const noBtn = document.getElementById('no');
+
+    const QUESTIONS = [
+      "Did you hear that?",
+      "Are you alone right now?",
+    ];
+
+    const RESPONSES = {
+      '00': [ // no, no
+        "Good.\n\nThen there is nothing to worry about.\n\nEnjoy the rest of your visit.",
+      ],
+      '01': [ // no, yes
+        "That seems about right.\n\nAlone is fine.\n\nAlone is probably fine.",
+      ],
+      '10': [ // yes, no
+        "You heard it and you're not alone.\n\nSo someone else heard it too.\n\nAsk them what it was.\n\nDon't.",
+      ],
+      '11': [ // yes, yes
+        "You heard it.\n\nAnd you're alone.\n\nSo it wasn't you.",
+      ],
+    };
+
+    let step = 0;
+    let answers = [];
+
+    function showQuestion(q) {
+      questionEl.className = 'hidden';
+      setTimeout(() => {
+        questionEl.textContent = q;
+        questionEl.className = '';
+      }, 800);
+    }
+
+    function handleAnswer(ans) {
+      answers.push(ans);
+      if (step === 0) {
+        step = 1;
+        yesBtn.style.display = 'none';
+        noBtn.style.display = 'none';
+        setTimeout(() => {
+          yesBtn.style.display = '';
+          noBtn.style.display = '';
+          showQuestion(QUESTIONS[1]);
+        }, 1200);
+      } else {
+        yesBtn.style.display = 'none';
+        noBtn.style.display = 'none';
+        questionEl.className = 'hidden';
+        const key = answers.join('');
+        const resp = RESPONSES[key]?.[0] || "You wait.\n\nNothing happens.\n\nOr it does.";
+        setTimeout(() => {
+          silenceEl.className = 'visible';
+          silenceEl.style.whiteSpace = 'pre-line';
+          silenceEl.textContent = resp;
+          setTimeout(() => { silenceEl.className = 'more-visible'; }, 3000);
+        }, 1500);
+      }
+    }
+
+    yesBtn.addEventListener('click', () => handleAnswer('1'));
+    noBtn.addEventListener('click', () => handleAnswer('0'));
+
+    setTimeout(() => showQuestion(QUESTIONS[0]), 600);
+  </script>
+</body>
+</html>

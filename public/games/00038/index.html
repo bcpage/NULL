@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Shared Chalkboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #1a1a2e;
+      color: white;
+      font-family: 'Fredoka One', cursive;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      padding: 8px;
+      gap: 6px;
+    }
+    h1 { font-size: clamp(18px, 3.5vw, 24px); margin-top: 2px; }
+    #board {
+      flex: 1;
+      width: 100%;
+      max-width: 800px;
+      background: #1a3a1a;
+      border-radius: 8px;
+      border: 6px solid #552200;
+      cursor: crosshair;
+      touch-action: none;
+      position: relative;
+    }
+    canvas { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 4px; }
+    #toolbar {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: center;
+      width: 100%;
+      max-width: 800px;
+    }
+    .color-btn {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      border: 3px solid transparent;
+      cursor: pointer;
+      transition: border-color 0.15s;
+    }
+    .color-btn.selected { border-color: white; }
+    .size-btn {
+      background: #2a2a44;
+      border: 2px solid #444;
+      border-radius: 6px;
+      color: white;
+      font-family: 'Fredoka One', cursive;
+      font-size: clamp(11px, 2vw, 14px);
+      padding: 4px 10px;
+      cursor: pointer;
+    }
+    .size-btn.selected { border-color: #4488ff; color: #4488ff; }
+    #clear-btn {
+      background: #e94560;
+      border: none;
+      border-radius: 8px;
+      color: white;
+      font-family: 'Fredoka One', cursive;
+      font-size: clamp(12px, 2vw, 15px);
+      padding: 5px 14px;
+      cursor: pointer;
+      margin-left: 8px;
+    }
+    #info { font-size: clamp(10px, 1.8vw, 13px); color: #444; }
+  </style>
+</head>
+<body data-game="00038">
+  <h1>Shared Chalkboard</h1>
+  <div id="board"><canvas id="c"></canvas></div>
+  <div id="toolbar">
+    <button class="color-btn selected" data-color="#ffffff" style="background:#ffffff"></button>
+    <button class="color-btn" data-color="#ffcc00" style="background:#ffcc00"></button>
+    <button class="color-btn" data-color="#e94560" style="background:#e94560"></button>
+    <button class="color-btn" data-color="#44cc88" style="background:#44cc88"></button>
+    <button class="color-btn" data-color="#4488ff" style="background:#4488ff"></button>
+    <button class="color-btn" data-color="#ff8800" style="background:#ff8800"></button>
+    <button class="size-btn selected" data-size="3">S</button>
+    <button class="size-btn" data-size="8">M</button>
+    <button class="size-btn" data-size="16">L</button>
+    <button id="clear-btn">Clear</button>
+  </div>
+  <div id="info">never cleared — this board persists forever</div>
+
+  <script src="/shared/nav.js"></script>
+  <script>
+    const board = document.getElementById('board');
+    const canvas = document.getElementById('c');
+    const ctx = canvas.getContext('2d');
+    let ws, drawing = false, currentStroke = [], color = '#ffffff', lineWidth = 3;
+
+    function resize() {
+      const rect = board.getBoundingClientRect();
+      canvas.width = rect.width;
+      canvas.height = rect.height;
+      redrawAll();
+    }
+
+    let strokes = [];
+
+    function drawStroke(stroke) {
+      if (!stroke.pts || stroke.pts.length < 2) return;
+      const W = canvas.width, H = canvas.height;
+      ctx.strokeStyle = stroke.color || '#ffffff';
+      ctx.lineWidth = stroke.width || 3;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.beginPath();
+      ctx.moveTo(stroke.pts[0][0] * W, stroke.pts[0][1] * H);
+      for (let i = 1; i < stroke.pts.length; i++) {
+        ctx.lineTo(stroke.pts[i][0] * W, stroke.pts[i][1] * H);
+      }
+      ctx.stroke();
+    }
+
+    function redrawAll() {
+      ctx.fillStyle = '#1a3a1a';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      strokes.forEach(drawStroke);
+    }
+
+    function getPos(e) {
+      const rect = canvas.getBoundingClientRect();
+      const src = e.touches ? e.touches[0] : e;
+      return [(src.clientX - rect.left) / rect.width, (src.clientY - rect.top) / rect.height];
+    }
+
+    board.addEventListener('pointerdown', e => {
+      drawing = true;
+      currentStroke = [getPos(e)];
+      e.preventDefault();
+    });
+    board.addEventListener('pointermove', e => {
+      if (!drawing) return;
+      currentStroke.push(getPos(e));
+      ctx.strokeStyle = color; ctx.lineWidth = lineWidth; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      if (currentStroke.length >= 2) {
+        const W = canvas.width, H = canvas.height;
+        const n = currentStroke.length;
+        ctx.beginPath();
+        ctx.moveTo(currentStroke[n-2][0]*W, currentStroke[n-2][1]*H);
+        ctx.lineTo(currentStroke[n-1][0]*W, currentStroke[n-1][1]*H);
+        ctx.stroke();
+      }
+      e.preventDefault();
+    });
+    board.addEventListener('pointerup', e => {
+      if (!drawing || currentStroke.length < 2) { drawing = false; return; }
+      drawing = false;
+      const stroke = { pts: currentStroke.slice(), color, width: lineWidth };
+      strokes.push(stroke);
+      if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ game: 'chalk', type: 'stroke', ...stroke }));
+      currentStroke = [];
+    });
+
+    document.querySelectorAll('.color-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        color = btn.dataset.color;
+      });
+    });
+    document.querySelectorAll('.size-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        lineWidth = parseInt(btn.dataset.size);
+      });
+    });
+    document.getElementById('clear-btn').addEventListener('click', () => {
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+      if (!confirm('Clear the entire chalkboard for everyone?')) return;
+      ws.send(JSON.stringify({ game: 'chalk', type: 'clear' }));
+    });
+
+    function connect() {
+      ws = new WebSocket(`ws://${window.location.host}`);
+      ws.onmessage = e => {
+        const d = JSON.parse(e.data);
+        if (d.game !== 'chalk') return;
+        if (d.type === 'init') { strokes = d.strokes; redrawAll(); }
+        if (d.type === 'stroke') { strokes.push(d.stroke); drawStroke(d.stroke); }
+        if (d.type === 'clear') { strokes = []; redrawAll(); }
+      };
+      ws.onclose = () => setTimeout(connect, 3000);
+    }
+
+    window.addEventListener('resize', resize);
+    setTimeout(resize, 50);
+    connect();
+  </script>
+</body>
+</html>

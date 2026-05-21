@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Useless Information</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #1a1a2e;
+      color: white;
+      font-family: 'Fredoka One', cursive;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      padding: 16px;
+      gap: 20px;
+    }
+    h1 { font-size: clamp(18px, 3.5vw, 26px); color: #888; }
+    #card {
+      background: #0d0d1a;
+      border-radius: 16px;
+      padding: clamp(20px, 5vw, 40px);
+      max-width: 560px;
+      width: 100%;
+      text-align: center;
+      border: 1px solid #1a1a3a;
+      min-height: 140px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+    #card:hover { border-color: #333; }
+    #fact {
+      font-size: clamp(15px, 3vw, 22px);
+      color: #ddd;
+      line-height: 1.6;
+    }
+    #category { font-size: clamp(11px, 2vw, 14px); color: #333; letter-spacing: 0.1em; text-transform: uppercase; }
+    #hint { font-size: clamp(11px, 2vw, 13px); color: #333; }
+    #count { font-size: clamp(11px, 2vw, 13px); color: #222; }
+    button {
+      background: transparent;
+      border: 2px solid #2a2a44;
+      border-radius: 10px;
+      color: #666;
+      font-family: 'Fredoka One', cursive;
+      font-size: clamp(14px, 2.5vw, 18px);
+      padding: 8px 24px;
+      cursor: pointer;
+      transition: border-color 0.2s, color 0.2s;
+    }
+    button:hover { border-color: #4488ff; color: #4488ff; }
+  </style>
+</head>
+<body data-game="00048">
+  <h1>Useless Information</h1>
+  <div id="card">
+    <div id="category"></div>
+    <div id="fact">click for a fact</div>
+  </div>
+  <div id="hint">click the card or the button</div>
+  <button id="next-btn">Next Fact</button>
+  <div id="count"></div>
+
+  <script src="/shared/nav.js"></script>
+  <script>
+    const FACTS = [
+      { cat: 'ANIMAL', text: 'A group of flamingos is called a flamboyance.' },
+      { cat: 'FOOD', text: 'Honey never expires. Archaeologists have found 3000-year-old honey in Egyptian tombs that was still edible.' },
+      { cat: 'SPACE', text: 'There are more stars in the observable universe than grains of sand on all of Earth\'s beaches.' },
+      { cat: 'BIOLOGY', text: 'Your body replaces about 330 billion cells every day — roughly 3.8 million per second.' },
+      { cat: 'LANGUAGE', text: '"Bookkeeper" is the only common English word with three consecutive double letters.' },
+      { cat: 'GEOGRAPHY', text: 'Russia is so large that it spans 11 time zones.' },
+      { cat: 'ANIMAL', text: 'Octopuses have three hearts, blue blood, and can unscrew jars from the inside.' },
+      { cat: 'PHYSICS', text: 'If you removed all the empty space from atoms in the human body, the entire human race would fit in a sugar cube.' },
+      { cat: 'HISTORY', text: 'Cleopatra lived closer in time to the Moon landing than to the construction of the Great Pyramid.' },
+      { cat: 'BIOLOGY', text: 'The human nose can detect over 1 trillion different smells.' },
+      { cat: 'MATH', text: 'In a room of 23 people, there\'s a greater than 50% chance two share a birthday.' },
+      { cat: 'FOOD', text: 'Bananas are technically berries. Strawberries are not.' },
+      { cat: 'ANIMAL', text: 'A day on Venus is longer than a year on Venus.' },
+      { cat: 'LANGUAGE', text: 'The dot over the letters i and j is called a tittle.' },
+      { cat: 'SPACE', text: 'Neutron stars are so dense that a teaspoon of one would weigh about 10 million tons.' },
+      { cat: 'HISTORY', text: 'Oxford University is older than the Aztec Empire.' },
+      { cat: 'BIOLOGY', text: 'Your left lung is smaller than your right to make room for your heart.' },
+      { cat: 'ANIMAL', text: 'Wombats produce cube-shaped droppings — they are the only animals known to do this.' },
+      { cat: 'PHYSICS', text: 'Time passes slightly faster for your face than your feet, due to gravitational time dilation.' },
+      { cat: 'FOOD', text: 'Pineapple contains an enzyme called bromelain that digests proteins — including your mouth.' },
+      { cat: 'MATH', text: '0.999... (repeating) equals exactly 1. This is not an approximation.' },
+      { cat: 'ANIMAL', text: 'Crows can recognize human faces and hold grudges for years.' },
+      { cat: 'LANGUAGE', text: 'The shortest complete sentence in English is "Go."' },
+      { cat: 'SPACE', text: 'The Sun makes up 99.86% of the mass of the entire solar system.' },
+      { cat: 'BIOLOGY', text: 'Your fingernails and toenails grow faster in summer than winter.' },
+      { cat: 'HISTORY', text: 'The fax machine was invented in 1843 — before the telephone.' },
+      { cat: 'ANIMAL', text: 'Tardigrades (water bears) can survive in space, in volcanoes, and at the bottom of the ocean.' },
+      { cat: 'MATH', text: 'There are more possible games of chess than atoms in the observable universe.' },
+      { cat: 'FOOD', text: 'Ketchup was sold as medicine in the 1830s.' },
+      { cat: 'GEOGRAPHY', text: 'Australia is wider than the Moon.' },
+      { cat: 'BIOLOGY', text: 'The human body contains roughly the same number of bacterial cells as human cells.' },
+      { cat: 'PHYSICS', text: 'A bolt of lightning is 5 times hotter than the surface of the Sun.' },
+      { cat: 'ANIMAL', text: 'Mantis shrimp can punch with the force of a bullet and see 16 types of color receptors (humans have 3).' },
+      { cat: 'LANGUAGE', text: 'The word "queue" is pronounced the same when you remove the last four letters.' },
+      { cat: 'EXPIRED INFO', text: 'As of 1994, there were 22 states in India. The current number may differ.' },
+      { cat: 'USELESS', text: 'Every day is exactly 86,400 seconds long, except when it isn\'t.' },
+      { cat: 'USELESS', text: 'This fact was written by someone who is no longer the same person who wrote it.' },
+      { cat: 'USELESS', text: 'You have now read 37 facts. Or fewer. You may have skipped some.' },
+    ];
+
+    let idx = Math.floor(Math.random() * FACTS.length);
+    let seen = 0;
+
+    function showFact() {
+      const f = FACTS[idx];
+      document.getElementById('category').textContent = f.cat;
+      document.getElementById('fact').textContent = f.text;
+      idx = (idx + 1) % FACTS.length;
+      seen++;
+      document.getElementById('count').textContent = `${seen} fact${seen !== 1 ? 's' : ''} dispensed`;
+    }
+
+    document.getElementById('card').addEventListener('click', showFact);
+    document.getElementById('next-btn').addEventListener('click', showFact);
+    showFact();
+  </script>
+</body>
+</html>

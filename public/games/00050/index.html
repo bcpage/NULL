@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Monitor Room</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #050508;
+      color: #33ff33;
+      font-family: 'Fredoka One', cursive;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      gap: 8px;
+      padding: 8px;
+    }
+    #title-bar {
+      font-size: clamp(13px, 2.5vw, 18px);
+      color: #1a3a1a;
+      letter-spacing: 0.15em;
+      flex-shrink: 0;
+    }
+    #grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+      gap: 6px;
+      flex: 1;
+      width: 100%;
+      max-width: 960px;
+      overflow: hidden;
+    }
+    .monitor {
+      position: relative;
+      background: #0a0a0f;
+      border: 1px solid #0d2a0d;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .monitor iframe {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      border: none;
+      pointer-events: none;
+      transform-origin: top left;
+    }
+    .monitor-label {
+      position: absolute;
+      bottom: 4px;
+      right: 6px;
+      font-size: 10px;
+      color: #0d2a0d;
+      z-index: 2;
+    }
+    .scanline {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: repeating-linear-gradient(
+        to bottom,
+        transparent 0px,
+        transparent 3px,
+        rgba(0,0,0,0.12) 3px,
+        rgba(0,0,0,0.12) 4px
+      );
+      pointer-events: none;
+      z-index: 1;
+    }
+    .glitch {
+      animation: flicker 0.1s steps(1) forwards;
+    }
+    @keyframes flicker {
+      0% { opacity: 0.4; }
+      50% { opacity: 0; }
+      100% { opacity: 1; }
+    }
+    #status {
+      font-size: clamp(10px, 1.8vw, 12px);
+      color: #0d2a0d;
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+<body data-game="00050">
+  <div id="title-bar">MONITOR ROOM — FEED ACTIVE</div>
+  <div id="grid">
+    <div class="monitor" id="m0"><iframe id="f0" src=""></iframe><div class="scanline"></div><div class="monitor-label" id="l0"></div></div>
+    <div class="monitor" id="m1"><iframe id="f1" src=""></iframe><div class="scanline"></div><div class="monitor-label" id="l1"></div></div>
+    <div class="monitor" id="m2"><iframe id="f2" src=""></iframe><div class="scanline"></div><div class="monitor-label" id="l2"></div></div>
+    <div class="monitor" id="m3"><iframe id="f3" src=""></iframe><div class="scanline"></div><div class="monitor-label" id="l3"></div></div>
+    <div class="monitor" id="m4"><iframe id="f4" src=""></iframe><div class="scanline"></div><div class="monitor-label" id="l4"></div></div>
+    <div class="monitor" id="m5"><iframe id="f5" src=""></iframe><div class="scanline"></div><div class="monitor-label" id="l5"></div></div>
+  </div>
+  <div id="status">feeds rotate every 12 seconds — you cannot change the channel</div>
+
+  <script src="/shared/nav.js"></script>
+  <script>
+    const ROOMS = [
+      { id: '00001', name: 'Color Game' },
+      { id: '00003', name: 'Soundboard' },
+      { id: '00008', name: 'Goldfish' },
+      { id: '00015', name: 'Snake' },
+      { id: '00016', name: 'The Static' },
+      { id: '00017', name: 'The Candle' },
+      { id: '00019', name: 'Unix Timestamp' },
+      { id: '00020', name: 'Clock' },
+      { id: '00021', name: 'Countdown' },
+      { id: '00023', name: 'UUID' },
+      { id: '00024', name: 'Monty Hall' },
+      { id: '00026', name: 'The Plant' },
+      { id: '00027', name: 'Calculator' },
+      { id: '00028', name: 'Galton Board' },
+      { id: '00031', name: 'The Hallway' },
+      { id: '00033', name: '2am Room' },
+      { id: '00034', name: 'Hangman' },
+      { id: '00037', name: 'Metronome' },
+      { id: '00040', name: "Zeno's Paradox" },
+      { id: '00041', name: 'Ship of Theseus' },
+      { id: '00042', name: 'The Heap' },
+      { id: '00043', name: 'PRNG vs RNG' },
+      { id: '00044', name: 'Visible Spectrum' },
+      { id: '00045', name: 'Logo Turtle' },
+      { id: '00046', name: 'Cheshire Cat' },
+      { id: '00048', name: 'Useless Info' },
+      { id: '00049', name: 'MASH' },
+    ];
+
+    function shuffle(arr) {
+      const a = [...arr];
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    // Scale iframes to look like miniatures
+    function scaleFrames() {
+      for (let i = 0; i < 6; i++) {
+        const mon = document.getElementById(`m${i}`);
+        const frame = document.getElementById(`f${i}`);
+        const scaleX = mon.offsetWidth / window.innerWidth;
+        const scaleY = mon.offsetHeight / window.innerHeight;
+        const scale = Math.min(scaleX, scaleY);
+        frame.style.transform = `scale(${scale})`;
+        frame.style.width = `${100 / scale}%`;
+        frame.style.height = `${100 / scale}%`;
+      }
+    }
+
+    let pool = [];
+    let assigned = [];
+
+    function pickNext(exclude) {
+      if (pool.length < 2) pool = shuffle(ROOMS).filter(r => !exclude.includes(r.id));
+      let pick;
+      do { pick = pool.pop(); } while (!pick || exclude.includes(pick.id));
+      return pick;
+    }
+
+    function rotateOne(slot) {
+      const current = assigned.map(r => r.id);
+      const next = pickNext(current.filter((_,i) => i !== slot));
+      assigned[slot] = next;
+      const frame = document.getElementById(`f${slot}`);
+      const label = document.getElementById(`l${slot}`);
+      const mon = document.getElementById(`m${slot}`);
+
+      // Glitch effect
+      mon.classList.add('glitch');
+      setTimeout(() => mon.classList.remove('glitch'), 120);
+
+      frame.src = `/game/${next.id}`;
+      label.textContent = next.name;
+    }
+
+    function init() {
+      pool = shuffle(ROOMS);
+      assigned = [];
+      for (let i = 0; i < 6; i++) {
+        const room = pool.pop() || ROOMS[i % ROOMS.length];
+        assigned.push(room);
+        document.getElementById(`f${i}`).src = `/game/${room.id}`;
+        document.getElementById(`l${i}`).textContent = room.name;
+      }
+      scaleFrames();
+    }
+
+    let rotateIdx = 0;
+    function rotateNext() {
+      rotateOne(rotateIdx % 6);
+      rotateIdx++;
+    }
+
+    init();
+    window.addEventListener('resize', scaleFrames);
+    setInterval(rotateNext, 12000);
+  </script>
+</body>
+</html>

@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Metronome</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #1a1a2e;
+      color: white;
+      font-family: 'Fredoka One', cursive;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      padding: 8px;
+      gap: 10px;
+    }
+    h1 { font-size: clamp(20px, 4vw, 28px); margin-top: 4px; }
+    #my-metro {
+      background: #0d0d1a;
+      border-radius: 14px;
+      padding: 16px 20px;
+      width: 100%;
+      max-width: 400px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+    #pendulum-wrap { width: 80px; height: 100px; position: relative; }
+    #pendulum {
+      position: absolute;
+      top: 0; left: 50%;
+      transform-origin: top center;
+      width: 4px;
+      margin-left: -2px;
+      height: 70px;
+      background: #aaa;
+      border-radius: 2px;
+      transition: none;
+    }
+    #bob {
+      position: absolute;
+      bottom: -8px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      background: #e94560;
+    }
+    #bpm-display { font-size: clamp(36px, 10vw, 60px); color: #ffcc00; }
+    #bpm-label { font-size: clamp(11px, 2vw, 14px); color: #555; }
+    #controls { display: flex; gap: 12px; align-items: center; }
+    .bpm-btn {
+      background: #2a2a44;
+      border: none;
+      border-radius: 8px;
+      color: white;
+      font-family: 'Fredoka One', cursive;
+      font-size: clamp(16px, 3vw, 22px);
+      width: 40px; height: 40px;
+      cursor: pointer;
+    }
+    .bpm-btn:hover { background: #4488ff; }
+    input[type=range] { width: 160px; accent-color: #e94560; }
+    #name-row { display: flex; gap: 8px; align-items: center; width: 100%; }
+    #name-row label { font-size: clamp(11px, 2vw, 14px); color: #666; flex-shrink: 0; }
+    #myname {
+      flex: 1;
+      background: #1a1a2e;
+      border: 1px solid #333;
+      border-radius: 6px;
+      color: white;
+      font-family: 'Fredoka One', cursive;
+      font-size: clamp(13px, 2.5vw, 16px);
+      padding: 4px 8px;
+      outline: none;
+    }
+    #toggle {
+      background: #44cc88;
+      border: none;
+      border-radius: 10px;
+      color: #000;
+      font-family: 'Fredoka One', cursive;
+      font-size: clamp(14px, 3vw, 18px);
+      padding: 8px 20px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    #toggle.running { background: #e94560; color: white; }
+    #others { flex: 1; width: 100%; max-width: 600px; overflow-y: auto; }
+    #others-title { font-size: clamp(11px, 2vw, 14px); color: #444; margin-bottom: 6px; text-align: center; }
+    .other-metro {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 10px;
+      background: #0d0d1a;
+      border-radius: 8px;
+      margin-bottom: 5px;
+      font-size: clamp(13px, 2.5vw, 16px);
+    }
+    .other-beat {
+      width: 12px; height: 12px;
+      border-radius: 50%;
+      background: #333;
+      flex-shrink: 0;
+      transition: background 0.05s;
+    }
+    .other-beat.on { background: #4488ff; box-shadow: 0 0 8px #4488ff; }
+    .other-name { flex: 1; color: #aaa; }
+    .other-bpm { color: #ffcc00; }
+  </style>
+</head>
+<body data-game="00037">
+  <h1>Metronome</h1>
+  <div id="my-metro">
+    <div id="pendulum-wrap">
+      <div id="pendulum"><div id="bob"></div></div>
+    </div>
+    <div id="bpm-display">120</div>
+    <div id="bpm-label">BPM</div>
+    <div id="controls">
+      <button class="bpm-btn" id="minus">−</button>
+      <input type="range" id="bpm-slider" min="20" max="300" value="120">
+      <button class="bpm-btn" id="plus">+</button>
+    </div>
+    <div id="name-row">
+      <label>Name:</label>
+      <input id="myname" type="text" maxlength="20" placeholder="anonymous">
+    </div>
+    <button id="toggle">Start</button>
+  </div>
+  <div id="others">
+    <div id="others-title">others playing right now</div>
+    <div id="others-list"></div>
+  </div>
+
+  <script src="/shared/nav.js"></script>
+  <script>
+    const pendulum = document.getElementById('pendulum');
+    const bpmDisplay = document.getElementById('bpm-display');
+    const slider = document.getElementById('bpm-slider');
+    const toggleBtn = document.getElementById('toggle');
+    const othersList = document.getElementById('others-list');
+
+    let bpm = 120, running = false, ws;
+    let beatAngle = 1, direction = 1;
+    let lastBeat = 0, beatInterval = 500;
+    let otherMetros = [];
+    let otherBeats = {};
+
+    function updateBpm(v) {
+      bpm = Math.max(20, Math.min(300, v));
+      slider.value = bpm;
+      bpmDisplay.textContent = bpm;
+      beatInterval = 60000 / bpm;
+      if (running) sendSet();
+    }
+
+    function sendSet() {
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+      ws.send(JSON.stringify({ game: 'metro', type: 'set', bpm, label: document.getElementById('myname').value || 'anon' }));
+    }
+
+    toggleBtn.addEventListener('click', () => {
+      running = !running;
+      toggleBtn.textContent = running ? 'Stop' : 'Start';
+      toggleBtn.className = running ? 'running' : '';
+      if (running) { sendSet(); lastBeat = performance.now(); }
+      else if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ game: 'metro', type: 'stop' }));
+    });
+
+    document.getElementById('minus').addEventListener('click', () => updateBpm(bpm - 1));
+    document.getElementById('plus').addEventListener('click', () => updateBpm(bpm + 1));
+    slider.addEventListener('input', () => updateBpm(parseInt(slider.value)));
+    document.getElementById('myname').addEventListener('change', () => { if (running) sendSet(); });
+
+    function renderOthers(metros) {
+      othersList.innerHTML = '';
+      metros.forEach(m => {
+        const div = document.createElement('div');
+        div.className = 'other-metro';
+        div.id = 'om-' + m.id;
+        div.innerHTML = `<div class="other-beat" id="ob-${m.id}"></div><span class="other-name">${m.label}</span><span class="other-bpm">${m.bpm} bpm</span>`;
+        othersList.appendChild(div);
+        if (!otherBeats[m.id]) otherBeats[m.id] = { last: performance.now() + Math.random() * (60000/m.bpm), interval: 60000/m.bpm };
+        else otherBeats[m.id].interval = 60000 / m.bpm;
+      });
+      otherMetros = metros;
+      // Remove stale
+      Object.keys(otherBeats).forEach(id => {
+        if (!metros.find(m => m.id === parseInt(id))) delete otherBeats[id];
+      });
+    }
+
+    function animate(now) {
+      // My pendulum
+      if (running) {
+        const elapsed = (now - lastBeat) / beatInterval;
+        const angle = Math.sin(elapsed * Math.PI) * 35 * direction;
+        pendulum.style.transform = `rotate(${angle}deg)`;
+        if (elapsed >= 1) { lastBeat = now; direction *= -1; }
+      }
+
+      // Others' beat dots
+      otherMetros.forEach(m => {
+        const b = otherBeats[m.id];
+        if (!b) return;
+        const el = document.getElementById('ob-' + m.id);
+        if (!el) return;
+        if (now - b.last >= b.interval) {
+          b.last += b.interval;
+          el.classList.add('on');
+          setTimeout(() => el.classList.remove('on'), 80);
+        }
+      });
+
+      requestAnimationFrame(animate);
+    }
+
+    function connect() {
+      ws = new WebSocket(`ws://${window.location.host}`);
+      ws.onmessage = e => {
+        const d = JSON.parse(e.data);
+        if (d.game !== 'metro') return;
+        if (d.type === 'list') renderOthers(d.metronomes);
+      };
+      ws.onclose = () => { running = false; toggleBtn.textContent = 'Start'; toggleBtn.className = ''; setTimeout(connect, 3000); };
+    }
+
+    connect();
+    requestAnimationFrame(animate);
+  </script>
+</body>
+</html>

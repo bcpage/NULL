@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Hangman</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #1a1a2e;
+      color: white;
+      font-family: 'Fredoka One', cursive;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      padding: 8px;
+      gap: 8px;
+    }
+    h1 { font-size: clamp(20px, 4vw, 30px); margin-top: 4px; }
+    #game-area {
+      display: flex;
+      gap: clamp(16px, 4vw, 40px);
+      align-items: flex-start;
+      flex-wrap: wrap;
+      justify-content: center;
+      flex: 1;
+    }
+    canvas { display: block; }
+    #right { display: flex; flex-direction: column; align-items: center; gap: 12px; justify-content: center; flex: 1; min-width: 200px; }
+    #word {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .letter {
+      width: clamp(24px, 6vw, 36px);
+      height: clamp(24px, 6vw, 36px);
+      border-bottom: 3px solid #aaa;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: clamp(16px, 4vw, 24px);
+      text-transform: uppercase;
+    }
+    .letter.found { color: #44cc88; border-color: #44cc88; }
+    #hint { font-size: clamp(11px, 2vw, 14px); color: #666; }
+    #keyboard {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      max-width: 320px;
+      justify-content: center;
+    }
+    .key {
+      width: clamp(28px, 8vw, 38px);
+      height: clamp(28px, 8vw, 38px);
+      border-radius: 6px;
+      background: #2a2a44;
+      border: none;
+      color: white;
+      font-family: 'Fredoka One', cursive;
+      font-size: clamp(12px, 3vw, 16px);
+      cursor: pointer;
+      transition: background 0.15s;
+      text-transform: uppercase;
+    }
+    .key:hover:not(:disabled) { background: #4488ff; }
+    .key.wrong { background: #e94560; opacity: 0.5; cursor: default; }
+    .key.right { background: #44cc88; opacity: 0.5; cursor: default; }
+    #msg { font-size: clamp(16px, 3.5vw, 24px); min-height: 1.5em; text-align: center; }
+    #msg.win { color: #44cc88; }
+    #msg.lose { color: #e94560; }
+    button.new-game {
+      background: #4488ff;
+      border: none;
+      border-radius: 10px;
+      color: white;
+      font-family: 'Fredoka One', cursive;
+      font-size: clamp(14px, 2.5vw, 18px);
+      padding: 8px 24px;
+      cursor: pointer;
+    }
+    button.new-game:hover { background: #2266cc; }
+  </style>
+</head>
+<body data-game="00034">
+  <h1>Hangman</h1>
+  <div id="game-area">
+    <canvas id="c" width="160" height="200"></canvas>
+    <div id="right">
+      <div id="hint"></div>
+      <div id="word"></div>
+      <div id="keyboard"></div>
+      <div id="msg"></div>
+      <button class="new-game" id="new-btn" style="display:none">New Word</button>
+    </div>
+  </div>
+
+  <script src="/shared/nav.js"></script>
+  <script>
+    const WORDS = [
+      ['javascript','a programming language'],['algorithm','a step-by-step procedure'],
+      ['python','another programming language'],['database','where data lives'],
+      ['keyboard','how you type'],['monitor','what you look at'],
+      ['variable','a named value'],['function','a reusable block of code'],
+      ['internet','a global network'],['browser','what you use to visit websites'],
+      ['server','a computer that serves'],['protocol','a set of rules'],
+      ['network','computers connected together'],['binary','ones and zeros'],
+      ['compiler','turns code into machine language'],['recursion','see: recursion'],
+      ['overflow','too much in too little'],['pointer','it points to memory'],
+      ['interface','a shared boundary'],['abstraction','hiding complexity'],
+      ['encryption','scrambling data'],['bandwidth','how much data fits'],
+      ['latency','delay in transmission'],['debugging','finding the bug'],
+      ['syntax','rules of a language'],['runtime','when the program runs'],
+      ['framework','a structure to build on'],['library','reusable code'],
+      ['terminal','text-based interface'],['commit','saving your work in git'],
+    ];
+
+    const canvas = document.getElementById('c');
+    const ctx = canvas.getContext('2d');
+    const wordEl = document.getElementById('word');
+    const kbEl = document.getElementById('keyboard');
+    const msgEl = document.getElementById('msg');
+    const hintEl = document.getElementById('hint');
+    const newBtn = document.getElementById('new-btn');
+
+    let word, hint, guessed, wrong, status;
+    const MAX_WRONG = 6;
+
+    function drawGallows(w) {
+      ctx.clearRect(0, 0, 160, 200);
+      ctx.strokeStyle = '#aaa';
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
+
+      // Base
+      ctx.beginPath(); ctx.moveTo(20, 190); ctx.lineTo(140, 190); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(50, 190); ctx.lineTo(50, 20); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(50, 20); ctx.lineTo(110, 20); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(110, 20); ctx.lineTo(110, 40); ctx.stroke();
+
+      ctx.strokeStyle = '#e94560';
+      if (w >= 1) { ctx.beginPath(); ctx.arc(110, 52, 12, 0, Math.PI*2); ctx.stroke(); }
+      if (w >= 2) { ctx.beginPath(); ctx.moveTo(110, 64); ctx.lineTo(110, 110); ctx.stroke(); }
+      if (w >= 3) { ctx.beginPath(); ctx.moveTo(110, 74); ctx.lineTo(88, 96); ctx.stroke(); }
+      if (w >= 4) { ctx.beginPath(); ctx.moveTo(110, 74); ctx.lineTo(132, 96); ctx.stroke(); }
+      if (w >= 5) { ctx.beginPath(); ctx.moveTo(110, 110); ctx.lineTo(88, 140); ctx.stroke(); }
+      if (w >= 6) { ctx.beginPath(); ctx.moveTo(110, 110); ctx.lineTo(132, 140); ctx.stroke(); }
+    }
+
+    function renderWord() {
+      wordEl.innerHTML = '';
+      for (const ch of word) {
+        const span = document.createElement('span');
+        span.className = 'letter' + (guessed.has(ch) || status === 'lose' ? ' found' : '');
+        span.textContent = (guessed.has(ch) || status === 'lose') ? ch : '';
+        if (status === 'lose' && !guessed.has(ch)) span.style.color = '#e94560';
+        wordEl.appendChild(span);
+      }
+    }
+
+    function renderKeyboard() {
+      kbEl.innerHTML = '';
+      for (const ch of 'abcdefghijklmnopqrstuvwxyz') {
+        const btn = document.createElement('button');
+        btn.className = 'key' + (guessed.has(ch) ? (word.includes(ch) ? ' right' : ' wrong') : '');
+        btn.textContent = ch;
+        btn.disabled = guessed.has(ch) || status !== 'playing';
+        btn.addEventListener('click', () => guess(ch));
+        kbEl.appendChild(btn);
+      }
+    }
+
+    function guess(ch) {
+      if (status !== 'playing' || guessed.has(ch)) return;
+      guessed.add(ch);
+      if (!word.includes(ch)) wrong++;
+      drawGallows(wrong);
+      renderWord();
+      renderKeyboard();
+
+      const won = [...word].every(c => guessed.has(c));
+      const lost = wrong >= MAX_WRONG;
+      if (won) { status = 'win'; msgEl.textContent = 'You got it!'; msgEl.className = 'win'; newBtn.style.display = ''; }
+      else if (lost) { status = 'lose'; msgEl.textContent = `The word was: ${word}`; msgEl.className = 'lose'; newBtn.style.display = ''; renderWord(); }
+    }
+
+    function newGame() {
+      const [w, h] = WORDS[Math.floor(Math.random() * WORDS.length)];
+      word = w; hint = h;
+      guessed = new Set(); wrong = 0; status = 'playing';
+      hintEl.textContent = `hint: ${hint}`;
+      msgEl.textContent = ''; msgEl.className = '';
+      newBtn.style.display = 'none';
+      drawGallows(0);
+      renderWord();
+      renderKeyboard();
+    }
+
+    document.addEventListener('keydown', e => {
+      if (e.key.length === 1 && e.key >= 'a' && e.key <= 'z') guess(e.key);
+      if (e.key >= 'A' && e.key <= 'Z') guess(e.key.toLowerCase());
+    });
+
+    newBtn.addEventListener('click', newGame);
+    newGame();
+  </script>
+</body>
+</html>

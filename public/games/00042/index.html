@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>The Heap</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #1a1a2e;
+      color: white;
+      font-family: 'Fredoka One', cursive;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      padding: 8px;
+      gap: 12px;
+    }
+    h1 { font-size: clamp(18px, 3.5vw, 26px); }
+    #question { font-size: clamp(13px, 2.5vw, 17px); color: #ccc; text-align: center; max-width: 500px; line-height: 1.6; }
+    #heap-wrap {
+      position: relative;
+      width: min(320px, 80vw);
+      height: min(160px, 30vw);
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+    }
+    canvas { position: absolute; inset: 0; }
+    #count { font-size: clamp(40px, 10vw, 72px); color: #ffcc00; text-align: center; }
+    #count-label { font-size: clamp(11px, 2vw, 14px); color: #555; }
+    #verdict { font-size: clamp(14px, 3vw, 20px); color: #aaa; text-align: center; min-height: 1.5em; }
+    #verdict.heap { color: #44cc88; }
+    #controls { display: flex; gap: 12px; }
+    button {
+      border: none; border-radius: 10px;
+      font-family: 'Fredoka One', cursive;
+      font-size: clamp(14px, 3vw, 20px);
+      padding: 10px 24px;
+      cursor: pointer;
+    }
+    #add-btn { background: #ffcc00; color: #000; }
+    #remove-btn { background: #e94560; color: white; }
+    #reset-btn { background: #2a2a44; color: #aaa; border: 2px solid #444; padding: 8px 16px; font-size: clamp(12px, 2vw, 15px); }
+    #threshold { font-size: clamp(11px, 2vw, 13px); color: #333; text-align: center; }
+  </style>
+</head>
+<body data-game="00042">
+  <h1>The Heap</h1>
+  <div id="question">One grain of sand is not a heap. Adding one grain to a non-heap still isn't a heap. So when does it become one?</div>
+  <div id="heap-wrap"><canvas id="c"></canvas></div>
+  <div id="count">0</div>
+  <div id="count-label">grains</div>
+  <div id="verdict">not a heap</div>
+  <div id="controls">
+    <button id="remove-btn">− Grain</button>
+    <button id="add-btn">+ Grain</button>
+  </div>
+  <button id="reset-btn">Reset</button>
+  <div id="threshold">the paradox: there is no single grain that makes the difference</div>
+
+  <script src="/shared/nav.js"></script>
+  <script>
+    const canvas = document.getElementById('c');
+    const ctx = canvas.getContext('2d');
+    const countEl = document.getElementById('count');
+    const verdictEl = document.getElementById('verdict');
+    let grains = 0;
+
+    const HEAP_THRESHOLD = 30; // "secret" threshold — but we won't tell them
+
+    function resize() {
+      canvas.width = canvas.parentElement.offsetWidth;
+      canvas.height = canvas.parentElement.offsetHeight;
+      draw();
+    }
+
+    function draw() {
+      const W = canvas.width, H = canvas.height;
+      ctx.clearRect(0, 0, W, H);
+      if (grains === 0) return;
+
+      const maxGrains = 200;
+      const pct = Math.min(1, grains / maxGrains);
+      const heapH = H * 0.1 + pct * H * 0.85;
+      const heapW = W * 0.2 + pct * W * 0.7;
+
+      // Heap shape
+      const cx = W / 2, base = H;
+      ctx.fillStyle = '#c8a96e';
+      ctx.beginPath();
+      ctx.moveTo(cx - heapW/2, base);
+      ctx.quadraticCurveTo(cx, base - heapH, cx + heapW/2, base);
+      ctx.closePath();
+      ctx.fill();
+
+      // Grain texture dots
+      ctx.fillStyle = '#a08050';
+      const dotCount = Math.min(grains, 80);
+      for (let i = 0; i < dotCount; i++) {
+        const angle = (i / dotCount) * Math.PI;
+        const r = Math.random();
+        const px = cx + (Math.cos(angle) * heapW/2 * 0.8) * (1 - r * 0.8);
+        const py = base - heapH * (1 - r) * Math.sin(angle) * 0.9;
+        ctx.beginPath();
+        ctx.arc(px, py, 2, 0, Math.PI*2);
+        ctx.fill();
+      }
+
+      // Highlight grain
+      ctx.fillStyle = '#e8c88e';
+      ctx.beginPath();
+      ctx.arc(cx, base - heapH * 0.9, 3, 0, Math.PI*2);
+      ctx.fill();
+    }
+
+    function updateVerdict() {
+      countEl.textContent = grains;
+      if (grains === 0) { verdictEl.textContent = 'no grains'; verdictEl.className = ''; }
+      else if (grains === 1) { verdictEl.textContent = 'one grain — definitely not a heap'; verdictEl.className = ''; }
+      else if (grains < 5) { verdictEl.textContent = 'a few grains — not a heap'; verdictEl.className = ''; }
+      else if (grains < 15) { verdictEl.textContent = 'several grains — probably not a heap'; verdictEl.className = ''; }
+      else if (grains < HEAP_THRESHOLD) { verdictEl.textContent = 'getting there — is this a heap yet?'; verdictEl.className = ''; }
+      else if (grains < 50) { verdictEl.textContent = 'a heap!'; verdictEl.className = 'heap'; }
+      else if (grains < 100) { verdictEl.textContent = 'definitely a heap'; verdictEl.className = 'heap'; }
+      else { verdictEl.textContent = 'a very large heap'; verdictEl.className = 'heap'; }
+    }
+
+    document.getElementById('add-btn').addEventListener('click', () => { grains = Math.min(300, grains + 1); draw(); updateVerdict(); });
+    document.getElementById('remove-btn').addEventListener('click', () => { grains = Math.max(0, grains - 1); draw(); updateVerdict(); });
+    document.getElementById('reset-btn').addEventListener('click', () => { grains = 0; draw(); updateVerdict(); });
+
+    // Hold to add fast
+    let holdTimer;
+    document.getElementById('add-btn').addEventListener('pointerdown', () => { holdTimer = setInterval(() => { grains = Math.min(300, grains + 1); draw(); updateVerdict(); }, 80); });
+    document.getElementById('remove-btn').addEventListener('pointerdown', () => { holdTimer = setInterval(() => { grains = Math.max(0, grains - 1); draw(); updateVerdict(); }, 80); });
+    ['pointerup','pointerleave'].forEach(ev => {
+      document.getElementById('add-btn').addEventListener(ev, () => clearInterval(holdTimer));
+      document.getElementById('remove-btn').addEventListener(ev, () => clearInterval(holdTimer));
+    });
+
+    resize();
+    updateVerdict();
+    window.addEventListener('resize', resize);
+  </script>
+</body>
+</html>

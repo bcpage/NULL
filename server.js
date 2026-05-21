@@ -7,7 +7,7 @@ const { networkInterfaces } = require('os');
 const PORT = 3000;
 
 // ─── Game registry ────────────────────────────────────────────────────────────
-const GAMES = ['00001', '00002', '00003', '00004', '00005', '00006', '00007', '00008', '00009', '00010', '00011', '00012', '00013', '00014', '00015', '00016', '00017', '00018', '00019', '00020', '00021', '00022', '00023', '00024', '00025', '00026', '00027', '00028', '00029', '00030'];
+const GAMES = ['00001', '00002', '00003', '00004', '00005', '00006', '00007', '00008', '00009', '00010', '00011', '00012', '00013', '00014', '00015', '00016', '00017', '00018', '00019', '00020', '00021', '00022', '00023', '00024', '00025', '00026', '00027', '00028', '00029', '00030', '00031', '00032', '00033', '00034', '00035', '00036', '00037', '00038', '00039', '00040', '00041', '00042', '00043', '00044', '00045', '00046', '00047', '00048', '00049', '00050'];
 
 // ─── Cookie persistence ───────────────────────────────────────────────────────
 const COOKIE_DATA_DIR = path.join(__dirname, 'public', 'games', '00002', 'data');
@@ -141,6 +141,75 @@ setInterval(() => {
     gallerySpawnTarget();
   }
 }, 2000);
+
+// ─── The Form (00032) ────────────────────────────────────────────────────────
+const FORM_DATA_DIR = path.join(__dirname, 'public', 'games', '00032', 'data');
+const FORM_FILE = path.join(FORM_DATA_DIR, 'submissions.json');
+if (!fs.existsSync(FORM_DATA_DIR)) fs.mkdirSync(FORM_DATA_DIR, { recursive: true });
+let formSubmissions = [];
+try { formSubmissions = JSON.parse(fs.readFileSync(FORM_FILE, 'utf8')); } catch (e) {}
+function saveForm() { fs.writeFileSync(FORM_FILE, JSON.stringify(formSubmissions)); }
+
+// ─── Trolley Problem (00035) ──────────────────────────────────────────────────
+const TROLLEY_DATA_DIR = path.join(__dirname, 'public', 'games', '00035', 'data');
+const TROLLEY_FILE = path.join(TROLLEY_DATA_DIR, 'pulls.json');
+if (!fs.existsSync(TROLLEY_DATA_DIR)) fs.mkdirSync(TROLLEY_DATA_DIR, { recursive: true });
+let trolleyData = { pull: 0, leave: 0 };
+try { trolleyData = JSON.parse(fs.readFileSync(TROLLEY_FILE, 'utf8')); } catch (e) {}
+function saveTrolley() { fs.writeFileSync(TROLLEY_FILE, JSON.stringify(trolleyData)); }
+
+// ─── Metronome (00037) ────────────────────────────────────────────────────────
+let metronomes = new Map(); // clientId → { bpm, label }
+let metronomeClientIds = new WeakMap();
+let metronomeNextId = 1;
+function metronomeList() {
+  return [...metronomes.values()];
+}
+
+// ─── Shared Chalkboard (00038) ────────────────────────────────────────────────
+const CHALK_DATA_DIR = path.join(__dirname, 'public', 'games', '00038', 'data');
+const CHALK_FILE = path.join(CHALK_DATA_DIR, 'strokes.json');
+if (!fs.existsSync(CHALK_DATA_DIR)) fs.mkdirSync(CHALK_DATA_DIR, { recursive: true });
+let chalkStrokes = [];
+try { chalkStrokes = JSON.parse(fs.readFileSync(CHALK_FILE, 'utf8')); } catch (e) {}
+function saveChalk() { fs.writeFileSync(CHALK_FILE, JSON.stringify(chalkStrokes)); }
+
+// ─── Dots & Boxes (00036) ─────────────────────────────────────────────────────
+const DB_COLS = 5, DB_ROWS = 5;
+const DB_H_LINES = (DB_COLS) * (DB_ROWS + 1);
+const DB_V_LINES = (DB_COLS + 1) * DB_ROWS;
+function freshDotsGame() {
+  return {
+    hLines: new Array(DB_H_LINES).fill(0),
+    vLines: new Array(DB_V_LINES).fill(0),
+    boxes: new Array(DB_COLS * DB_ROWS).fill(0),
+    scores: [0, 0],
+    turn: 1,
+    status: 'playing',
+    winner: 0,
+  };
+}
+let dotsGame = freshDotsGame();
+function dotsStateMsg() { return { game: 'dots', type: 'state', ...dotsGame }; }
+function dotsCheckBoxes(prev) {
+  let captured = 0;
+  for (let r = 0; r < DB_ROWS; r++) {
+    for (let c = 0; c < DB_COLS; c++) {
+      const idx = r * DB_COLS + c;
+      if (dotsGame.boxes[idx]) continue;
+      const top = r * DB_COLS + c;
+      const bot = (r + 1) * DB_COLS + c;
+      const left = r * (DB_COLS + 1) + c;
+      const right = r * (DB_COLS + 1) + c + 1;
+      if (dotsGame.hLines[top] && dotsGame.hLines[bot] && dotsGame.vLines[left] && dotsGame.vLines[right]) {
+        dotsGame.boxes[idx] = prev;
+        dotsGame.scores[prev - 1]++;
+        captured++;
+      }
+    }
+  }
+  return captured;
+}
 
 // ─── Tic Tac Toe state ───────────────────────────────────────────────────────
 const WIN_LINES = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
@@ -496,6 +565,13 @@ wss.on('connection', (ws) => {
   ws.send(JSON.stringify({ game: 'ascii', type: 'state', bits: asciiBits }));
   ws.send(JSON.stringify({ game: 'type', type: 'page', text: typeText }));
   ws.send(JSON.stringify({ game: 'plant', type: 'state', ...plantData }));
+  ws.send(JSON.stringify({ game: 'form', type: 'history', submissions: formSubmissions.slice(-50) }));
+  ws.send(JSON.stringify({ game: 'trolley', type: 'state', ...trolleyData }));
+  ws.send(JSON.stringify({ game: 'metro', type: 'list', metronomes: metronomeList() }));
+  ws.send(JSON.stringify({ game: 'chalk', type: 'init', strokes: chalkStrokes }));
+  ws.send(JSON.stringify(dotsStateMsg()));
+  const metroId = metronomeNextId++;
+  metronomeClientIds.set(ws, metroId);
 
   // Assign gallery client ID
   const clientId = galleryNextId++;
@@ -582,6 +658,77 @@ wss.on('connection', (ws) => {
         broadcast({ game: 'ascii', type: 'state', bits: asciiBits });
       }
 
+      // ── The Form ──
+      if (data.game === 'form' && data.type === 'submit') {
+        const fields = {};
+        const allowed = ['name','purpose','date','reference','signature'];
+        for (const k of allowed) fields[k] = String(data.fields?.[k] || '').slice(0, 100).trim();
+        if (Object.values(fields).some(v => v)) {
+          const entry = { ...fields, ts: Date.now() };
+          formSubmissions.push(entry);
+          if (formSubmissions.length > 200) formSubmissions.shift();
+          saveForm();
+          broadcast({ game: 'form', type: 'new', entry });
+        }
+      }
+
+      // ── Trolley Problem ──
+      if (data.game === 'trolley' && (data.type === 'pull' || data.type === 'leave')) {
+        trolleyData[data.type]++;
+        saveTrolley();
+        broadcast({ game: 'trolley', type: 'state', ...trolleyData });
+      }
+
+      // ── Metronome ──
+      if (data.game === 'metro' && data.type === 'set') {
+        const mid = metronomeClientIds.get(ws);
+        const bpm = Math.max(20, Math.min(300, parseInt(data.bpm) || 120));
+        const label = String(data.label || '').slice(0, 20).trim() || 'anon';
+        metronomes.set(mid, { id: mid, bpm, label });
+        broadcast({ game: 'metro', type: 'list', metronomes: metronomeList() });
+      }
+      if (data.game === 'metro' && data.type === 'stop') {
+        const mid = metronomeClientIds.get(ws);
+        metronomes.delete(mid);
+        broadcast({ game: 'metro', type: 'list', metronomes: metronomeList() });
+      }
+
+      // ── Shared Chalkboard ──
+      if (data.game === 'chalk' && data.type === 'stroke') {
+        const stroke = { pts: (data.pts||[]).slice(0, 500), color: String(data.color||'#ffffff').slice(0,7), width: Math.max(1,Math.min(20,data.width||3)) };
+        if (stroke.pts.length > 1) {
+          chalkStrokes.push(stroke);
+          if (chalkStrokes.length > 1000) chalkStrokes.shift();
+          saveChalk();
+          broadcast({ game: 'chalk', type: 'stroke', stroke });
+        }
+      }
+      if (data.game === 'chalk' && data.type === 'clear') {
+        chalkStrokes = [];
+        saveChalk();
+        broadcast({ game: 'chalk', type: 'clear' });
+      }
+
+      // ── Dots & Boxes ──
+      if (data.game === 'dots' && data.type === 'line') {
+        if (dotsGame.status !== 'playing') { dotsGame = freshDotsGame(); broadcast(dotsStateMsg()); return; }
+        const { axis, idx } = data;
+        const arr = axis === 'h' ? dotsGame.hLines : dotsGame.vLines;
+        if (typeof idx !== 'number' || idx < 0 || idx >= arr.length || arr[idx]) return;
+        arr[idx] = dotsGame.turn;
+        const captured = dotsCheckBoxes(dotsGame.turn);
+        if (!captured) dotsGame.turn = dotsGame.turn === 1 ? 2 : 1;
+        const totalBoxes = DB_COLS * DB_ROWS;
+        if (dotsGame.boxes.every(b => b)) {
+          dotsGame.status = 'done';
+          dotsGame.winner = dotsGame.scores[0] > dotsGame.scores[1] ? 1 : dotsGame.scores[1] > dotsGame.scores[0] ? 2 : 0;
+          broadcast(dotsStateMsg());
+          setTimeout(() => { dotsGame = freshDotsGame(); broadcast(dotsStateMsg()); }, 5000);
+        } else {
+          broadcast(dotsStateMsg());
+        }
+      }
+
       // ── Typewriter ──
       if (data.game === 'type' && data.type === 'key') {
         const char = String(data.char || '');
@@ -661,6 +808,8 @@ wss.on('connection', (ws) => {
   ws.on('close', () => {
     const cid = galleryClientIds.get(ws);
     if (cid) galleryScores.delete(cid);
+    const mid = metronomeClientIds.get(ws);
+    if (mid) { metronomes.delete(mid); broadcast({ game: 'metro', type: 'list', metronomes: metronomeList() }); }
     console.log(`Player disconnected. Total: ${wss.clients.size}`);
   });
 });

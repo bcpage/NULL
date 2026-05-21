@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>The Hallway</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0a0a0f;
+      color: white;
+      font-family: 'Fredoka One', cursive;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      padding: 8px;
+      gap: 8px;
+    }
+    #hallway {
+      flex: 1;
+      width: 100%;
+      position: relative;
+      overflow: hidden;
+      cursor: pointer;
+    }
+    canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+    #hint { font-size: clamp(11px, 2vw, 14px); color: #333; }
+    #door-msg {
+      font-size: clamp(12px, 2.5vw, 16px);
+      color: #444;
+      height: 1.5em;
+      text-align: center;
+      transition: color 0.5s;
+    }
+    #door-msg.lit { color: #aaa; }
+  </style>
+</head>
+<body data-game="00031">
+  <div id="hallway"><canvas id="c"></canvas></div>
+  <div id="door-msg"></div>
+  <div id="hint">click to walk forward</div>
+
+  <script src="/shared/nav.js"></script>
+  <script>
+    const canvas = document.getElementById('c');
+    const ctx = canvas.getContext('2d');
+    const msgEl = document.getElementById('door-msg');
+
+    const DOOR_MSGS = [
+      'The door is locked.',
+      'The handle is cold.',
+      'It does not open.',
+      'You try. Nothing.',
+      'Locked.',
+      'There is no key.',
+      'Not this one.',
+      'The door ignores you.',
+      'It has always been locked.',
+    ];
+
+    let depth = 0;
+    let targetDepth = 0;
+    let animating = false;
+
+    function resize() {
+      canvas.width = canvas.offsetWidth;
+      canvas.height = canvas.offsetHeight;
+    }
+
+    function drawHallway(d) {
+      const W = canvas.width, H = canvas.height;
+      ctx.fillStyle = '#080810';
+      ctx.fillRect(0, 0, W, H);
+
+      const cx = W / 2, cy = H / 2;
+      const segments = 12;
+      const frac = d % 1;
+
+      for (let i = segments; i >= 0; i--) {
+        const t = (i - frac) / segments;
+        if (t < 0) continue;
+        const s = 0.08 + t * 0.92;
+        const pw = W * s * 0.5;
+        const ph = H * s * 0.7;
+        const px = cx - pw / 2;
+        const py = cy - ph / 2;
+
+        const brightness = Math.floor(t * 38);
+        ctx.strokeStyle = `rgb(${brightness},${brightness},${brightness+4})`;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(px, py, pw, ph);
+
+        // Floor line
+        ctx.beginPath();
+        ctx.moveTo(px, py + ph);
+        ctx.lineTo(px + pw, py + ph);
+        ctx.stroke();
+
+        // Door at the far end
+        if (i === 0) {
+          const dw = pw * 0.3, dh = ph * 0.6;
+          const dx = cx - dw / 2, dy = py + ph - dh;
+          ctx.fillStyle = `rgb(${brightness+10},${brightness+5},${brightness})`;
+          ctx.fillRect(dx, dy, dw, dh);
+          ctx.strokeStyle = `rgb(${brightness+20},${brightness+15},${brightness+10})`;
+          ctx.strokeRect(dx, dy, dw, dh);
+          // Knob
+          ctx.beginPath();
+          ctx.arc(dx + dw * 0.8, dy + dh * 0.5, 2, 0, Math.PI * 2);
+          ctx.fillStyle = `rgb(${brightness+30},${brightness+20},${brightness})`;
+          ctx.fill();
+        }
+
+        // Side doors
+        if (i > 0 && i < segments && i % 2 === 0) {
+          const sdw = pw * 0.08, sdh = ph * 0.55;
+          // Left
+          ctx.fillStyle = `rgb(${brightness+5},${brightness+2},${brightness})`;
+          ctx.fillRect(px, py + ph - sdh, sdw, sdh);
+          ctx.strokeStyle = `rgb(${brightness+15},${brightness+10},${brightness+5})`;
+          ctx.strokeRect(px, py + ph - sdh, sdw, sdh);
+          // Right
+          ctx.fillRect(px + pw - sdw, py + ph - sdh, sdw, sdh);
+          ctx.strokeRect(px + pw - sdw, py + ph - sdh, sdw, sdh);
+        }
+      }
+
+      // Ambient light flicker
+      const flicker = Math.random() < 0.02;
+      if (flicker) {
+        ctx.fillStyle = 'rgba(255,255,200,0.015)';
+        ctx.fillRect(0, 0, W, H);
+      }
+    }
+
+    function animate() {
+      if (Math.abs(depth - targetDepth) > 0.01) {
+        depth += (targetDepth - depth) * 0.1;
+        animating = true;
+      } else {
+        depth = targetDepth;
+        animating = false;
+      }
+      drawHallway(depth);
+      requestAnimationFrame(animate);
+    }
+
+    document.getElementById('hallway').addEventListener('click', () => {
+      targetDepth += 1;
+      // Occasionally show a door message
+      if (Math.random() < 0.3) {
+        const m = DOOR_MSGS[Math.floor(Math.random() * DOOR_MSGS.length)];
+        msgEl.textContent = m;
+        msgEl.className = 'lit';
+        setTimeout(() => { msgEl.className = ''; setTimeout(() => { msgEl.textContent = ''; }, 500); }, 2000);
+      }
+    });
+
+    resize();
+    animate();
+    window.addEventListener('resize', resize);
+  </script>
+</body>
+</html>

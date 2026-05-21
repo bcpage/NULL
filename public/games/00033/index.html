@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>2am Room</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #050508;
+      color: white;
+      font-family: 'Fredoka One', cursive;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      padding: 8px;
+      gap: 24px;
+    }
+    #clock {
+      font-size: clamp(48px, 15vw, 120px);
+      color: #222;
+      letter-spacing: 0.05em;
+      transition: color 2s;
+    }
+    #clock.open { color: #4488ff; text-shadow: 0 0 40px #4488ff66; }
+    #msg {
+      font-size: clamp(14px, 3vw, 22px);
+      color: #1a1a2a;
+      text-align: center;
+      max-width: 500px;
+      line-height: 1.6;
+      transition: color 2s;
+    }
+    #msg.open { color: #aabbcc; }
+    #sub {
+      font-size: clamp(11px, 2vw, 15px);
+      color: #0d0d18;
+      transition: color 2s;
+    }
+    #sub.open { color: #556677; }
+    #content {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      max-width: 500px;
+      text-align: center;
+    }
+    #content.open { display: flex; }
+    #content p {
+      font-size: clamp(13px, 2.5vw, 18px);
+      color: #6688aa;
+      line-height: 1.7;
+    }
+  </style>
+</head>
+<body data-game="00033">
+  <div id="clock">--:--</div>
+  <div id="msg">this room is closed</div>
+  <div id="sub">it opens at 2:00 am and closes at 3:00 am</div>
+  <div id="content">
+    <p>You found it.</p>
+    <p>Most people don't come here at this hour. Or maybe they do — you wouldn't know. There's no way to tell who else is here right now.</p>
+    <p>This room doesn't do anything. It's just open.</p>
+    <p>You can stay as long as you like, until 3.</p>
+  </div>
+
+  <script src="/shared/nav.js"></script>
+  <script>
+    const clockEl = document.getElementById('clock');
+    const msgEl = document.getElementById('msg');
+    const subEl = document.getElementById('sub');
+    const contentEl = document.getElementById('content');
+
+    function pad(n) { return String(n).padStart(2, '0'); }
+
+    function tick() {
+      const now = new Date();
+      const h = now.getHours(), m = now.getMinutes(), s = now.getSeconds();
+      clockEl.textContent = `${pad(h)}:${pad(m)}`;
+
+      const isOpen = h === 2; // 2:00am–2:59am
+      clockEl.className = isOpen ? 'open' : '';
+      msgEl.className = isOpen ? 'open' : '';
+      subEl.className = isOpen ? 'open' : '';
+      contentEl.className = isOpen ? 'open' : '';
+
+      if (isOpen) {
+        msgEl.textContent = 'this room is open';
+        subEl.textContent = `closes in ${pad(59-m)}:${pad(59-s)}`;
+      } else {
+        msgEl.textContent = 'this room is closed';
+        const hoursUntil2 = ((2 - h) + 24) % 24;
+        if (hoursUntil2 === 0) {
+          subEl.textContent = `opens at 3:00 am`;
+        } else if (hoursUntil2 === 23) {
+          subEl.textContent = `it opens at 2:00 am — come back in ${pad(59-m)}:${pad(59-s)}`;
+        } else {
+          subEl.textContent = `it opens at 2:00 am — come back in about ${hoursUntil2}h`;
+        }
+      }
+    }
+
+    tick();
+    setInterval(tick, 1000);
+  </script>
+</body>
+</html>

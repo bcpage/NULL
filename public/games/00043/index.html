@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>PRNG vs True RNG</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #1a1a2e;
+      color: white;
+      font-family: 'Fredoka One', cursive;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      padding: 8px;
+      gap: 8px;
+    }
+    h1 { font-size: clamp(18px, 3.5vw, 26px); margin-top: 4px; }
+    #subtitle { font-size: clamp(11px, 2vw, 14px); color: #666; }
+    #panels {
+      display: flex;
+      gap: 12px;
+      flex: 1;
+      width: 100%;
+      max-width: 700px;
+    }
+    .panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .panel-title { font-size: clamp(13px, 2.5vw, 17px); text-align: center; }
+    canvas { border-radius: 6px; display: block; width: 100%; flex: 1; }
+    #guess-row {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+    }
+    .guess-btn {
+      border: none;
+      border-radius: 10px;
+      font-family: 'Fredoka One', cursive;
+      font-size: clamp(13px, 2.5vw, 17px);
+      padding: 8px 20px;
+      cursor: pointer;
+      background: #2a2a44;
+      color: #aaa;
+      border: 2px solid #444;
+      transition: border-color 0.2s;
+    }
+    .guess-btn:hover { border-color: #4488ff; color: white; }
+    #feedback { font-size: clamp(13px, 2.5vw, 17px); color: #aaa; text-align: center; min-height: 1.5em; }
+    #feedback.correct { color: #44cc88; }
+    #feedback.wrong { color: #e94560; }
+    #score { font-size: clamp(12px, 2vw, 15px); color: #555; text-align: center; }
+    #reveal-btn {
+      background: #4488ff; border: none; border-radius: 8px;
+      color: white; font-family: 'Fredoka One', cursive;
+      font-size: clamp(12px, 2vw, 15px); padding: 6px 16px; cursor: pointer;
+    }
+    #explanation { font-size: clamp(11px, 2vw, 13px); color: #444; text-align: center; max-width: 600px; }
+  </style>
+</head>
+<body data-game="00043">
+  <h1>PRNG vs True RNG</h1>
+  <div id="subtitle">One panel is pseudo-random. One uses crypto. Can you tell?</div>
+  <div id="panels">
+    <div class="panel">
+      <div class="panel-title" id="title-a">Panel A</div>
+      <canvas id="a"></canvas>
+    </div>
+    <div class="panel">
+      <div class="panel-title" id="title-b">Panel B</div>
+      <canvas id="b"></canvas>
+    </div>
+  </div>
+  <div id="guess-row">
+    <button class="guess-btn" id="guess-a">A is PRNG</button>
+    <button class="guess-btn" id="guess-b">B is PRNG</button>
+  </div>
+  <div id="feedback"></div>
+  <div id="score">score: 0/0</div>
+  <button id="reveal-btn">New Round</button>
+  <div id="explanation">A pseudo-random number generator (PRNG) uses a deterministic algorithm seeded with a value. True RNG uses physical entropy (hardware noise). Visually, they're indistinguishable — that's the point.</div>
+
+  <script src="/shared/nav.js"></script>
+  <script>
+    const canvasA = document.getElementById('a'), canvasB = document.getElementById('b');
+    const ctxA = canvasA.getContext('2d'), ctxB = canvasB.getContext('2d');
+    let prngIsA, correct = 0, total = 0, guessed = false;
+
+    // Simple seeded PRNG (mulberry32)
+    function mulberry32(seed) {
+      return function() {
+        seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+        let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+        t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+        return ((t ^ t >>> 14) >>> 0) / 4294967296;
+      };
+    }
+
+    function resize() {
+      const h = Math.floor((window.innerHeight - 220) / 2);
+      [canvasA, canvasB].forEach(c => {
+        c.width = c.offsetWidth || 200;
+        c.height = Math.max(100, h);
+      });
+      newRound();
+    }
+
+    function fillCanvas(ctx, randFn) {
+      const W = ctx.canvas.width, H = ctx.canvas.height;
+      const img = ctx.createImageData(W, H);
+      for (let i = 0; i < img.data.length; i += 4) {
+        const v = Math.floor(randFn() * 256);
+        img.data[i] = v; img.data[i+1] = v; img.data[i+2] = v; img.data[i+3] = 255;
+      }
+      ctx.putImageData(img, 0, 0);
+    }
+
+    function trueRand(n) {
+      const arr = new Uint8Array(n);
+      crypto.getRandomValues(arr);
+      let i = 0;
+      return () => arr[i++ % n] / 255;
+    }
+
+    function newRound() {
+      guessed = false;
+      prngIsA = Math.random() < 0.5;
+      const seed = Math.floor(Math.random() * 0xFFFFFFFF);
+      const prng = mulberry32(seed);
+      const trng = trueRand(canvasA.width * canvasA.height);
+
+      if (prngIsA) { fillCanvas(ctxA, prng); fillCanvas(ctxB, trng); }
+      else { fillCanvas(ctxA, trng); fillCanvas(ctxB, prng); }
+
+      document.getElementById('title-a').textContent = 'Panel A';
+      document.getElementById('title-b').textContent = 'Panel B';
+      document.getElementById('feedback').textContent = '';
+      document.getElementById('feedback').className = '';
+      ['guess-a','guess-b'].forEach(id => { document.getElementById(id).style.background = ''; });
+    }
+
+    function guess(aIsPrng) {
+      if (guessed) return;
+      guessed = true;
+      total++;
+      const correct_guess = (aIsPrng === prngIsA);
+      if (correct_guess) correct++;
+
+      const fb = document.getElementById('feedback');
+      if (correct_guess) { fb.textContent = 'Correct! But you might have just guessed.'; fb.className = 'correct'; }
+      else { fb.textContent = 'Wrong! The patterns are visually identical.'; fb.className = 'wrong'; }
+
+      document.getElementById('title-a').textContent = 'Panel A — ' + (prngIsA ? 'PRNG' : 'True RNG');
+      document.getElementById('title-b').textContent = 'Panel B — ' + (!prngIsA ? 'PRNG' : 'True RNG');
+      document.getElementById('score').textContent = `score: ${correct}/${total} (${Math.round(correct/total*100)}%)`;
+    }
+
+    document.getElementById('guess-a').addEventListener('click', () => guess(true));
+    document.getElementById('guess-b').addEventListener('click', () => guess(false));
+    document.getElementById('reveal-btn').addEventListener('click', newRound);
+
+    window.addEventListener('resize', () => setTimeout(resize, 50));
+    setTimeout(resize, 100);
+  </script>
+</body>
+</html>

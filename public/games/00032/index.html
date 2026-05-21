@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>The Form</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #f0ede6;
+      color: #222;
+      font-family: 'Courier New', monospace;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+    }
+    #nav-area { background: #1a1a2e; flex-shrink: 0; }
+    #layout {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+    #form-col {
+      width: min(420px, 55%);
+      flex-shrink: 0;
+      padding: 20px;
+      overflow-y: auto;
+      border-right: 2px solid #ccc;
+      background: #f8f5ee;
+    }
+    h1 {
+      font-family: 'Courier New', monospace;
+      font-size: clamp(13px, 2.5vw, 17px);
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 16px;
+      border-bottom: 2px solid #555;
+      padding-bottom: 6px;
+    }
+    .field { margin-bottom: 14px; }
+    label {
+      display: block;
+      font-size: clamp(10px, 1.8vw, 12px);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #555;
+      margin-bottom: 3px;
+    }
+    input, textarea {
+      width: 100%;
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid #999;
+      padding: 4px 2px;
+      font-family: 'Courier New', monospace;
+      font-size: clamp(13px, 2.5vw, 16px);
+      color: #111;
+      outline: none;
+    }
+    input:focus, textarea:focus { border-bottom-color: #333; }
+    textarea { resize: none; height: 60px; }
+    #submit-btn {
+      width: 100%;
+      background: #1a1a2e;
+      color: white;
+      border: none;
+      font-family: 'Courier New', monospace;
+      font-size: clamp(12px, 2vw, 15px);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      padding: 10px;
+      cursor: pointer;
+      margin-top: 8px;
+    }
+    #submit-btn:hover { background: #333355; }
+    #note { font-size: clamp(9px, 1.6vw, 11px); color: #888; margin-top: 8px; text-align: center; }
+    #feed-col {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      background: #ede8e0;
+    }
+    #feed-title {
+      font-size: clamp(10px, 1.8vw, 12px);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #888;
+      margin-bottom: 12px;
+    }
+    .entry {
+      background: #f8f5ee;
+      border-left: 3px solid #aaa;
+      padding: 8px 10px;
+      margin-bottom: 8px;
+      font-size: clamp(10px, 1.8vw, 13px);
+      line-height: 1.5;
+      animation: fadein 0.4s ease;
+    }
+    @keyframes fadein { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; } }
+    .entry-field { color: #555; font-size: 0.85em; }
+    .entry-val { color: #111; }
+    .entry-time { color: #bbb; font-size: 0.8em; float: right; }
+  </style>
+</head>
+<body data-game="00032">
+  <div id="nav-area"></div>
+  <div id="layout">
+    <div id="form-col">
+      <h1>FORM NULL-7 &nbsp; REQUEST FOR CONTINUANCE</h1>
+      <div class="field"><label>Full Name</label><input id="f-name" type="text" autocomplete="off" maxlength="60"></div>
+      <div class="field"><label>Purpose of Visit</label><input id="f-purpose" type="text" autocomplete="off" maxlength="80"></div>
+      <div class="field"><label>Date</label><input id="f-date" type="text" autocomplete="off" maxlength="30" placeholder="MM/DD/YYYY"></div>
+      <div class="field"><label>Reference Number</label><input id="f-reference" type="text" autocomplete="off" maxlength="30"></div>
+      <div class="field"><label>Signature</label><textarea id="f-signature" maxlength="100" placeholder="type your name"></textarea></div>
+      <button id="submit-btn">Submit Form</button>
+      <div id="note">All submissions are permanent and visible to all visitors.</div>
+    </div>
+    <div id="feed-col">
+      <div id="feed-title">SUBMITTED FORMS — MOST RECENT</div>
+      <div id="feed"></div>
+    </div>
+  </div>
+
+  <script src="/shared/nav.js"></script>
+  <script>
+    // Move nav into nav-area
+    document.addEventListener('DOMContentLoaded', () => {
+      const nav = document.querySelector('nav') || document.querySelector('#nav');
+      if (nav) document.getElementById('nav-area').appendChild(nav);
+    });
+
+    const feedEl = document.getElementById('feed');
+    let ws;
+
+    function timeAgo(ts) {
+      const s = Math.floor((Date.now() - ts) / 1000);
+      if (s < 60) return 'just now';
+      if (s < 3600) return Math.floor(s/60) + 'm ago';
+      if (s < 86400) return Math.floor(s/3600) + 'h ago';
+      return Math.floor(s/86400) + 'd ago';
+    }
+
+    function renderEntry(e, prepend=false) {
+      const div = document.createElement('div');
+      div.className = 'entry';
+      const fields = [
+        ['name', e.name], ['purpose', e.purpose], ['date', e.date],
+        ['reference', e.reference], ['signature', e.signature]
+      ].filter(([,v]) => v);
+      div.innerHTML = `<span class="entry-time">${timeAgo(e.ts)}</span>` +
+        fields.map(([k,v]) => `<div><span class="entry-field">${k}: </span><span class="entry-val">${v}</span></div>`).join('');
+      if (prepend) feedEl.prepend(div);
+      else feedEl.appendChild(div);
+      if (feedEl.children.length > 60) feedEl.lastElementChild?.remove();
+    }
+
+    function connect() {
+      ws = new WebSocket(`ws://${window.location.host}`);
+      ws.onmessage = e => {
+        const d = JSON.parse(e.data);
+        if (d.game !== 'form') return;
+        if (d.type === 'history') { feedEl.innerHTML = ''; d.submissions.slice().reverse().forEach(s => renderEntry(s)); }
+        if (d.type === 'new') renderEntry(d.entry, true);
+      };
+      ws.onclose = () => setTimeout(connect, 3000);
+    }
+
+    document.getElementById('submit-btn').addEventListener('click', () => {
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+      ws.send(JSON.stringify({ game: 'form', type: 'submit', fields: {
+        name: document.getElementById('f-name').value,
+        purpose: document.getElementById('f-purpose').value,
+        date: document.getElementById('f-date').value,
+        reference: document.getElementById('f-reference').value,
+        signature: document.getElementById('f-signature').value,
+      }}));
+      ['f-name','f-purpose','f-date','f-reference','f-signature'].forEach(id => { document.getElementById(id).value = ''; });
+    });
+
+    connect();
+  </script>
+</body>
+</html>

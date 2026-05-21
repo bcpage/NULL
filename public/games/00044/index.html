@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Visible Spectrum</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0a0a0f;
+      color: white;
+      font-family: 'Fredoka One', cursive;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      padding: 8px;
+      gap: 10px;
+    }
+    h1 { font-size: clamp(18px, 3.5vw, 26px); margin-top: 4px; }
+    canvas { display: block; border-radius: 6px; width: 100%; max-width: 700px; }
+    #info-box {
+      background: #0d0d1a;
+      border-radius: 10px;
+      padding: 12px 20px;
+      width: 100%;
+      max-width: 700px;
+      text-align: center;
+    }
+    #color-name { font-size: clamp(18px, 4vw, 28px); color: #ffcc00; }
+    #wavelength { font-size: clamp(13px, 2.5vw, 17px); color: #aaa; }
+    #fact { font-size: clamp(12px, 2vw, 14px); color: #555; margin-top: 6px; line-height: 1.5; }
+    #non-spectral {
+      width: 100%;
+      max-width: 700px;
+      background: #0d0d1a;
+      border-radius: 10px;
+      padding: 12px 16px;
+    }
+    #ns-title { font-size: clamp(13px, 2.5vw, 17px); color: #e94560; margin-bottom: 8px; }
+    #ns-swatches { display: flex; gap: 8px; flex-wrap: wrap; }
+    .ns-swatch {
+      flex: 1;
+      min-width: 80px;
+      border-radius: 8px;
+      padding: 8px;
+      text-align: center;
+      font-size: clamp(10px, 1.8vw, 13px);
+      cursor: pointer;
+    }
+    #hint { font-size: clamp(10px, 1.8vw, 12px); color: #333; }
+  </style>
+</head>
+<body data-game="00044">
+  <h1>Visible Spectrum</h1>
+  <canvas id="c" height="60"></canvas>
+  <div id="info-box">
+    <div id="color-name">hover the spectrum</div>
+    <div id="wavelength"></div>
+    <div id="fact"></div>
+  </div>
+  <div id="non-spectral">
+    <div id="ns-title">Non-Spectral Colors — they don't exist in the rainbow</div>
+    <div id="ns-swatches">
+      <div class="ns-swatch" style="background:#ff00ff;color:#fff" onclick="showNS('Magenta','No single wavelength. Your brain mixes red+blue to fill the gap between ends of the spectrum.')">Magenta</div>
+      <div class="ns-swatch" style="background:#ff69b4;color:#fff" onclick="showNS('Pink','A mix of red and white — no wavelength, just a perception.')">Pink</div>
+      <div class="ns-swatch" style="background:#8B4513;color:#fff" onclick="showNS('Brown','Low-intensity orange in context. Pure orange light never looks brown.')">Brown</div>
+      <div class="ns-swatch" style="background:#808080;color:#fff" onclick="showNS('Gray','Relative brightness perception only. No gray wavelength exists.')">Gray</div>
+      <div class="ns-swatch" style="background:#ffffff;color:#000" onclick="showNS('White','All wavelengths combined — or your brain making sense of a context.')">White</div>
+    </div>
+  </div>
+  <div id="hint">move your mouse or finger across the rainbow</div>
+
+  <script src="/shared/nav.js"></script>
+  <script>
+    const canvas = document.getElementById('c');
+    const ctx = canvas.getContext('2d');
+    const nameEl = document.getElementById('color-name');
+    const wavEl = document.getElementById('wavelength');
+    const factEl = document.getElementById('fact');
+
+    const COLORS = [
+      { nm: 380, name: 'Violet', r:148,g:0,b:211, fact:'Near the limit of human vision. Some people can\'t see it at all.' },
+      { nm: 405, name: 'Violet-Blue', r:75,g:0,b:130, fact:'The wavelength of deep violet, close to ultraviolet.' },
+      { nm: 440, name: 'Blue', r:0,g:0,b:255, fact:'Blue light scatters most in the atmosphere — why the sky is blue.' },
+      { nm: 480, name: 'Cyan-Blue', r:0,g:128,b:255, fact:'Between blue and cyan, common in clear ocean water.' },
+      { nm: 510, name: 'Cyan', r:0,g:200,b:200, fact:'Cyan is a primary color in printing. Your printer can make it; the sky cannot.' },
+      { nm: 530, name: 'Green', r:0,g:255,b:0, fact:'Human eyes are most sensitive to green — evolutionary adaptation.' },
+      { nm: 560, name: 'Yellow-Green', r:180,g:255,b:0, fact:'The boundary between green and yellow, where color naming varies by language.' },
+      { nm: 580, name: 'Yellow', r:255,g:255,b:0, fact:'Pure yellow light: no red and green mix needed on a screen, just wavelength 580nm.' },
+      { nm: 600, name: 'Orange', r:255,g:128,b:0, fact:'The only color named after a fruit. Orange the fruit came first.' },
+      { nm: 630, name: 'Red-Orange', r:255,g:50,b:0, fact:'Approaching the red end. Fire and sunsets live here.' },
+      { nm: 660, name: 'Red', r:255,g:0,b:0, fact:'Red light has the lowest frequency visible to humans.' },
+      { nm: 700, name: 'Deep Red', r:180,g:0,b:0, fact:'Near infrared. Some cameras can see what your eyes cannot.' },
+    ];
+
+    function resize() {
+      canvas.width = Math.min(canvas.parentElement.offsetWidth, 700);
+      drawSpectrum();
+    }
+
+    function drawSpectrum() {
+      const W = canvas.width, H = canvas.height;
+      const grad = ctx.createLinearGradient(0, 0, W, 0);
+      COLORS.forEach((c, i) => {
+        grad.addColorStop(i / (COLORS.length - 1), `rgb(${c.r},${c.g},${c.b})`);
+      });
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, W, H);
+    }
+
+    function getColorAt(x) {
+      const pct = x / canvas.width;
+      const idx = pct * (COLORS.length - 1);
+      const lo = Math.floor(idx), hi = Math.min(COLORS.length - 1, lo + 1);
+      const t = idx - lo;
+      const a = COLORS[lo], b2 = COLORS[hi];
+      return {
+        nm: Math.round(a.nm + (b2.nm - a.nm) * t),
+        name: t < 0.5 ? a.name : b2.name,
+        fact: t < 0.5 ? a.fact : b2.fact,
+      };
+    }
+
+    function showPos(x) {
+      const c = getColorAt(x);
+      nameEl.textContent = c.name;
+      wavEl.textContent = `${c.nm} nm`;
+      factEl.textContent = c.fact;
+    }
+
+    function showNS(name, fact) {
+      nameEl.textContent = name;
+      wavEl.textContent = 'no wavelength';
+      factEl.textContent = fact;
+    }
+    window.showNS = showNS;
+
+    canvas.addEventListener('mousemove', e => {
+      const rect = canvas.getBoundingClientRect();
+      showPos((e.clientX - rect.left) * (canvas.width / rect.width));
+    });
+    canvas.addEventListener('touchmove', e => {
+      e.preventDefault();
+      const rect = canvas.getBoundingClientRect();
+      showPos((e.touches[0].clientX - rect.left) * (canvas.width / rect.width));
+    }, { passive: false });
+
+    resize();
+    window.addEventListener('resize', resize);
+  </script>
+</body>
+</html>

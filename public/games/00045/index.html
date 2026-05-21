@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Logo Turtle</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0a0a0f;
+      color: #33ff33;
+      font-family: 'Courier New', monospace;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      padding: 8px;
+      gap: 6px;
+    }
+    #title-bar {
+      font-family: 'Fredoka One', cursive;
+      color: #33ff33;
+      text-align: center;
+      font-size: clamp(15px, 3vw, 20px);
+      flex-shrink: 0;
+    }
+    #main { display: flex; flex: 1; gap: 8px; overflow: hidden; }
+    canvas { border: 1px solid #1a3a1a; background: #000; border-radius: 4px; flex-shrink: 0; }
+    #right { display: flex; flex-direction: column; flex: 1; gap: 6px; overflow: hidden; min-width: 0; }
+    #output {
+      flex: 1;
+      overflow-y: auto;
+      font-size: clamp(11px, 2vw, 14px);
+      line-height: 1.5;
+      color: #44aa44;
+      scrollbar-width: thin;
+      scrollbar-color: #1a3a1a #000;
+    }
+    .out-line { color: #33ff33; }
+    .err-line { color: #ff4444; }
+    #input-row { display: flex; gap: 4px; flex-shrink: 0; border-top: 1px solid #1a3a1a; padding-top: 4px; }
+    #input-row span { color: #33ff33; font-size: clamp(13px, 2.5vw, 16px); flex-shrink: 0; }
+    #cmd {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: #aaffaa;
+      font-family: 'Courier New', monospace;
+      font-size: clamp(13px, 2.5vw, 16px);
+      caret-color: #33ff33;
+      min-width: 0;
+    }
+    #presets { display: flex; gap: 4px; flex-wrap: wrap; flex-shrink: 0; }
+    .preset {
+      background: #0a1a0a;
+      border: 1px solid #1a3a1a;
+      color: #44aa44;
+      font-family: 'Courier New', monospace;
+      font-size: clamp(10px, 1.8vw, 12px);
+      padding: 3px 8px;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    .preset:hover { border-color: #33ff33; color: #33ff33; }
+  </style>
+</head>
+<body data-game="00045">
+  <div id="title-bar">Logo Turtle Graphics — MIT 1967</div>
+  <div id="main">
+    <canvas id="c"></canvas>
+    <div id="right">
+      <div id="presets">
+        <button class="preset" onclick="runPreset('square')">square</button>
+        <button class="preset" onclick="runPreset('triangle')">triangle</button>
+        <button class="preset" onclick="runPreset('star')">star</button>
+        <button class="preset" onclick="runPreset('spiral')">spiral</button>
+        <button class="preset" onclick="runPreset('flower')">flower</button>
+        <button class="preset" onclick="reset()">clear</button>
+      </div>
+      <div id="output"></div>
+      <div id="input-row">
+        <span>?</span>
+        <input id="cmd" type="text" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="fd 100 rt 90…" maxlength="200">
+      </div>
+    </div>
+  </div>
+
+  <script src="/shared/nav.js"></script>
+  <script>
+    const canvas = document.getElementById('c');
+    const ctx = canvas.getContext('2d');
+    const output = document.getElementById('output');
+    const cmdInput = document.getElementById('cmd');
+
+    let turtle = { x: 0, y: 0, angle: -90, pen: true, color: '#33ff33', size: 2 };
+
+    function resize() {
+      const h = document.getElementById('main').offsetHeight;
+      const w = Math.min(h, window.innerWidth * 0.55);
+      canvas.width = Math.max(200, w);
+      canvas.height = Math.max(200, h);
+      turtle.x = canvas.width / 2;
+      turtle.y = canvas.height / 2;
+      drawTurtle();
+    }
+
+    function clearCanvas() {
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    function drawTurtle() {
+      clearCanvas();
+      // Redraw from history would be complex; just show turtle
+      const { x, y, angle } = turtle;
+      const r = 8;
+      const rad = angle * Math.PI / 180;
+      ctx.fillStyle = '#33ff33';
+      ctx.beginPath();
+      ctx.moveTo(x + Math.cos(rad) * r, y + Math.sin(rad) * r);
+      ctx.lineTo(x + Math.cos(rad + 2.4) * r * 0.6, y + Math.sin(rad + 2.4) * r * 0.6);
+      ctx.lineTo(x + Math.cos(rad - 2.4) * r * 0.6, y + Math.sin(rad - 2.4) * r * 0.6);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // Persistent drawing on offscreen canvas
+    const offscreen = document.createElement('canvas');
+    const offCtx = offscreen.getContext('2d');
+
+    function syncOffscreen() {
+      offscreen.width = canvas.width;
+      offscreen.height = canvas.height;
+      offCtx.fillStyle = '#000';
+      offCtx.fillRect(0, 0, offscreen.width, offscreen.height);
+    }
+
+    function render() {
+      ctx.drawImage(offscreen, 0, 0);
+      // Draw turtle on top
+      const { x, y, angle } = turtle;
+      const r = 8;
+      const rad = angle * Math.PI / 180;
+      ctx.fillStyle = '#33ff33';
+      ctx.beginPath();
+      ctx.moveTo(x + Math.cos(rad) * r, y + Math.sin(rad) * r);
+      ctx.lineTo(x + Math.cos(rad + 2.4) * r * 0.6, y + Math.sin(rad + 2.4) * r * 0.6);
+      ctx.lineTo(x + Math.cos(rad - 2.4) * r * 0.6, y + Math.sin(rad - 2.4) * r * 0.6);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    function fd(dist) {
+      const rad = turtle.angle * Math.PI / 180;
+      const nx = turtle.x + Math.cos(rad) * dist;
+      const ny = turtle.y + Math.sin(rad) * dist;
+      if (turtle.pen) {
+        offCtx.strokeStyle = turtle.color;
+        offCtx.lineWidth = turtle.size;
+        offCtx.lineCap = 'round';
+        offCtx.beginPath();
+        offCtx.moveTo(turtle.x, turtle.y);
+        offCtx.lineTo(nx, ny);
+        offCtx.stroke();
+      }
+      turtle.x = nx; turtle.y = ny;
+    }
+
+    function CMDS(tokens) {
+      let i = 0;
+      const errors = [];
+      function num() { return parseFloat(tokens[i++]) || 0; }
+      while (i < tokens.length) {
+        const cmd = (tokens[i++] || '').toLowerCase();
+        switch(cmd) {
+          case 'fd': case 'forward': fd(num()); break;
+          case 'bk': case 'back': case 'backward': { const d = num(); turtle.angle += 180; fd(d); turtle.angle -= 180; break; }
+          case 'rt': case 'right': turtle.angle += num(); break;
+          case 'lt': case 'left': turtle.angle -= num(); break;
+          case 'pu': case 'penup': turtle.pen = false; break;
+          case 'pd': case 'pendown': turtle.pen = true; break;
+          case 'home': turtle.x = canvas.width/2; turtle.y = canvas.height/2; turtle.angle = -90; break;
+          case 'cs': case 'clearscreen': syncOffscreen(); turtle.x = canvas.width/2; turtle.y = canvas.height/2; turtle.angle = -90; break;
+          case 'setcolor': case 'color': {
+            const colors = { red:'#e94560', green:'#44cc88', blue:'#4488ff', yellow:'#ffcc00', white:'#ffffff', magenta:'#ff00ff', cyan:'#00ffff' };
+            const v = tokens[i++] || 'green';
+            turtle.color = colors[v] || v;
+            break;
+          }
+          case 'setwidth': case 'width': turtle.size = Math.max(1, Math.min(20, num())); break;
+          case 'repeat': {
+            const n = num(); const body = [];
+            if (tokens[i] === '[') {
+              i++;
+              while (i < tokens.length && tokens[i] !== ']') body.push(tokens[i++]);
+              i++; // skip ]
+            }
+            for (let j = 0; j < n; j++) CMDS(body);
+            break;
+          }
+          default: if (cmd) errors.push(`unknown: ${cmd}`);
+        }
+      }
+      return errors;
+    }
+
+    function tokenize(str) {
+      return str.replace(/\[/g, ' [ ').replace(/\]/g, ' ] ').trim().split(/\s+/).filter(Boolean);
+    }
+
+    function runCmd(str) {
+      const tokens = tokenize(str);
+      if (!tokens.length) return;
+      const errs = CMDS(tokens);
+      render();
+      const line = document.createElement('div');
+      line.className = errs.length ? 'err-line' : 'out-line';
+      line.textContent = errs.length ? errs.join(', ') : '> ' + str;
+      output.appendChild(line);
+      output.scrollTop = output.scrollHeight;
+    }
+
+    const PRESETS = {
+      square: 'repeat 4 [ fd 80 rt 90 ]',
+      triangle: 'repeat 3 [ fd 100 rt 120 ]',
+      star: 'repeat 5 [ fd 80 rt 144 ]',
+      spiral: 'repeat 36 [ fd 10 rt 10 fd 10 rt 10 fd 15 rt 10 ]',
+      flower: 'repeat 12 [ repeat 6 [ fd 20 rt 60 ] rt 30 ]',
+    };
+
+    function runPreset(name) { runCmd(PRESETS[name] || ''); }
+    function reset() {
+      syncOffscreen();
+      turtle = { x: canvas.width/2, y: canvas.height/2, angle: -90, pen: true, color: '#33ff33', size: 2 };
+      render();
+      output.innerHTML = '';
+    }
+    window.runPreset = runPreset;
+    window.reset = reset;
+
+    cmdInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        runCmd(cmdInput.value);
+        cmdInput.value = '';
+      }
+    });
+
+    resize();
+    syncOffscreen();
+    render();
+    window.addEventListener('resize', () => { resize(); syncOffscreen(); render(); });
+
+    // Welcome message
+    const w = document.createElement('div');
+    w.className = 'out-line';
+    w.textContent = 'Commands: fd, bk, rt, lt, pu, pd, home, cs, repeat N [ ... ], color, width';
+    output.appendChild(w);
+  </script>
+</body>
+</html>

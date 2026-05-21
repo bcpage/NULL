@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Zeno's Paradox</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #1a1a2e;
+      color: white;
+      font-family: 'Fredoka One', cursive;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      padding: 8px;
+      gap: 16px;
+    }
+    h1 { font-size: clamp(18px, 3.5vw, 26px); }
+    #subtitle { font-size: clamp(12px, 2.5vw, 16px); color: #888; text-align: center; }
+    canvas { display: block; border-radius: 8px; background: #0d0d1a; }
+    #explanation {
+      font-size: clamp(12px, 2.3vw, 16px);
+      color: #aaa;
+      text-align: center;
+      max-width: 500px;
+      line-height: 1.6;
+    }
+    #step-info { font-size: clamp(13px, 2.5vw, 17px); color: #ffcc00; text-align: center; min-height: 1.5em; }
+    #controls { display: flex; gap: 12px; }
+    button {
+      background: #4488ff;
+      border: none;
+      border-radius: 10px;
+      color: white;
+      font-family: 'Fredoka One', cursive;
+      font-size: clamp(14px, 2.5vw, 18px);
+      padding: 8px 20px;
+      cursor: pointer;
+    }
+    button:hover { background: #2266cc; }
+    button.red { background: #e94560; }
+  </style>
+</head>
+<body data-game="00040">
+  <h1>Zeno's Paradox</h1>
+  <div id="subtitle">Achilles and the Tortoise</div>
+  <canvas id="c"></canvas>
+  <div id="step-info"></div>
+  <div id="explanation">
+    Achilles gives the tortoise a head start. Each time Achilles reaches where the tortoise was, the tortoise has moved a little further. He must cross infinitely many points — so how can he ever catch up?
+  </div>
+  <div id="controls">
+    <button id="step-btn">Next Step</button>
+    <button class="red" id="reset-btn">Reset</button>
+  </div>
+
+  <script src="/shared/nav.js"></script>
+  <script>
+    const canvas = document.getElementById('c');
+    const ctx = canvas.getContext('2d');
+    const stepInfoEl = document.getElementById('step-info');
+
+    function resize() {
+      const w = Math.min(window.innerWidth - 16, 600);
+      canvas.width = w;
+      canvas.height = Math.round(w * 0.22);
+      draw();
+    }
+
+    let achillesPos = 0; // 0-1
+    let tortoisePos = 0.35;
+    let step = 0;
+    let running = false;
+    let animTo = null;
+
+    const TORTOISE_SPEED = 0.5; // tortoise moves half the distance achilles does each step
+
+    function draw() {
+      const W = canvas.width, H = canvas.height;
+      ctx.clearRect(0, 0, W, H);
+
+      // Track
+      const trackY = H * 0.55, trackPad = W * 0.05;
+      ctx.fillStyle = '#2a2a44';
+      ctx.fillRect(trackPad, trackY - 2, W - trackPad * 2, 4);
+
+      // Goal line
+      ctx.strokeStyle = '#44cc88';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(W - trackPad, trackY - H*0.2);
+      ctx.lineTo(W - trackPad, trackY + H*0.1);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = '#44cc88';
+      ctx.font = `${Math.floor(H*0.18)}px Fredoka One`;
+      ctx.textAlign = 'center';
+      ctx.fillText('🏁', W - trackPad, trackY - H*0.1);
+
+      const trackW = W - trackPad * 2;
+
+      // Achilles
+      const ax = trackPad + achillesPos * trackW;
+      ctx.font = `${Math.floor(H*0.45)}px serif`;
+      ctx.textAlign = 'center';
+      ctx.fillText('🏃', ax, trackY + H*0.05);
+
+      // Tortoise
+      const tx = trackPad + tortoisePos * trackW;
+      ctx.fillText('🐢', tx, trackY + H*0.05);
+
+      // Distance markers
+      if (step > 0) {
+        ctx.strokeStyle = '#e94560';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([2, 3]);
+        ctx.beginPath();
+        ctx.moveTo(ax, trackY - H*0.15);
+        ctx.lineTo(tx, trackY - H*0.15);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = '#e94560';
+        ctx.font = `${Math.floor(H*0.16)}px Fredoka One`;
+        ctx.fillText('gap', (ax + tx) / 2, trackY - H*0.2);
+      }
+    }
+
+    function nextStep() {
+      if (running) return;
+      const gap = tortoisePos - achillesPos;
+      if (gap < 0.002) {
+        stepInfoEl.textContent = 'Achilles has caught the tortoise. The paradox resolves.';
+        return;
+      }
+      step++;
+      running = true;
+      const newAchilles = tortoisePos;
+      const newTortoise = tortoisePos + gap * TORTOISE_SPEED;
+
+      const startA = achillesPos, startT = tortoisePos;
+      const duration = 600;
+      const start = performance.now();
+
+      function animate(now) {
+        const t = Math.min(1, (now - start) / duration);
+        const ease = t < 0.5 ? 2*t*t : -1+(4-2*t)*t;
+        achillesPos = startA + (newAchilles - startA) * ease;
+        tortoisePos = startT + (newTortoise - startT) * ease;
+        draw();
+        if (t < 1) requestAnimationFrame(animate);
+        else {
+          achillesPos = newAchilles;
+          tortoisePos = newTortoise;
+          running = false;
+          const newGap = tortoisePos - achillesPos;
+          stepInfoEl.textContent = `Step ${step}: Achilles reaches where tortoise was. Gap is now 1/${Math.round(1/newGap)} of the track.`;
+          draw();
+        }
+      }
+      requestAnimationFrame(animate);
+    }
+
+    function reset() {
+      achillesPos = 0; tortoisePos = 0.35; step = 0; running = false;
+      stepInfoEl.textContent = 'Achilles starts. The tortoise has a head start.';
+      draw();
+    }
+
+    document.getElementById('step-btn').addEventListener('click', nextStep);
+    document.getElementById('reset-btn').addEventListener('click', reset);
+
+    resize();
+    reset();
+    window.addEventListener('resize', resize);
+  </script>
+</body>
+</html>

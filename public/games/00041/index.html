@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Ship of Theseus</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #1a1a2e;
+      color: white;
+      font-family: 'Fredoka One', cursive;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      padding: 8px;
+      gap: 14px;
+    }
+    h1 { font-size: clamp(18px, 3.5vw, 26px); }
+    #question { font-size: clamp(13px, 2.5vw, 18px); color: #ccc; text-align: center; max-width: 560px; line-height: 1.6; }
+    #ship-wrap {
+      display: flex;
+      gap: 20px;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .ship-label { font-size: clamp(12px, 2.5vw, 16px); color: #888; text-align: center; }
+    #plank-grid {
+      display: grid;
+      grid-template-columns: repeat(10, 1fr);
+      gap: 3px;
+      width: min(300px, 80vw);
+    }
+    .plank {
+      aspect-ratio: 1;
+      border-radius: 3px;
+      transition: background 0.5s;
+      background: #8b4513;
+    }
+    .plank.replaced { background: #44cc88; }
+    #pct { font-size: clamp(32px, 8vw, 56px); color: #ffcc00; text-align: center; }
+    #slider-wrap { width: 100%; max-width: 400px; }
+    input[type=range] { width: 100%; accent-color: #44cc88; }
+    #verdict {
+      font-size: clamp(13px, 2.5vw, 17px);
+      color: #aaa;
+      text-align: center;
+      max-width: 500px;
+      min-height: 2em;
+      line-height: 1.5;
+    }
+    #your-vote { display: flex; gap: 10px; }
+    .vote-btn {
+      border: none;
+      border-radius: 10px;
+      font-family: 'Fredoka One', cursive;
+      font-size: clamp(12px, 2vw, 16px);
+      padding: 6px 16px;
+      cursor: pointer;
+      background: #2a2a44;
+      color: #aaa;
+      border: 2px solid #333;
+    }
+    .vote-btn.active { border-color: #44cc88; color: #44cc88; }
+  </style>
+</head>
+<body data-game="00041">
+  <h1>Ship of Theseus</h1>
+  <div id="question">Each plank of Theseus's ship is replaced one by one. At what point does it stop being the same ship?</div>
+  <div id="pct">0%</div>
+  <div id="plank-grid"></div>
+  <div id="slider-wrap">
+    <input type="range" id="slider" min="0" max="100" value="0">
+  </div>
+  <div id="verdict"></div>
+  <div id="your-vote">
+    <button class="vote-btn" id="v-same">Still the same ship</button>
+    <button class="vote-btn" id="v-diff">A different ship</button>
+  </div>
+
+  <script src="/shared/nav.js"></script>
+  <script>
+    const grid = document.getElementById('plank-grid');
+    const slider = document.getElementById('slider');
+    const pctEl = document.getElementById('pct');
+    const verdictEl = document.getElementById('verdict');
+    const PLANKS = 100;
+
+    const VERDICTS = [
+      [0,  "All original. Definitely the same ship."],
+      [10, "Nearly untouched. Of course it's the same."],
+      [25, "A few planks replaced — still clearly the ship."],
+      [40, "Less than half new. Most would say: same ship."],
+      [50, "Half and half. The question gets interesting."],
+      [60, "More new than old. Starting to feel different."],
+      [75, "Three quarters replaced. Is it still Theseus's?"],
+      [90, "Almost entirely new. Barely any original remains."],
+      [100,"Every plank is new. The original ship no longer exists — or does it?"],
+    ];
+
+    // Build planks
+    for (let i = 0; i < PLANKS; i++) {
+      const p = document.createElement('div');
+      p.className = 'plank';
+      p.id = 'p' + i;
+      grid.appendChild(p);
+    }
+
+    function updatePlanks(pct) {
+      const replaced = Math.round(pct);
+      for (let i = 0; i < PLANKS; i++) {
+        document.getElementById('p'+i).className = 'plank' + (i < replaced ? ' replaced' : '');
+      }
+      pctEl.textContent = replaced + '%';
+      // Find best verdict
+      let text = VERDICTS[0][1];
+      for (const [threshold, msg] of VERDICTS) {
+        if (replaced >= threshold) text = msg;
+      }
+      verdictEl.textContent = text;
+    }
+
+    slider.addEventListener('input', () => updatePlanks(parseInt(slider.value)));
+
+    // Animate slider on load
+    let anim = 0;
+    const animInterval = setInterval(() => {
+      anim += 2;
+      slider.value = anim;
+      updatePlanks(anim);
+      if (anim >= 50) clearInterval(animInterval);
+    }, 40);
+
+    document.getElementById('v-same').addEventListener('click', function() {
+      this.className = 'vote-btn active';
+      document.getElementById('v-diff').className = 'vote-btn';
+    });
+    document.getElementById('v-diff').addEventListener('click', function() {
+      this.className = 'vote-btn active';
+      document.getElementById('v-same').className = 'vote-btn';
+    });
+  </script>
+</body>
+</html>
