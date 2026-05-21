@@ -7,7 +7,7 @@ const { networkInterfaces } = require('os');
 const PORT = 3000;
 
 // ─── Game registry ────────────────────────────────────────────────────────────
-const GAMES = ['00001', '00002', '00003', '00004', '00005', '00006', '00007', '00008', '00009', '00010', '00011', '00012'];
+const GAMES = ['00001', '00002', '00003', '00004', '00005', '00006', '00007', '00008', '00009', '00010', '00011', '00012', '00013'];
 
 // ─── Cookie persistence ───────────────────────────────────────────────────────
 const COOKIE_DATA_DIR = path.join(__dirname, 'public', 'games', '00002', 'data');
@@ -417,6 +417,14 @@ wss.on('connection', (ws) => {
         chatHistory.push(msg);
         if (chatHistory.length > CHAT_MAX) chatHistory.shift();
         broadcast(msg);
+      }
+
+      // ── Cowsay ──
+      if (data.game === 'cowsay' && data.type === 'say') {
+        const text = String(data.text || '').slice(0, 200).trim();
+        const char = ['cow','tux','sheep','ghost','dragon','elephant','moose'].includes(data.char) ? data.char : 'cow';
+        const mode = data.mode === 'think' ? 'think' : 'say';
+        if (text) broadcast({ game: 'cowsay', type: 'say', text, char, mode, ts: Date.now() });
       }
 
       // ── Connect Four ──

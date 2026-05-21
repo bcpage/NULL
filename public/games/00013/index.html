@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Cowsay</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #1a1a2e;
+      color: #ccc;
+      font-family: 'Fredoka One', cursive;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+    }
+
+    /* ── History ── */
+    #history {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      scroll-behavior: smooth;
+    }
+
+    #history::-webkit-scrollbar { width: 4px; }
+    #history::-webkit-scrollbar-track { background: transparent; }
+    #history::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+
+    .entry {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 2px;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+    .bubble-wrap {
+      position: relative;
+    }
+
+    .copy-btn {
+      position: absolute;
+      top: 2px;
+      right: -28px;
+      background: none;
+      border: 1px solid #333;
+      color: #444;
+      border-radius: 4px;
+      font-size: 0.65rem;
+      padding: 2px 5px;
+      cursor: pointer;
+      font-family: monospace;
+      transition: color 0.15s, border-color 0.15s;
+      white-space: nowrap;
+    }
+    .copy-btn:hover { color: #e94560; border-color: #e94560; }
+
+    pre.art {
+      font-family: 'Courier New', Courier, monospace;
+      font-size: clamp(0.6rem, 1.8vw, 0.78rem);
+      line-height: 1.35;
+      color: #ddd;
+      white-space: pre;
+      overflow-x: auto;
+    }
+
+    .entry-meta {
+      font-size: 0.65rem;
+      color: #444;
+      letter-spacing: 1px;
+      padding-left: 2px;
+    }
+
+    /* ── Controls ── */
+    #controls {
+      border-top: 1px solid #22223a;
+      padding: 12px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    /* Character selector */
+    #char-row {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .char-btn {
+      font-family: 'Fredoka One', cursive;
+      font-size: 0.72rem;
+      padding: 4px 10px;
+      border: 1px solid #333;
+      border-radius: 20px;
+      background: transparent;
+      color: #555;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+      letter-spacing: 0.5px;
+    }
+    .char-btn:hover { border-color: #e94560; color: #e94560; }
+    .char-btn.active { background: #e94560; border-color: #e94560; color: white; }
+
+    /* Say / Think toggle */
+    #mode-row {
+      display: flex;
+      gap: 6px;
+    }
+
+    .mode-btn {
+      font-family: 'Fredoka One', cursive;
+      font-size: 0.72rem;
+      padding: 4px 12px;
+      border: 1px solid #333;
+      border-radius: 20px;
+      background: transparent;
+      color: #555;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+    }
+    .mode-btn:hover { border-color: #888; color: #888; }
+    .mode-btn.active { background: #333; border-color: #555; color: #ccc; }
+
+    /* Input row */
+    #input-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    #text-input {
+      flex: 1;
+      font-family: 'Fredoka One', cursive;
+      font-size: clamp(0.9rem, 3vw, 1rem);
+      padding: 10px 14px;
+      background: #0d0d1a;
+      border: 1px solid #333;
+      border-radius: 8px;
+      color: white;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    #text-input:focus { border-color: #555; }
+    #text-input::placeholder { color: #333; }
+
+    #send-btn {
+      font-family: 'Fredoka One', cursive;
+      font-size: clamp(0.9rem, 3vw, 1rem);
+      padding: 10px 20px;
+      border: 2px solid #e94560;
+      border-radius: 8px;
+      background: transparent;
+      color: #e94560;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+      white-space: nowrap;
+    }
+    #send-btn:hover { background: #e94560; color: white; }
+    #send-btn:disabled { opacity: 0.3; cursor: default; }
+
+    /* ── Empty state ── */
+    #empty {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #222;
+      font-size: 0.85rem;
+      letter-spacing: 2px;
+      text-align: center;
+      padding: 24px;
+      line-height: 2;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body data-game="00013">
+
+  <div id="history">
+    <div id="empty">The cow has always been here.<br>Nobody knows why.</div>
+  </div>
+
+  <div id="controls">
+    <div id="char-row">
+      <button class="char-btn active" data-char="cow">cow</button>
+      <button class="char-btn" data-char="tux">tux</button>
+      <button class="char-btn" data-char="sheep">sheep</button>
+      <button class="char-btn" data-char="ghost">ghost</button>
+      <button class="char-btn" data-char="dragon">dragon</button>
+      <button class="char-btn" data-char="elephant">elephant</button>
+      <button class="char-btn" data-char="moose">moose</button>
+    </div>
+    <div id="mode-row">
+      <button class="mode-btn active" data-mode="say">say</button>
+      <button class="mode-btn" data-mode="think">think</button>
+    </div>
+    <div id="input-row">
+      <input id="text-input" type="text" maxlength="200" placeholder="type something...">
+      <button id="send-btn">Send</button>
+    </div>
+  </div>
+
+<script>
+// ── ASCII characters ──────────────────────────────────────────────────────────
+const CHARS = {
+  cow: (say) => `        ${say ? '\\' : 'o'}   ^__^\n         ${say ? '\\' : 'o'}  (oo)\\_______\n            (__)\\       )\\/\\\n                ||----w |\n                ||     ||`,
+  tux: (say) => `   ${say ? '\\' : 'o'}\n    ${say ? '\\' : 'o'}\n     ${say ? '\\' : 'o'}\n        .--.  \n       |o_o | \n       |:_/ | \n      //   \\ \\\n     (|     | )\n    /'\\_   _/\`\\\n    \\___)=(___/`,
+  sheep: (say) => `     ${say ? '\\' : 'o'}      \n      ${say ? '\\' : 'o'}     \n       ${say ? '\\' : 'o'}    \n     __     \n    UooU\\.'@@@@'.  \n    \\__/(@@@@@@@@)\n         (@@@@@@) \n         \`YY~~~~YY'\n          ||    ||`,
+  ghost: (say) => `     ${say ? '\\' : 'o'}\n      ${say ? '\\' : 'o'}\n       ${say ? '\\' : 'o'}\n        .-.   \n       (o o)  \n       | O |  \n       /   \\  \n      |     | \n      \\~~~~~/ \n      / | | \\ \n     /_/   \\_\\`,
+  dragon: (say) => `    ${say ? '\\' : 'o'}\n     ${say ? '\\' : 'o'}    __\n      ${say ? '\\' : 'o'} / _)\n     _.----._/ /\n    /         /\n __/ (  | (  |\n/__.-'|_|--|_|`,
+  elephant: (say) => `     ${say ? '\\' : 'o'}\n      ${say ? '\\' : 'o'}\n       ${say ? '\\' : 'o'}\n          .--.\n         /    \\\n        |  ( )|\n   _.---'.  __|---._\n  /  ____|----'    \\\n  |   |  |  |  |  |\n  \\___/__/\\___/__/`,
+  moose: (say) => `   ${say ? '\\' : 'o'}\n    ${say ? '\\' : 'o'}   \\/  \\/\n     ${say ? '\\' : 'o'}  \\_\\__/\n        (oo)\\_____\n        (__)\\     )\\ \n           ||---w | \n           ||     ||`,
+};
+
+// ── Speech bubble ─────────────────────────────────────────────────────────────
+const WRAP = 38;
+
+function wrapText(text) {
+  const words = text.split(' ');
+  const lines = [];
+  let cur = '';
+  for (const w of words) {
+    if (cur.length + (cur ? 1 : 0) + w.length > WRAP) {
+      if (cur) lines.push(cur);
+      cur = w;
+    } else {
+      cur += (cur ? ' ' : '') + w;
+    }
+  }
+  if (cur) lines.push(cur);
+  return lines;
+}
+
+function makeBubble(text, mode) {
+  const lines = wrapText(text);
+  const width = Math.max(...lines.map(l => l.length));
+  const pad = (s) => s + ' '.repeat(width - s.length);
+
+  const top = ' ' + '_'.repeat(width + 2);
+  const bot = ' ' + '-'.repeat(width + 2);
+  let body;
+
+  if (lines.length === 1) {
+    const l = lines[0];
+    if (mode === 'think') {
+      body = `( ${pad(l)} )`;
+    } else {
+      body = `< ${pad(l)} >`;
+    }
+    body = [body];
+  } else {
+    body = lines.map((l, i) => {
+      if (mode === 'think') return `( ${pad(l)} )`;
+      if (i === 0)                return `/ ${pad(l)} \\`;
+      if (i === lines.length - 1) return `\\ ${pad(l)} /`;
+      return `| ${pad(l)} |`;
+    });
+  }
+
+  return [top, ...body, bot].join('\n');
+}
+
+function buildArt(text, char, mode) {
+  const bubble = makeBubble(text, mode);
+  const body = CHARS[char] ? CHARS[char](mode === 'say') : CHARS.cow(mode === 'say');
+  return bubble + '\n' + body;
+}
+
+// ── Render entry ──────────────────────────────────────────────────────────────
+function formatTime(ts) {
+  return new Date(ts).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+}
+
+function addEntry(text, char, mode, ts) {
+  const empty = document.getElementById('empty');
+  if (empty) empty.remove();
+
+  const art = buildArt(text, char, mode);
+
+  const entry = document.createElement('div');
+  entry.className = 'entry';
+
+  const wrap = document.createElement('div');
+  wrap.className = 'bubble-wrap';
+
+  const pre = document.createElement('pre');
+  pre.className = 'art';
+  pre.textContent = art;
+
+  const copyBtn = document.createElement('button');
+  copyBtn.className = 'copy-btn';
+  copyBtn.textContent = 'copy';
+  copyBtn.addEventListener('click', () => {
+    navigator.clipboard.writeText(art).then(() => {
+      copyBtn.textContent = 'done';
+      setTimeout(() => { copyBtn.textContent = 'copy'; }, 1200);
+    }).catch(() => {});
+  });
+
+  wrap.appendChild(pre);
+  wrap.appendChild(copyBtn);
+
+  const meta = document.createElement('div');
+  meta.className = 'entry-meta';
+  meta.textContent = char + ' · ' + formatTime(ts || Date.now());
+
+  entry.appendChild(wrap);
+  entry.appendChild(meta);
+
+  const history = document.getElementById('history');
+  history.appendChild(entry);
+  history.scrollTop = history.scrollHeight;
+}
+
+// ── UI state ──────────────────────────────────────────────────────────────────
+let selectedChar = 'cow';
+let selectedMode = 'say';
+
+document.querySelectorAll('.char-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.char-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedChar = btn.dataset.char;
+  });
+});
+
+document.querySelectorAll('.mode-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedMode = btn.dataset.mode;
+  });
+});
+
+// ── WebSocket ─────────────────────────────────────────────────────────────────
+let ws;
+function connect() {
+  ws = new WebSocket((location.protocol === 'https:' ? 'wss' : 'ws') + '://' + location.host);
+  ws.addEventListener('message', (e) => {
+    try {
+      const data = JSON.parse(e.data);
+      if (data.game === 'cowsay' && data.type === 'say') {
+        addEntry(data.text, data.char, data.mode, data.ts);
+      }
+    } catch (_) {}
+  });
+  ws.addEventListener('close', () => setTimeout(connect, 2000));
+}
+connect();
+
+// ── Send ──────────────────────────────────────────────────────────────────────
+function send() {
+  const input = document.getElementById('text-input');
+  const text = input.value.trim();
+  if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
+  ws.send(JSON.stringify({ game: 'cowsay', type: 'say', text, char: selectedChar, mode: selectedMode }));
+  input.value = '';
+  input.focus();
+}
+
+document.getElementById('send-btn').addEventListener('click', send);
+document.getElementById('text-input').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') send();
+});
+</script>
+
+<script src="/shared/nav.js"></script>
+</body>
+</html>
