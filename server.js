@@ -483,6 +483,13 @@ const httpServer = http.createServer((req, res) => {
   if (gameMatch && method === 'GET') {
     const id = gameMatch[1].padStart(5, '0');
     if (!GAMES.includes(id)) { res.writeHead(404); res.end('Game not found'); return; }
+    // Gate: new users must go through welcome → cookie before anything else
+    const user = users[deviceId];
+    if (id !== '00002' && (!user || user.cookieClicks === 0)) {
+      res.writeHead(302, { Location: '/game/00000', ...extraHeaders });
+      res.end();
+      return;
+    }
     updateUserFromRequest(deviceId, req, id);
     serveFileWithHeaders(path.join(__dirname, 'public', 'games', id, 'index.html'), 'text/html');
     return;

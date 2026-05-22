@@ -87,19 +87,6 @@
 </div>
 
 <script>
-  // ── Device identity ───────────────────────────────────────────────────────
-  (function () {
-    if (!/(?:^|;\s*)device=[a-f0-9-]{36}/.test(document.cookie)) {
-      const id = crypto.randomUUID
-        ? crypto.randomUUID()
-        : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-            const r = Math.random() * 16 | 0;
-            return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
-          });
-      document.cookie = 'device=' + id + '; path=/; max-age=31536000; SameSite=Lax';
-    }
-  })();
-
   // ── Title pool ────────────────────────────────────────────────────────────
   const TITLES = [
     // Liminal / eerie
@@ -307,7 +294,7 @@
 
   btnEl.addEventListener('click', () => {
     clearTimeout(timer);
-    window.location.href = '/game/00001';
+    window.location.href = '/game/00002';
   });
 
   render();
