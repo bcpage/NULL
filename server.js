@@ -82,6 +82,55 @@ function getDeviceId(req) {
   return match ? match[1] : null;
 }
 
+function getIP(req) {
+  const fwd = req.headers['x-forwarded-for'];
+  if (fwd) return fwd.split(',')[0].trim();
+  return req.socket.remoteAddress || 'unknown';
+}
+
+function getLanguage(req) {
+  const lang = req.headers['accept-language'] || '';
+  return lang.split(',')[0].split(';')[0].trim() || 'unknown';
+}
+
+function parseUA(ua) {
+  if (!ua) return { browser: 'Unknown', os: 'Unknown', device: 'Desktop' };
+  let browser = 'Unknown', os = 'Unknown', device = 'Desktop';
+  if (/Edg\//.test(ua))           browser = 'Edge '    + (ua.match(/Edg\/([\d]+)/)     || ['','?'])[1];
+  else if (/OPR\//.test(ua))      browser = 'Opera '   + (ua.match(/OPR\/([\d]+)/)     || ['','?'])[1];
+  else if (/Chrome\/([\d]+)/.test(ua)) browser = 'Chrome '  + ua.match(/Chrome\/([\d]+)/)[1];
+  else if (/Firefox\/([\d]+)/.test(ua)) browser = 'Firefox ' + ua.match(/Firefox\/([\d]+)/)[1];
+  else if (/Version\/([\d]+).*Safari/.test(ua)) browser = 'Safari ' + ua.match(/Version\/([\d]+)/)[1];
+  if (/Windows NT 10|Windows NT 11/.test(ua))   os = 'Windows 10/11';
+  else if (/Windows/.test(ua))    os = 'Windows';
+  else if (/iPhone/.test(ua))     os = 'iOS ' + ((ua.match(/iPhone OS ([\d_]+)/) || ['','?'])[1]).replace(/_/g,'.');
+  else if (/iPad/.test(ua))       os = 'iPadOS';
+  else if (/Android ([\d.]+)/.test(ua)) os = 'Android ' + ua.match(/Android ([\d.]+)/)[1];
+  else if (/Mac OS X ([\d_]+)/.test(ua)) os = 'macOS ' + ua.match(/Mac OS X ([\d_]+)/)[1].replace(/_/g,'.');
+  else if (/Linux/.test(ua))      os = 'Linux';
+  if (/Mobile|iPhone|Android.*Mobile/.test(ua)) device = 'Mobile';
+  else if (/iPad|Tablet/.test(ua)) device = 'Tablet';
+  return { browser, os, device };
+}
+
+function updateUserFromRequest(deviceId, req, roomId) {
+  const user = users[deviceId];
+  if (!user) return;
+  const { browser, os, device } = parseUA(req.headers['user-agent'] || '');
+  user.ip       = getIP(req);
+  user.language = getLanguage(req);
+  user.browser  = browser;
+  user.os       = os;
+  user.device   = device;
+  user.lastSeen = Date.now();
+  user.visits   = (user.visits || 0) + 1;
+  if (roomId) {
+    if (!user.rooms) user.rooms = [];
+    if (!user.rooms.includes(roomId)) user.rooms.push(roomId);
+  }
+  saveUsers();
+}
+
 // ─── Typewriter (00022) ───────────────────────────────────────────────────────
 let typeText = '';
 let typeLastKey = 0;
@@ -417,12 +466,14 @@ const httpServer = http.createServer((req, res) => {
 
   // Admin dashboard
   if (pathname === '/admin' && method === 'GET') {
+    updateUserFromRequest(deviceId, req, null);
     serveFileWithHeaders(path.join(__dirname, 'public', 'admin', 'index.html'), 'text/html');
     return;
   }
 
   // Welcome screen (not part of the game nav loop)
   if (pathname === '/game/00000' && method === 'GET') {
+    updateUserFromRequest(deviceId, req, '00000');
     serveFileWithHeaders(path.join(__dirname, 'public', 'games', '00000', 'index.html'), 'text/html');
     return;
   }
@@ -432,6 +483,7 @@ const httpServer = http.createServer((req, res) => {
   if (gameMatch && method === 'GET') {
     const id = gameMatch[1].padStart(5, '0');
     if (!GAMES.includes(id)) { res.writeHead(404); res.end('Game not found'); return; }
+    updateUserFromRequest(deviceId, req, id);
     serveFileWithHeaders(path.join(__dirname, 'public', 'games', id, 'index.html'), 'text/html');
     return;
   }

@@ -11,7 +11,6 @@
       color: #ccc;
       font-family: 'Courier New', Courier, monospace;
       font-size: 13px;
-      padding: 0;
     }
     #toolbar {
       background: #1a1a1a;
@@ -37,19 +36,12 @@
       cursor: pointer;
     }
     #refresh-btn:hover { border-color: #888; color: #ccc; }
-    #table-wrap { overflow-x: auto; }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      min-width: 700px;
-    }
-    thead tr {
-      background: #111;
-      border-bottom: 2px solid #333;
-    }
+    #table-wrap { overflow-x: auto; padding-bottom: 28px; }
+    table { width: 100%; border-collapse: collapse; min-width: 1100px; }
+    thead tr { background: #111; border-bottom: 2px solid #333; }
     th {
       text-align: left;
-      padding: 6px 12px;
+      padding: 6px 10px;
       color: #555;
       font-weight: normal;
       font-size: 11px;
@@ -59,29 +51,29 @@
       border-right: 1px solid #1a1a1a;
     }
     td {
-      padding: 5px 12px;
+      padding: 5px 10px;
       border-bottom: 1px solid #111;
       border-right: 1px solid #111;
       white-space: nowrap;
       color: #aaa;
+      vertical-align: top;
     }
     tr:hover td { background: #0f0f0f; }
-    .col-id { color: #555; font-size: 11px; }
-    .col-unix { color: #444; }
-    .col-clicks { color: #888; text-align: right; }
-    .col-name { color: #ccc; }
-    .col-name.empty { color: #333; font-style: italic; }
+    .dim    { color: #444; }
+    .dimmer { color: #333; }
+    .bright { color: #ccc; }
+    .right  { text-align: right; }
+    .name-empty { color: #2a2a2a; font-style: italic; }
+    .rooms-cell { color: #3a5a3a; max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
     #empty-msg { padding: 40px; color: #333; text-align: center; }
     #status-bar {
       position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
+      bottom: 0; left: 0; right: 0;
       background: #111;
-      border-top: 1px solid #222;
+      border-top: 1px solid #1a1a1a;
       padding: 3px 12px;
       font-size: 11px;
-      color: #444;
+      color: #333;
       display: flex;
       gap: 24px;
     }
@@ -91,10 +83,10 @@
   <div id="toolbar">
     <div>
       <div id="toolbar-title">NULL / USER REGISTRY</div>
-      <div id="toolbar-sub">Transaction: /admin &nbsp;|&nbsp; ALV Grid Report</div>
+      <div id="toolbar-sub">Transaction: /admin &nbsp;|&nbsp; ALV Grid Report &nbsp;|&nbsp; Auto-refresh: 30s</div>
     </div>
     <div id="toolbar-count"></div>
-    <button id="refresh-btn" onclick="load()">Refresh</button>
+    <button id="refresh-btn" onclick="load()">Refresh (F5)</button>
   </div>
 
   <div id="table-wrap">
@@ -103,10 +95,18 @@
         <tr>
           <th>#</th>
           <th>Cookie ID</th>
+          <th>IP Address</th>
           <th>First Seen</th>
           <th>First Seen (Unix)</th>
+          <th>Last Seen</th>
+          <th>Visits</th>
           <th>Clicks</th>
+          <th>Browser</th>
+          <th>OS</th>
+          <th>Device</th>
+          <th>Language</th>
           <th>Name</th>
+          <th>Rooms Visited</th>
         </tr>
       </thead>
       <tbody id="tbody"></tbody>
@@ -131,6 +131,19 @@
         String(d.getSeconds()).padStart(2,'0');
     }
 
+    function reltime(ts) {
+      if (!ts) return '—';
+      const diff = Date.now() - ts;
+      if (diff < 60000) return Math.floor(diff/1000) + 's ago';
+      if (diff < 3600000) return Math.floor(diff/60000) + 'm ago';
+      if (diff < 86400000) return Math.floor(diff/3600000) + 'h ago';
+      return Math.floor(diff/86400000) + 'd ago';
+    }
+
+    function esc(s) {
+      return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
     function load() {
       fetch('/api/users')
         .then(r => r.json())
@@ -138,25 +151,37 @@
           users.sort((a, b) => (a.firstSeen || 0) - (b.firstSeen || 0));
           const tbody = document.getElementById('tbody');
           tbody.innerHTML = '';
+
           if (!users.length) {
             document.getElementById('empty-msg').style.display = '';
           } else {
             document.getElementById('empty-msg').style.display = 'none';
             users.forEach((u, i) => {
+              const rooms = (u.rooms || []).join(' ');
               const tr = document.createElement('tr');
               tr.innerHTML = `
-                <td class="col-id">${String(i+1).padStart(5,'0')}</td>
-                <td class="col-id">${u.id}</td>
+                <td class="dim">${String(i+1).padStart(5,'0')}</td>
+                <td class="dimmer">${esc(u.id)}</td>
+                <td>${esc(u.ip || '—')}</td>
                 <td>${fmt(u.firstSeen)}</td>
-                <td class="col-unix">${u.firstSeen ? Math.floor(u.firstSeen/1000) : '—'}</td>
-                <td class="col-clicks">${u.cookieClicks ?? 0}</td>
-                <td class="${u.name ? 'col-name' : 'col-name empty'}">${u.name || 'not set'}</td>
+                <td class="dimmer">${u.firstSeen ? Math.floor(u.firstSeen/1000) : '—'}</td>
+                <td title="${fmt(u.lastSeen)}">${reltime(u.lastSeen)}</td>
+                <td class="right">${u.visits || 0}</td>
+                <td class="right">${u.cookieClicks || 0}</td>
+                <td>${esc(u.browser || '—')}</td>
+                <td>${esc(u.os || '—')}</td>
+                <td class="dim">${esc(u.device || '—')}</td>
+                <td class="dim">${esc(u.language || '—')}</td>
+                <td class="${u.name ? 'bright' : 'name-empty'}">${esc(u.name || 'not set')}</td>
+                <td class="rooms-cell" title="${esc(rooms)}">${esc(rooms) || '—'}</td>
               `;
               tbody.appendChild(tr);
             });
           }
-          document.getElementById('toolbar-count').textContent = `${users.length} subject${users.length !== 1 ? 's' : ''}`;
-          document.getElementById('status-loaded').textContent = `Loaded ${users.length} record${users.length !== 1 ? 's' : ''}`;
+
+          const count = users.length;
+          document.getElementById('toolbar-count').textContent = `${count} subject${count !== 1 ? 's' : ''}`;
+          document.getElementById('status-loaded').textContent = `${count} record${count !== 1 ? 's' : ''} loaded`;
           document.getElementById('status-time').textContent = `Last refresh: ${fmt(Date.now())}`;
         });
     }
