@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NULL — Matrix Editor</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #0a0a0a; color: #ccc; font-family: 'Courier New', monospace; font-size: 13px; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+    #toolbar {
+      background: #1a1a1a; border-bottom: 1px solid #333; padding: 6px 12px;
+      display: flex; align-items: center; gap: 12px; flex-shrink: 0;
+    }
+    #toolbar-title { color: #fff; font-weight: bold; letter-spacing: 0.1em; }
+    #toolbar-sub { color: #555; font-size: 11px; }
+    .tb-btn {
+      background: #222; border: 1px solid #444; color: #888;
+      font-family: 'Courier New', monospace; font-size: 11px; padding: 3px 10px; cursor: pointer;
+    }
+    .tb-btn:hover { border-color: #888; color: #ccc; }
+    .tb-btn.danger:hover { border-color: #e94560; color: #e94560; }
+    #main { display: flex; flex: 1; overflow: hidden; }
+    #grid-wrap { flex: 1; overflow: auto; padding: 16px; position: relative; }
+    #grid {
+      display: grid;
+      grid-template-columns: repeat(10, 64px);
+      gap: 6px;
+      width: fit-content;
+      position: relative;
+    }
+    .tile {
+      width: 64px; height: 64px;
+      background: #111; border: 1px solid #222; border-radius: 4px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      cursor: pointer; position: relative; user-select: none;
+      transition: border-color 0.15s, background 0.15s;
+      font-size: 11px;
+    }
+    .tile:hover { border-color: #444; }
+    .tile.selected { border-color: #4488ff; background: #0a1a2a; }
+    .tile.from { border-color: #ffcc00; background: #1a1500; }
+    .tile.occupied { background: #0d1a0d; }
+    .tile.dead-end { opacity: 0.45; }
+    .tile-id { color: #555; font-size: 10px; }
+    .tile.occupied .tile-id { color: #44aa44; }
+    .tile.from .tile-id { color: #ffcc00; }
+    .tile.selected .tile-id { color: #4488ff; }
+    .tile-exits { font-size: 14px; color: #333; letter-spacing: 1px; min-height: 18px; }
+    .tile-presence { font-size: 9px; color: #2a4a2a; position: absolute; bottom: 3px; right: 4px; }
+    #panel {
+      width: 260px; background: #111; border-left: 1px solid #222;
+      display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto;
+    }
+    #panel-header { padding: 10px 12px; border-bottom: 1px solid #1a1a1a; color: #666; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; }
+    #panel-body { padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+    .panel-section { font-size: 11px; color: #555; margin-bottom: 2px; text-transform: uppercase; letter-spacing: 0.06em; }
+    .panel-val { color: #aaa; font-size: 13px; }
+    .panel-val.none { color: #333; font-style: italic; }
+    .dir-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; width: 120px; }
+    .dir-btn {
+      background: #1a1a1a; border: 1px solid #2a2a2a; color: #555;
+      font-size: 16px; padding: 6px 0; cursor: pointer; text-align: center; border-radius: 3px;
+    }
+    .dir-btn:hover:not(:disabled) { border-color: #4488ff; color: #4488ff; }
+    .dir-btn:disabled { opacity: 0.2; cursor: default; }
+    .dir-btn.active { border-color: #ffcc00; color: #ffcc00; background: #1a1500; }
+    .conn-list { display: flex; flex-direction: column; gap: 4px; }
+    .conn-row {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 11px; color: #666; padding: 3px 6px;
+      background: #0d0d0d; border: 1px solid #1a1a1a; border-radius: 3px;
+    }
+    .conn-row .arrow { color: #888; font-size: 13px; min-width: 14px; }
+    .conn-row .dest { color: #aaa; flex: 1; }
+    .conn-row .oneway { color: #333; font-size: 10px; }
+    .del-conn { background: none; border: none; color: #333; cursor: pointer; font-size: 12px; padding: 0 2px; }
+    .del-conn:hover { color: #e94560; }
+    #connect-form { display: flex; flex-direction: column; gap: 8px; }
+    #connect-form label { font-size: 11px; color: #555; }
+    #to-display { color: #4488ff; font-size: 13px; min-height: 1.2em; }
+    #to-display.empty { color: #333; font-style: italic; }
+    #reverse-wrap { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #555; }
+    #connect-btn {
+      background: #0a1a0a; border: 1px solid #2a4a2a; color: #44aa44;
+      font-family: 'Courier New', monospace; font-size: 12px; padding: 5px 10px; cursor: pointer;
+    }
+    #connect-btn:hover:not(:disabled) { border-color: #44aa44; }
+    #connect-btn:disabled { opacity: 0.3; cursor: default; }
+    #status-bar {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: #111; border-top: 1px solid #1a1a1a;
+      padding: 3px 12px; font-size: 11px; color: #333; display: flex; gap: 24px;
+    }
+    #arrow-svg { position: absolute; top: 0; left: 0; pointer-events: none; }
+  </style>
+</head>
+<body>
+  <div id="toolbar">
+    <div>
+      <div id="toolbar-title">NULL / MATRIX EDITOR</div>
+      <div id="toolbar-sub">Transaction: /matrix &nbsp;|&nbsp; Room Connection Map</div>
+    </div>
+    <button class="tb-btn" onclick="load()">Refresh</button>
+    <button class="tb-btn danger" onclick="clearMatrix()">Clear All Connections</button>
+    <span id="conn-count" style="color:#555;font-size:11px;margin-left:auto"></span>
+  </div>
+
+  <div id="main">
+    <div id="grid-wrap">
+      <svg id="arrow-svg" width="0" height="0"></svg>
+      <div id="grid"></div>
+    </div>
+    <div id="panel">
+      <div id="panel-header">Room Inspector</div>
+      <div id="panel-body">
+        <div>
+          <div class="panel-section">Selected Room</div>
+          <div class="panel-val none" id="sel-room">none</div>
+        </div>
+        <div>
+          <div class="panel-section">Exits</div>
+          <div class="conn-list" id="exits-list"><span class="panel-val none">—</span></div>
+        </div>
+        <div>
+          <div class="panel-section">Entrances</div>
+          <div class="conn-list" id="entrances-list"><span class="panel-val none">—</span></div>
+        </div>
+        <hr style="border-color:#1a1a1a">
+        <div id="connect-form">
+          <div class="panel-section">Add Connection</div>
+          <div>
+            <label>FROM: <span id="from-display" style="color:#ffcc00">click a tile</span></label>
+          </div>
+          <div>
+            <label>TO: <span id="to-display" class="empty">click another tile</span></label>
+          </div>
+          <div>
+            <label>Direction:</label>
+            <div class="dir-grid" style="margin-top:4px">
+              <div></div>
+              <button class="dir-btn" id="dir-up" data-dir="up">↑</button>
+              <div></div>
+              <button class="dir-btn" id="dir-left" data-dir="left">←</button>
+              <div></div>
+              <button class="dir-btn" id="dir-right" data-dir="right">→</button>
+              <div></div>
+              <button class="dir-btn" id="dir-down" data-dir="down">↓</button>
+              <div></div>
+            </div>
+          </div>
+          <div id="reverse-wrap">
+            <input type="checkbox" id="reverse-cb" checked>
+            <label for="reverse-cb">also connect reverse direction</label>
+          </div>
+          <button id="connect-btn" disabled onclick="addConnection()">Connect</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="status-bar">
+    <span id="status-msg">ready</span>
+    <span id="status-time"></span>
+  </div>
+
+  <script>
+    const ROOMS = ['00000','00001','00002','00003','00004','00005','00006','00007','00008','00009',
+      '00010','00011','00012','00013','00014','00015','00016','00017','00018','00019',
+      '00020','00021','00022','00023','00024','00025','00026','00027','00028','00029',
+      '00030','00031','00032','00033','00034','00035','00036','00037','00038','00039',
+      '00040','00041','00042','00043','00044','00045','00046','00047','00048','00049','00050'];
+
+    const DIR_ARROW = { up:'↑', down:'↓', left:'←', right:'→' };
+    const DIR_OPPOSITE = { up:'down', down:'up', left:'right', right:'left' };
+
+    let matrix = {};
+    let occupancy = {}; // roomId → count
+    let fromRoom = null;
+    let toRoom = null;
+    let selectedDir = null;
+
+    // ── Build grid ──────────────────────────────────────────────────────────
+    const grid = document.getElementById('grid');
+    ROOMS.forEach(id => {
+      const tile = document.createElement('div');
+      tile.className = 'tile';
+      tile.id = 'tile-' + id;
+      tile.innerHTML = `<div class="tile-id">${id}</div><div class="tile-exits" id="exits-${id}"></div><div class="tile-presence" id="presence-${id}"></div>`;
+      tile.addEventListener('click', () => onTileClick(id));
+      grid.appendChild(tile);
+    });
+
+    function onTileClick(id) {
+      if (!fromRoom) {
+        fromRoom = id;
+        document.getElementById('tile-' + id).classList.add('from');
+        document.getElementById('from-display').textContent = id;
+        document.getElementById('to-display').textContent = 'click another tile';
+        document.getElementById('to-display').className = 'empty';
+        toRoom = null;
+        selectedDir = null;
+        updateDirButtons();
+        updateConnectBtn();
+        updateInspector(id);
+      } else if (id === fromRoom) {
+        clearSelection();
+      } else {
+        if (toRoom) document.getElementById('tile-' + toRoom).classList.remove('selected');
+        toRoom = id;
+        document.getElementById('tile-' + id).classList.add('selected');
+        document.getElementById('to-display').textContent = id;
+        document.getElementById('to-display').className = '';
+        updateDirButtons();
+        updateConnectBtn();
+      }
+    }
+
+    function clearSelection() {
+      if (fromRoom) document.getElementById('tile-' + fromRoom).classList.remove('from');
+      if (toRoom) document.getElementById('tile-' + toRoom).classList.remove('selected');
+      fromRoom = toRoom = selectedDir = null;
+      document.getElementById('from-display').textContent = 'click a tile';
+      document.getElementById('to-display').textContent = 'click another tile';
+      document.getElementById('to-display').className = 'empty';
+      updateDirButtons();
+      updateConnectBtn();
+      updateInspector(null);
+    }
+
+    // ── Direction buttons ───────────────────────────────────────────────────
+    document.querySelectorAll('.dir-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        selectedDir = btn.dataset.dir;
+        document.querySelectorAll('.dir-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        updateConnectBtn();
+      });
+    });
+
+    function updateDirButtons() {
+      document.querySelectorAll('.dir-btn').forEach(b => {
+        b.classList.remove('active');
+        if (!fromRoom) { b.disabled = true; return; }
+        b.disabled = false;
+        // Dim if this direction already has an exit from fromRoom
+        const existing = getExits(fromRoom);
+        if (existing[b.dataset.dir]) b.style.opacity = '0.4';
+        else b.style.opacity = '';
+      });
+      if (selectedDir) {
+        const btn = document.getElementById('dir-' + selectedDir);
+        if (btn) btn.classList.add('active');
+      }
+    }
+
+    function updateConnectBtn() {
+      document.getElementById('connect-btn').disabled = !(fromRoom && toRoom && selectedDir);
+    }
+
+    // ── Inspector ───────────────────────────────────────────────────────────
+    function updateInspector(roomId) {
+      document.getElementById('sel-room').textContent = roomId || 'none';
+      document.getElementById('sel-room').className = roomId ? 'panel-val' : 'panel-val none';
+      if (!roomId) {
+        document.getElementById('exits-list').innerHTML = '<span class="panel-val none">—</span>';
+        document.getElementById('entrances-list').innerHTML = '<span class="panel-val none">—</span>';
+        return;
+      }
+      const exits = getExits(roomId);
+      const entrances = getEntrances(roomId);
+      renderConnList('exits-list', exits, roomId, true);
+      renderConnList('entrances-list', entrances, roomId, false);
+    }
+
+    function renderConnList(elId, conns, roomId, isExit) {
+      const el = document.getElementById(elId);
+      const entries = Object.entries(conns);
+      if (!entries.length) { el.innerHTML = '<span class="panel-val none">—</span>'; return; }
+      el.innerHTML = '';
+      entries.forEach(([dir, other]) => {
+        const row = document.createElement('div');
+        row.className = 'conn-row';
+        const hasReturn = isExit ? !!getExits(other)[DIR_OPPOSITE[dir]] : false;
+        row.innerHTML = `
+          <span class="arrow">${DIR_ARROW[dir]}</span>
+          <span class="dest">${other}</span>
+          ${isExit && !hasReturn ? '<span class="oneway">one-way</span>' : ''}
+          ${isExit ? `<button class="del-conn" title="Remove" onclick="removeConn('${roomId}','${other}')">✕</button>` : ''}
+        `;
+        el.appendChild(row);
+      });
+    }
+
+    // ── Matrix helpers ──────────────────────────────────────────────────────
+    function getExits(room) {
+      const exits = {};
+      for (const [key, dir] of Object.entries(matrix)) {
+        const [from, to] = key.split('|');
+        if (from === room) exits[dir] = to;
+      }
+      return exits;
+    }
+    function getEntrances(room) {
+      const entrances = {};
+      for (const [key, dir] of Object.entries(matrix)) {
+        const [from, to] = key.split('|');
+        if (to === room) entrances[dir] = from;
+      }
+      return entrances;
+    }
+
+    // ── Add connection ──────────────────────────────────────────────────────
+    function addConnection() {
+      if (!fromRoom || !toRoom || !selectedDir) return;
+      const reverse = document.getElementById('reverse-cb').checked;
+      const connects = [{ from: fromRoom, to: toRoom, direction: selectedDir }];
+      if (reverse) connects.push({ from: toRoom, to: fromRoom, direction: DIR_OPPOSITE[selectedDir] });
+
+      Promise.all(connects.map(c =>
+        fetch('/api/matrix/connect', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(c),
+        })
+      )).then(() => {
+        status('Connected ' + fromRoom + ' → ' + toRoom + ' (' + selectedDir + ')');
+        clearSelection();
+        load();
+      });
+    }
+
+    function removeConn(from, to) {
+      if (!confirm(`Remove connection ${from} → ${to}?`)) return;
+      fetch('/api/matrix/connect', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ from, to }),
+      }).then(() => { load(); status('Removed ' + from + ' → ' + to); });
+    }
+
+    function clearMatrix() {
+      if (!confirm('Remove ALL connections? This cannot be undone.')) return;
+      // Delete all keys one by one
+      Promise.all(Object.keys(matrix).map(key => {
+        const [from, to] = key.split('|');
+        return fetch('/api/matrix/connect', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ from, to }),
+        });
+      })).then(() => { load(); status('Matrix cleared'); });
+    }
+
+    // ── Render tiles ────────────────────────────────────────────────────────
+    function renderTiles() {
+      ROOMS.forEach(id => {
+        const tile = document.getElementById('tile-' + id);
+        const exits = getExits(id);
+        const entrances = getEntrances(id);
+        const exitsEl = document.getElementById('exits-' + id);
+        exitsEl.textContent = Object.keys(exits).map(d => DIR_ARROW[d]).join('');
+        const isDeadEnd = Object.keys(exits).length === 0 && Object.keys(entrances).length > 0;
+        tile.classList.toggle('dead-end', isDeadEnd);
+        tile.classList.toggle('occupied', !!(occupancy[id] && occupancy[id] > 0));
+        const presEl = document.getElementById('presence-' + id);
+        presEl.textContent = occupancy[id] ? '● ' + occupancy[id] : '';
+      });
+      document.getElementById('conn-count').textContent = Object.keys(matrix).length + ' connections';
+    }
+
+    // ── Load ────────────────────────────────────────────────────────────────
+    function load() {
+      Promise.all([
+        fetch('/api/matrix').then(r => r.json()),
+        fetch('/api/users').then(r => r.json()),
+      ]).then(([m, users]) => {
+        matrix = m;
+        occupancy = {};
+        users.forEach(u => {
+          if (u.rooms && u.rooms.length) {
+            const last = u.rooms[u.rooms.length - 1];
+            occupancy[last] = (occupancy[last] || 0) + 1;
+          }
+        });
+        renderTiles();
+        if (fromRoom) updateInspector(fromRoom);
+        const now = new Date();
+        document.getElementById('status-time').textContent = 'Refreshed ' +
+          String(now.getHours()).padStart(2,'0') + ':' +
+          String(now.getMinutes()).padStart(2,'0') + ':' +
+          String(now.getSeconds()).padStart(2,'0');
+      });
+    }
+
+    function status(msg) {
+      document.getElementById('status-msg').textContent = msg;
+    }
+
+    load();
+    setInterval(load, 15000);
+  </script>
+</body>
+</html>

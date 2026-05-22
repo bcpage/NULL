@@ -9,6 +9,28 @@ const PORT = 3000;
 // ─── Game registry ────────────────────────────────────────────────────────────
 const GAMES = ['00001', '00002', '00003', '00004', '00005', '00006', '00007', '00008', '00009', '00010', '00011', '00012', '00013', '00014', '00015', '00016', '00017', '00018', '00019', '00020', '00021', '00022', '00023', '00024', '00025', '00026', '00027', '00028', '00029', '00030', '00031', '00032', '00033', '00034', '00035', '00036', '00037', '00038', '00039', '00040', '00041', '00042', '00043', '00044', '00045', '00046', '00047', '00048', '00049', '00050'];
 
+// ─── Matrix navigation ────────────────────────────────────────────────────────
+const MATRIX_FILE = path.join(__dirname, 'data', 'matrix.json');
+let matrix = {};
+try { matrix = JSON.parse(fs.readFileSync(MATRIX_FILE, 'utf8')); } catch (e) {}
+function saveMatrix() { fs.writeFileSync(MATRIX_FILE, JSON.stringify(matrix, null, 2)); }
+function getDestination(fromRoom, dir) {
+  for (const key of Object.keys(matrix)) {
+    const [from, to] = key.split('|');
+    if (from === fromRoom && matrix[key] === dir) return to;
+  }
+  return null;
+}
+function getRoomConnections(roomId) {
+  const exits = {}, entrances = {};
+  for (const [key, dir] of Object.entries(matrix)) {
+    const [from, to] = key.split('|');
+    if (from === roomId) exits[dir] = to;
+    if (to === roomId) entrances[dir] = from;
+  }
+  return { exits, entrances };
+}
+
 // ─── User store ───────────────────────────────────────────────────────────────
 const USER_DATA_DIR = path.join(__dirname, 'data');
 const USER_FILE = path.join(USER_DATA_DIR, 'users.json');
@@ -464,6 +486,13 @@ const httpServer = http.createServer((req, res) => {
     return;
   }
 
+  // Matrix editor
+  if (pathname === '/matrix' && method === 'GET') {
+    updateUserFromRequest(deviceId, req, null);
+    serveFileWithHeaders(path.join(__dirname, 'public', 'matrix', 'index.html'), 'text/html');
+    return;
+  }
+
   // Admin dashboard
   if (pathname === '/admin' && method === 'GET') {
     updateUserFromRequest(deviceId, req, null);
@@ -663,6 +692,58 @@ const httpServer = http.createServer((req, res) => {
     ticketData.issued[device] = number;
     saveTickets();
     sendJSON(res, { number });
+    return;
+  }
+
+  // API: matrix — get full matrix
+  if (pathname === '/api/matrix' && method === 'GET') {
+    sendJSON(res, matrix);
+    return;
+  }
+
+  // API: matrix — resolve a player move
+  if (pathname === '/api/move' && method === 'GET') {
+    const qs = new URLSearchParams(req.url.split('?')[1] || '');
+    const from = String(qs.get('from') || '').padStart(5, '0');
+    const dir  = String(qs.get('dir') || '');
+    sendJSON(res, { destination: getDestination(from, dir) });
+    return;
+  }
+
+  // API: matrix — add/update a connection
+  if (pathname === '/api/matrix/connect' && method === 'POST') {
+    let body = '';
+    req.on('data', c => body += c);
+    req.on('end', () => {
+      try {
+        const { from, to, direction } = JSON.parse(body);
+        const DIRS = ['up', 'down', 'left', 'right'];
+        if (!from || !to || !DIRS.includes(direction)) { res.writeHead(400); res.end('Invalid'); return; }
+        // Remove any existing connection from 'from' in this direction
+        for (const key of Object.keys(matrix)) {
+          const [f] = key.split('|');
+          if (f === from && matrix[key] === direction) delete matrix[key];
+        }
+        matrix[`${from}|${to}`] = direction;
+        saveMatrix();
+        sendJSON(res, { ok: true });
+      } catch (e) { res.writeHead(400); res.end('Bad JSON'); }
+    });
+    return;
+  }
+
+  // API: matrix — remove a connection
+  if (pathname === '/api/matrix/connect' && method === 'DELETE') {
+    let body = '';
+    req.on('data', c => body += c);
+    req.on('end', () => {
+      try {
+        const { from, to } = JSON.parse(body);
+        delete matrix[`${from}|${to}`];
+        saveMatrix();
+        sendJSON(res, { ok: true });
+      } catch (e) { res.writeHead(400); res.end('Bad JSON'); }
+    });
     return;
   }
 
