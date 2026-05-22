@@ -70,6 +70,10 @@
       vertical-align: top;
     }
     tr:hover td { background: #0f0f0f; }
+    tr.me td { background: #0a1a0a; border-bottom-color: #1a2a1a; }
+    tr.me td.dim { color: #3a6a3a; }
+    tr.me td.dimmer { color: #2a4a2a; }
+    tr.me:hover td { background: #0d200d; }
     .dim    { color: #444; }
     .dimmer { color: #333; }
     .bright { color: #ccc; }
@@ -157,6 +161,29 @@
       return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     }
 
+    let myId = null;
+    fetch('/api/user/me').then(r => r.json()).then(u => {
+      // server returns the record but not the id directly — read it from the cookie
+      const m = document.cookie.match(/(?:^|;\s*)device=([a-f0-9-]{36})/);
+      if (m) myId = m[1];
+      load();
+    });
+
+    function delUser(id) {
+      if (!confirm('Delete this user record?')) return;
+      fetch('/api/users/' + id, { method: 'DELETE' })
+        .then(() => {
+          const row = document.getElementById('row-' + id);
+          if (row) row.remove();
+          load();
+        });
+    }
+
+    function clearAll() {
+      if (!confirm('Delete ALL user records? This cannot be undone.')) return;
+      fetch('/api/users', { method: 'DELETE' }).then(() => load());
+    }
+
     function load() {
       fetch('/api/users')
         .then(r => r.json())
@@ -164,19 +191,20 @@
           users.sort((a, b) => (a.firstSeen || 0) - (b.firstSeen || 0));
           const tbody = document.getElementById('tbody');
           tbody.innerHTML = '';
-
           if (!users.length) {
             document.getElementById('empty-msg').style.display = '';
           } else {
             document.getElementById('empty-msg').style.display = 'none';
             users.forEach((u, i) => {
               const rooms = (u.rooms || []).join(' ');
+              const isMe = myId && u.id === myId;
               const tr = document.createElement('tr');
+              if (isMe) tr.classList.add('me');
               tr.id = 'row-' + u.id;
               tr.innerHTML = `
                 <td><button class="del-btn" onclick="delUser('${esc(u.id)}')">✕</button></td>
                 <td class="dim">${String(i+1).padStart(5,'0')}</td>
-                <td class="dimmer">${esc(u.id)}</td>
+                <td class="dimmer">${esc(u.id)}${isMe ? ' ◀' : ''}</td>
                 <td>${esc(u.ip || '—')}</td>
                 <td>${fmt(u.firstSeen)}</td>
                 <td class="dimmer">${u.firstSeen ? Math.floor(u.firstSeen/1000) : '—'}</td>
@@ -193,7 +221,6 @@
               tbody.appendChild(tr);
             });
           }
-
           const count = users.length;
           document.getElementById('toolbar-count').textContent = `${count} subject${count !== 1 ? 's' : ''}`;
           document.getElementById('status-loaded').textContent = `${count} record${count !== 1 ? 's' : ''} loaded`;
@@ -201,21 +228,6 @@
         });
     }
 
-    function delUser(id) {
-      fetch('/api/users/' + id, { method: 'DELETE' })
-        .then(() => {
-          const row = document.getElementById('row-' + id);
-          if (row) row.remove();
-          load();
-        });
-    }
-
-    function clearAll() {
-      if (!confirm('Delete all user records?')) return;
-      fetch('/api/users', { method: 'DELETE' }).then(() => load());
-    }
-
-    load();
     setInterval(load, 30000);
   </script>
 </body>
