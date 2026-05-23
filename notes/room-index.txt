@@ -1,56 +1,268 @@
-NULL — Room Index
-=================
-Generated: 2026-05-22
+NULL — Project & Room Index
+===========================
+Last updated: 2026-05-22
 
-00000  NULL                    Welcome screen. Cycles through ~300 atmospheric level titles. Entry point for all new visitors.
-00001  Colour Together         Shared drawing canvas. All players paint on the same surface in real time via WebSocket.
-00002  Cookie                  Cookie gate. First click generates and timestamps the user's identity record. Required before entering the facility.
-00003  Tic Tac Toe             Multiplayer Tic Tac Toe. Real-time via WebSocket. Two players, shared board.
-00004  Game of Life            Conway's Game of Life. Interactive with pattern library and speed controls.
+================================================================================
+PROJECT OVERVIEW
+================================================================================
+
+NULL is a self-hosted multiplayer web platform built as a labyrinth of 52
+self-contained "rooms," each a different experience. The aesthetic anchor is
+SAP enterprise software — bureaucratic, institutional, clinical. Players are
+tracked before they know they're being tracked. The system does not explain
+itself. Navigation is directional (up/down/left/right) via a matrix data
+structure. There is no map. Lostness is the design.
+
+Repo: github.com/bcpage/NULL
+Stack: Node.js (no framework), vanilla HTML/CSS/JS per room, WebSockets (ws),
+       JSON files for all persistence.
+Server: server.js — single file, raw HTTP + WebSocket
+Port:   3000
+
+================================================================================
+PLAYER FLOW (intended)
+================================================================================
+
+  /           → redirects to /game/00000
+  /game/00000   Welcome screen — atmospheric titles, enter button
+  /game/00002   Cookie gate — must click once before accessing anything else
+                (new uncookied visitors are force-redirected here)
+  /game/00051   Name tag — SUBJ-006 error screen, designation required
+                (reached organically via matrix navigation, not forced)
+  [rest of facility via directional nav]
+
+================================================================================
+ADMIN / SYSTEM PAGES (hidden by URL obscurity)
+================================================================================
+
+  /admin        User Registry
+                  ALV-grid style table of all tracked subjects. Columns:
+                  Cookie ID, IP, First Seen, First Seen (Unix), Last Seen,
+                  Visits, Clicks, Browser, OS, Device, Language, Name,
+                  Rooms Visited. Per-row delete with confirm. Clear All.
+                  Auto-refreshes every 30 seconds. Current user row
+                  highlighted green. URL known only to admin.
+
+  /matrix       Matrix Editor
+                  Visual editor for the room connection graph. 52 tiles
+                  (00000-00051) in a grid. Click FROM room, click TO room,
+                  pick direction (up/down/left/right), connect. Inspector
+                  panel shows exits, entrances, one-way edges. Dead-end
+                  tiles dimmed. Live occupancy from /api/users. Auto-
+                  refreshes every 15 seconds. Clear All Connections button.
+
+================================================================================
+NAVIGATION SYSTEM
+================================================================================
+
+All rooms use data-nav="matrix" on the body tag (except 00000 and 00002).
+nav.js dispatches to matrix-nav.js which renders a 3x3 button grid:
+
+      [ ↑ ]
+  [←] [ ] [→]
+      [ ↓ ]
+
+Buttons disabled if no connection in that direction. Keyboard: WASD + arrows.
+Blocked direction = red flash overlay, no navigation.
+Connections stored in data/matrix.json (112 connections as of this writing).
+Cookie gate (00002) blocks uncookied users from accessing any game room.
+
+================================================================================
+USER TRACKING
+================================================================================
+
+Every HTTP request is fingerprinted. Data stored in data/users.json keyed
+by cookie UUID (set as "device" cookie on first visit, 1-year expiry).
+
+Fields per user:
+  id           — UUID (v4), the browser cookie value
+  firstSeen    — Unix timestamp of first request
+  lastSeen     — Unix timestamp of most recent request
+  visits       — total page loads
+  cookieClicks — number of times clicked in room 00002
+  name         — chosen designation (set in room 00051), null until set
+  aliases      — array of previous designations (auto-saved on name change)
+  ip           — IP address of most recent request
+  browser      — parsed from User-Agent (Chrome, Firefox, Safari, etc.)
+  os           — parsed from User-Agent (Windows, macOS, iOS, Android, etc.)
+  device       — parsed from User-Agent (Desktop, Mobile, Tablet)
+  language     — from Accept-Language header
+  rooms        — array of room IDs visited, in order
+
+================================================================================
+ROOM INDEX (00000 — 00051)
+================================================================================
+
+00000  NULL                    Welcome screen. Cycles through ~300 atmospheric
+                               level titles. Rotating subtitle copy. Entry
+                               point. Not in the matrix nav system.
+
+00001  Colour Together         Shared drawing canvas. All players paint on the
+                               same surface in real time via WebSocket. The
+                               original proof-of-concept room.
+
+00002  Cookie                  Identity gate. Must click at least once before
+                               accessing the rest of the facility. Click
+                               timestamps the user record. Cycling message
+                               copy acknowledges what just happened. Not
+                               navigable via matrix — hard redirect target.
+
+00003  Tic Tac Toe             Real-time multiplayer Tic Tac Toe via WebSocket.
+                               Two players share a board.
+
+00004  Game of Life            Conway's Game of Life with pattern library and
+                               speed controls.
+
 00005  Pong                    Single-player Pong with AI opponent.
-00006  Connect Four            Multiplayer Connect Four. Real-time via WebSocket.
-00007  Chat                    Shared text chat. All connected players in the same room. Real-time.
-00008  Voice Notes             Record and play back short voice clips. Shared across all visitors.
-00009  Dice Roller             Full DnD dice set: d4, d6, d8, d10, d12, d20, d100. Animated rolls.
-00010  Goldfish                A goldfish in a bowl. Animated. It just swims.
-00011  Number Dispenser        Issues sequential tickets. Each visitor pulls the next number in line. Persistent.
-00012  The Yellow Door         A yellow door. It doesn't open.
-00013  Cowsay                  Enter text. A cow says it. Classic Unix utility rendered in the browser.
-00014  52!                     Displays the astronomically large number of possible card deck shuffles. Shared shuffle counter.
-00015  Snake                   Classic Snake game with a persistent leaderboard.
-00016  The Static              A television playing static. Nothing else.
-00017  The Candle              A single candle flame. Animated. Atmospheric.
-00018  ASCII Panel             Scrolling ASCII art display panel.
+
+00006  Connect Four            Real-time multiplayer Connect Four via WebSocket.
+
+00007  Chat                    Shared text chat. All connected players see the
+                               same feed in real time.
+
+00008  Voice Notes             Record and play back short voice clips. Shared
+                               across all visitors. Clips persist.
+
+00009  Dice Roller             Full DnD dice set: d4 d6 d8 d10 d12 d20 d100.
+                               Animated rolls.
+
+00010  Goldfish                A goldfish in a bowl. It swims.
+
+00011  Number Dispenser        Issues sequential tickets. Each visitor pulls the
+                               next number. Persistent counter.
+
+00012  The Yellow Door         A yellow door. It does not open.
+
+00013  Cowsay                  Enter text. A cow says it. Classic Unix utility.
+                               Matrix up-exit leads to room 00051.
+
+00014  52!                     Displays the number of possible card deck
+                               shuffles (8.07 x 10^67). Shared shuffle counter
+                               increments for all players.
+
+00015  Snake                   Classic Snake with persistent leaderboard.
+
+00016  The Static              A television showing static. Nothing else.
+
+00017  The Candle              A single animated candle flame. Atmospheric.
+
+00018  ASCII Panel             Scrolling ASCII art display.
+
 00019  Unix Epoch              Live Unix timestamp counter. Ticks every second.
-00020  Grade School Clock      An analog clock drawn with classic classroom aesthetics.
-00021  The Countdown           A countdown timer to an unspecified event. The destination is not explained.
-00022  The Typewriter          Shared typewriter. What someone else typed is still on the page. Clears after 90 seconds of silence.
-00023  UUID Generator          Generates UUIDs on demand. Explains what they are and aren't.
-00024  Monty Hall              Interactive Monty Hall problem simulator with running statistics.
-00025  ELIZA                   1966 psychotherapist chatbot. Terminal aesthetic. It will ask how you feel about that.
-00026  The Plant               A plant that wilts if no one visits. Shared state. Someone has to water it.
-00027  Calculator              A calculator. It calculates.
-00028  Galton Board            Animated Galton board (bean machine). Demonstrates the central limit theorem.
-00029  The Terminal            A fake terminal prompt. The outputs are wrong. It knows things it shouldn't.
+
+00020  Grade School Clock      Analog clock with classroom aesthetic.
+
+00021  The Countdown           A countdown to an unspecified event. The
+                               destination is not explained.
+
+00022  The Typewriter          Shared typewriter. Previous text persists on the
+                               page. Clears after 90 seconds of silence.
+
+00023  UUID Generator          Generates UUIDs on demand with explanation.
+
+00024  Monty Hall              Interactive Monty Hall problem with running
+                               statistics across all plays.
+
+00025  ELIZA                   1966 psychotherapist chatbot. Terminal aesthetic.
+                               It will ask how you feel about that.
+
+00026  The Plant               A plant that wilts if no one visits. Shared
+                               state. Needs to be watered.
+
+00027  Calculator              A calculator.
+
+00028  Galton Board            Animated Galton board / bean machine.
+                               Demonstrates the central limit theorem visually.
+
+00029  The Terminal            Fake terminal prompt. Outputs are wrong. It knows
+                               things it shouldn't. Matrix down-exit to 00051.
+
 00030  Shooting Gallery        Shoot the targets. Duck hunt aesthetic.
+
 00031  The Hallway             An infinite corridor. The doors don't open.
-00032  The Form                A bureaucratic intake form. Your responses join a scrolling ledger of everyone who filled it out.
-00033  2am Room                Only fully accessible between 2:00am and 3:00am. Otherwise dim and locked.
+                               One-way passage from room 00017.
+
+00032  The Form                Bureaucratic intake form. Responses join a
+                               scrolling ledger of everyone who filled it out.
+
+00033  2am Room                Fully accessible only between 2:00am and 3:00am.
+                               Otherwise dim and restricted. One-way from 00031.
+
 00034  Hangman                 Classic Hangman word game.
-00035  Trolley Problem         Pull the lever or don't. Running global tally of who chose what. No judgment given.
+
+00035  Trolley Problem         Pull the lever or don't. Global running tally.
+                               No judgment given.
+
 00036  Dots and Boxes          Two-player Dots and Boxes on a shared grid.
-00037  Metronome               A metronome. Adjustable tempo. Ticks.
-00038  Shared Chalkboard       A chalkboard everyone draws on. Marks accumulate across visits.
-00039  The Recursive Room      An iframe of the platform inside itself. It goes as deep as the browser allows.
-00040  Zeno's Paradox          Interactive visualization of Zeno's dichotomy paradox.
-00041  Ship of Theseus         Slowly replaces the ship plank by plank. At what point is it a different ship?
-00042  The Heap                Interactive Sorites paradox. One grain removed at a time. When does the heap stop being a heap?
-00043  PRNG vs True RNG        Side-by-side comparison of pseudorandom and true random number generation.
-00044  Visible Spectrum        Displays the visible light spectrum with wavelengths. Non-spectral colors noted.
-00045  Logo Turtle             Logo turtle graphics. Draw with movement commands. 1967 MIT aesthetic.
+
+00037  Metronome               A metronome. Adjustable tempo.
+
+00038  Shared Chalkboard       A chalkboard all players draw on together. Marks
+                               accumulate across all visits and persist.
+
+00039  The Recursive Room      An iframe of the platform inside itself. Goes as
+                               deep as the browser allows.
+
+00040  Zeno's Paradox          Interactive visualization of Zeno's dichotomy
+                               paradox. The destination is never reached.
+
+00041  Ship of Theseus         Replaces the ship plank by plank. At what point
+                               is it a different ship?
+
+00042  The Heap                Sorites paradox. One grain removed at a time.
+                               When does the heap stop being a heap?
+
+00043  PRNG vs True RNG        Side-by-side pseudorandom vs. true random number
+                               generation comparison.
+
+00044  Visible Spectrum        Displays the visible light spectrum with
+                               wavelengths. Non-spectral colors noted.
+
+00045  Logo Turtle             Logo turtle graphics. Draw with movement
+                               commands. 1967 MIT aesthetic.
+
 00046  Cheshire Cat            Fades in and out. The smile stays last.
-00047  Something Under the Bed A dead end. One-way passage. Nothing is explained.
-00048  Useless Information     Rotating display of accurate but entirely useless facts.
-00049  MASH                    The classic paper fortune-telling game. Mansion, Apartment, Shack, House.
-00050  Monitor Room            Six-panel surveillance monitor. Iframes of other rooms rotate every 12 seconds.
-00051  PROCESS INTERRUPTED     Name tag room. SUBJ-006 error screen. Required designation before the system will proceed.
+                               Convergence drain — reached from 00026, 00034,
+                               and 00042 (all one-way in).
+
+00047  Something Under the Bed Dead end. One-way in from room 00031. Nothing
+                               is explained. No exits.
+
+00048  Useless Information     Rotating display of accurate but useless facts.
+
+00049  MASH                    Classic paper fortune-telling game. Mansion,
+                               Apartment, Shack, House.
+
+00050  Monitor Room            Six-panel surveillance monitor. Iframes of other
+                               rooms rotate every 12 seconds.
+
+00051  PROCESS INTERRUPTED     Name tag room. SAP-style SUBJ-006 error screen.
+                               Real cookie UUID displayed. Nav locked until
+                               designation submitted. Sneakers quote transforms
+                               on verify. Old names saved as aliases. Reachable
+                               from 00013 (up) and 00029 (down).
+
+================================================================================
+DATA FILES
+================================================================================
+
+  data/matrix.json     Room connection graph. 112 entries as of 2026-05-22.
+                       Format: { "fromRoom|toRoom": "direction" }
+  data/users.json      All user records keyed by cookie UUID.
+  public/games/00002/data/cookie.json     Global cookie click counter.
+  public/games/00008/data/recordings.json Voice note metadata + audio files.
+  public/games/00011/data/tickets.json    Current ticket number.
+  public/games/00014/data/cards.json      Shuffle counter and last shuffle.
+  public/games/00015/data/scores.json     Snake leaderboard.
+  public/games/00026/data/plant.json      Plant state (water level, last watered).
+  public/games/00032/data/submissions.json  Form submissions ledger.
+  public/games/00035/data/pulls.json      Trolley problem global vote counts.
+  public/games/00038/data/strokes.json    Chalkboard persistent strokes.
+
+================================================================================
+NOTES FOLDER
+================================================================================
+
+  notes/build-report-2026-05-22.md    Dev velocity report: stats on what was
+                                      built, time elapsed, lines of code.
+  notes/room-index.txt                This file.
