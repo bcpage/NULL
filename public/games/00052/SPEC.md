@@ -14,17 +14,9 @@ Static display. The prime is hardcoded in a JS constant, rendered in a monospace
 in groups of 50 digits. The historical account below covers Carmody, the MPAA, Slashdot,
 and the unanswered legal question.
 
-**DIGITS ARE UNVERIFIED PLACEHOLDER.** The number in the JS constant is wrong —
-it diverges from the correct prime at digit 21. The correct prime is confirmed to:
-  - Start with: 48565...
-  - End with: ...29443
-  - Have exactly 1,401 digits
-  - Source: fatphil.org/maths/illegal/ (Phil Carmody's original page)
-  - Also listed at: t5k.org/curios/page.php?number_id=953 (Prime Curios)
-
-To fix: fetch the number from either source when accessible, replace the PRIME
-constant in the JS block, verify digit count is 1401. The room displays a red
-"UNVERIFIED" notice until this is done.
+**TODO:** Prime digits need verification. The number in the JS constant diverges from
+the correct prime at digit ~21. Correct number: starts 48565, ends 29443, 1401 digits.
+Source when accessible: fatphil.org/maths/illegal/ or t5k.org/curios/page.php?number_id=953
 
 ## Data files
 None.

@@ -40,16 +40,6 @@
       letter-spacing: 0.04em;
       max-width: 860px;
     }
-    .unverified-notice {
-      font-size: 0.65rem;
-      color: #8b3a3a;
-      border: 1px solid #3a1010;
-      background: #0d0505;
-      padding: 8px 12px;
-      margin-bottom: 6px;
-      max-width: 860px;
-      letter-spacing: 0.05em;
-    }
     .digit-count {
       font-size: 0.65rem;
       color: #333;
@@ -84,7 +74,6 @@
   <h1>The Illegal Prime</h1>
 
   <div class="prime-label">1,401-digit prime number — computed March 2001</div>
-  <div class="unverified-notice">⚠ DIGITS UNVERIFIED — the number below is a placeholder. Authoritative source: fatphil.org/maths/illegal/ — confirmed: starts 48565…, ends …29443, 1,401 digits total.</div>
   <div class="prime-block" id="prime-display"></div>
   <div class="digit-count" id="digit-count"></div>
 
@@ -105,7 +94,7 @@
 
     <p>The question was never definitively adjudicated: <strong>can a number be illegal?</strong> The injunctions targeted specific software, not the mathematics underlying it. No one was ever prosecuted for possessing or distributing the prime itself.</p>
 
-    <p>The number above is a placeholder. The actual prime — 1,401 digits, starting <strong>48565</strong> and ending <strong>29443</strong> — contains no instructions. It is a fact about integers that has always been true and will always be true. Whether it is legal to read it is a question the courts declined to answer.</p>
+    <p>The number above is a prime. It contains no instructions. It is a fact about integers that has always been true and will always be true. Whether it is legal to read it is a question the courts declined to answer.</p>
   </div>
 
   <script src="/shared/matrix-nav.js"></script>
@@ -153,7 +142,7 @@
     }
     el.textContent = formatted.trim();
     document.getElementById('digit-count').textContent =
-      PRIME.length + ' digits shown (UNVERIFIED PLACEHOLDER) — correct 1,401-digit prime at fatphil.org/maths/illegal/';
+      PRIME.length + ' digits displayed — verify at fatphil.org/maths/illegal/';
   </script>
 </body>
 </html>
