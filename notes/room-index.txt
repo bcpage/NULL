@@ -1,0 +1,56 @@
+NULL — Room Index
+=================
+Generated: 2026-05-22
+
+00000  NULL                    Welcome screen. Cycles through ~300 atmospheric level titles. Entry point for all new visitors.
+00001  Colour Together         Shared drawing canvas. All players paint on the same surface in real time via WebSocket.
+00002  Cookie                  Cookie gate. First click generates and timestamps the user's identity record. Required before entering the facility.
+00003  Tic Tac Toe             Multiplayer Tic Tac Toe. Real-time via WebSocket. Two players, shared board.
+00004  Game of Life            Conway's Game of Life. Interactive with pattern library and speed controls.
+00005  Pong                    Single-player Pong with AI opponent.
+00006  Connect Four            Multiplayer Connect Four. Real-time via WebSocket.
+00007  Chat                    Shared text chat. All connected players in the same room. Real-time.
+00008  Voice Notes             Record and play back short voice clips. Shared across all visitors.
+00009  Dice Roller             Full DnD dice set: d4, d6, d8, d10, d12, d20, d100. Animated rolls.
+00010  Goldfish                A goldfish in a bowl. Animated. It just swims.
+00011  Number Dispenser        Issues sequential tickets. Each visitor pulls the next number in line. Persistent.
+00012  The Yellow Door         A yellow door. It doesn't open.
+00013  Cowsay                  Enter text. A cow says it. Classic Unix utility rendered in the browser.
+00014  52!                     Displays the astronomically large number of possible card deck shuffles. Shared shuffle counter.
+00015  Snake                   Classic Snake game with a persistent leaderboard.
+00016  The Static              A television playing static. Nothing else.
+00017  The Candle              A single candle flame. Animated. Atmospheric.
+00018  ASCII Panel             Scrolling ASCII art display panel.
+00019  Unix Epoch              Live Unix timestamp counter. Ticks every second.
+00020  Grade School Clock      An analog clock drawn with classic classroom aesthetics.
+00021  The Countdown           A countdown timer to an unspecified event. The destination is not explained.
+00022  The Typewriter          Shared typewriter. What someone else typed is still on the page. Clears after 90 seconds of silence.
+00023  UUID Generator          Generates UUIDs on demand. Explains what they are and aren't.
+00024  Monty Hall              Interactive Monty Hall problem simulator with running statistics.
+00025  ELIZA                   1966 psychotherapist chatbot. Terminal aesthetic. It will ask how you feel about that.
+00026  The Plant               A plant that wilts if no one visits. Shared state. Someone has to water it.
+00027  Calculator              A calculator. It calculates.
+00028  Galton Board            Animated Galton board (bean machine). Demonstrates the central limit theorem.
+00029  The Terminal            A fake terminal prompt. The outputs are wrong. It knows things it shouldn't.
+00030  Shooting Gallery        Shoot the targets. Duck hunt aesthetic.
+00031  The Hallway             An infinite corridor. The doors don't open.
+00032  The Form                A bureaucratic intake form. Your responses join a scrolling ledger of everyone who filled it out.
+00033  2am Room                Only fully accessible between 2:00am and 3:00am. Otherwise dim and locked.
+00034  Hangman                 Classic Hangman word game.
+00035  Trolley Problem         Pull the lever or don't. Running global tally of who chose what. No judgment given.
+00036  Dots and Boxes          Two-player Dots and Boxes on a shared grid.
+00037  Metronome               A metronome. Adjustable tempo. Ticks.
+00038  Shared Chalkboard       A chalkboard everyone draws on. Marks accumulate across visits.
+00039  The Recursive Room      An iframe of the platform inside itself. It goes as deep as the browser allows.
+00040  Zeno's Paradox          Interactive visualization of Zeno's dichotomy paradox.
+00041  Ship of Theseus         Slowly replaces the ship plank by plank. At what point is it a different ship?
+00042  The Heap                Interactive Sorites paradox. One grain removed at a time. When does the heap stop being a heap?
+00043  PRNG vs True RNG        Side-by-side comparison of pseudorandom and true random number generation.
+00044  Visible Spectrum        Displays the visible light spectrum with wavelengths. Non-spectral colors noted.
+00045  Logo Turtle             Logo turtle graphics. Draw with movement commands. 1967 MIT aesthetic.
+00046  Cheshire Cat            Fades in and out. The smile stays last.
+00047  Something Under the Bed A dead end. One-way passage. Nothing is explained.
+00048  Useless Information     Rotating display of accurate but entirely useless facts.
+00049  MASH                    The classic paper fortune-telling game. Mansion, Apartment, Shack, House.
+00050  Monitor Room            Six-panel surveillance monitor. Iframes of other rooms rotate every 12 seconds.
+00051  PROCESS INTERRUPTED     Name tag room. SUBJ-006 error screen. Required designation before the system will proceed.
