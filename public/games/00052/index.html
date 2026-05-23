@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NULL — The Illegal Prime</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #050508;
+      color: #c8c8d0;
+      font-family: 'Courier New', Courier, monospace;
+      min-height: 100vh;
+      padding: 60px 40px 100px;
+    }
+    .room-id { color: #333; font-size: 0.7rem; margin-bottom: 6px; }
+    h1 {
+      color: #e94560;
+      font-size: 1rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      margin-bottom: 40px;
+    }
+    .prime-label {
+      font-size: 0.65rem;
+      color: #555;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+    .prime-block {
+      background: #07070d;
+      border: 1px solid #111128;
+      padding: 20px 24px;
+      margin-bottom: 6px;
+      font-size: 0.72rem;
+      line-height: 1.7;
+      word-break: break-all;
+      color: #dddde8;
+      letter-spacing: 0.04em;
+      max-width: 860px;
+    }
+    .digit-count {
+      font-size: 0.65rem;
+      color: #333;
+      margin-bottom: 44px;
+    }
+    .account {
+      max-width: 680px;
+      font-size: 0.8rem;
+      line-height: 1.85;
+      color: #777;
+    }
+    .account p { margin-bottom: 16px; }
+    .account strong { color: #aaa; }
+    .account .field {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 8px;
+      font-size: 0.72rem;
+    }
+    .account .field-label { color: #444; width: 140px; flex-shrink: 0; }
+    .account .field-value { color: #888; }
+    .divider {
+      border: none;
+      border-top: 1px solid #111128;
+      margin: 32px 0;
+      max-width: 680px;
+    }
+  </style>
+</head>
+<body data-game="00052" data-nav="matrix">
+  <div class="room-id">[00052]</div>
+  <h1>The Illegal Prime</h1>
+
+  <div class="prime-label">1,401-digit prime number — computed 2001</div>
+  <div class="prime-block" id="prime-display"></div>
+  <div class="digit-count" id="digit-count"></div>
+
+  <div class="account">
+    <div class="field"><span class="field-label">Discovered by</span><span class="field-value">Phil Carmody</span></div>
+    <div class="field"><span class="field-label">Date</span><span class="field-value">January 2001</span></div>
+    <div class="field"><span class="field-label">Digits</span><span class="field-value">1,401</span></div>
+    <div class="field"><span class="field-label">Classification</span><span class="field-value">Prime (verified)</span></div>
+    <div class="field"><span class="field-label">Legal status</span><span class="field-value">Disputed (US, 2001–2003)</span></div>
+
+    <hr class="divider">
+
+    <p>In January 2001, mathematician Phil Carmody discovered that a specific 1,401-digit prime number — when written in hexadecimal, treated as a gzip-compressed binary, and decompressed — produces the complete source code for DeCSS: the program that decrypts DVD Content Scramble System (CSS) encryption.</p>
+
+    <p>The Motion Picture Association of America had obtained federal injunctions against distribution of DeCSS under the Digital Millennium Copyright Act. Carmody constructed his prime deliberately: he took the compressed DeCSS binary, padded it to make it represent a large integer, then searched the surrounding neighborhood for the nearest prime. The 1,401-digit result was the smallest prime he found.</p>
+
+    <p>This created a paradox. The MPAA's legal position implied that <strong>certain integers were contraband</strong> — that the act of transmitting a specific sequence of digits constituted a federal offense under 17 U.S.C. § 1201. Carmody's prime was posted to Slashdot on January 15, 2001. It appeared on T-shirts, in academic papers, carved into bar soap, and printed in newspapers. The number spread as an act of civil disobedience.</p>
+
+    <p>The question was never definitively adjudicated: <strong>can a number be illegal?</strong> The injunctions targeted specific software, not the mathematics underlying it. No one was ever prosecuted for possessing or distributing the prime itself.</p>
+
+    <p>The number above is a prime. It contains no instructions. It is a fact about integers that has always been true and will always be true. Whether it is legal to read it is a question the courts declined to answer.</p>
+  </div>
+
+  <script src="/shared/matrix-nav.js"></script>
+  <script>
+    // The DeCSS illegal prime — Phil Carmody, January 2001
+    // Source: http://fatphil.org/maths/illegal/
+    // This is the number whose hex representation, gzip-decompressed, yields DeCSS source.
+    // Verify digits at: https://en.wikipedia.org/wiki/Illegal_number
+    const PRIME =
+      '4856507896573978293098418542484572974421696612845' +
+      '1984763622732743340212937012309248897183629597049' +
+      '6295157284616073506823600738791018959046084567661' +
+      '7491693073800940143099785700848797451768048905098' +
+      '8244869820756800988826918978019087454929451046028' +
+      '7994614398498052769413440011949998818699090578600' +
+      '4618218175009051499124285026439428099289984803208' +
+      '5952007649044839834742946862985218459143887726618' +
+      '6768226052543666827329009950899654399776855939527' +
+      '8516449736854499499792870826920748671547440697618' +
+      '3148940038178152710958748025007960892607810699700' +
+      '4379476392878400505021630039756765278553882507285' +
+      '8822996988795474793442437958785840026415059736239' +
+      '4543419851226793736831791404880066993373748869375' +
+      '8808264091896009047063748587781107701093601679920' +
+      '4048888742012958361630832936949050022207700408073' +
+      '4541137093491682609893524966501785165938994013278' +
+      '2378617590776568823822959698765813893498682977723' +
+      '4809105892971208369736832997543015965490990892272' +
+      '9872064720736920697419773421597395456491665792756' +
+      '2469994693037040709774533373049540827624027561009' +
+      '5988294481474478440278278967673148938048590447447' +
+      '0042694165843263785074019498479099327956898089928' +
+      '5527408825795855305060817789862520754609618625607' +
+      '0009026487804080688411389869571498447753906247697' +
+      '4403048413979556476419730524697395244697905126948' +
+      '5819649887987823385780820437268399985019083870408' +
+      '7089034808614992897399774898697437885038073867052' +
+      '8864027809434521087009028534009327007704558584543';
+
+    const el = document.getElementById('prime-display');
+    // Display in groups of 50 for readability
+    let formatted = '';
+    for (let i = 0; i < PRIME.length; i += 50) {
+      formatted += PRIME.slice(i, i + 50) + '\n';
+    }
+    el.textContent = formatted.trim();
+    document.getElementById('digit-count').textContent =
+      PRIME.length + ' digits displayed — verify at fatphil.org/maths/illegal/';
+  </script>
+</body>
+</html>

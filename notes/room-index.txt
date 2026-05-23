@@ -242,6 +242,34 @@ ROOM INDEX (00000 — 00051)
                                on verify. Old names saved as aliases. Reachable
                                from 00013 (up) and 00029 (down).
 
+00052  THE ILLEGAL PRIME       Displays the 1,401-digit DeCSS prime computed by
+                               Phil Carmody (2001). Historical account: MPAA,
+                               DMCA, Slashdot protest, the unanswered question
+                               of whether a number can be illegal.
+
+00053  [MAN PAGE]              Random Linux man page from curated list on each
+                               load. Pages: true, false, yes, sleep, kill, wall,
+                               more, less, cat, head, tail, man. Authentic
+                               terminal format. Click body to re-randomize.
+
+00054  [MESSAGE]               One institutional-voice affirmation per visit,
+                               rotating from a pool of 50. Tone: sincere,
+                               clinical, mildly unsettling. "You came back.
+                               That matters." / "We see you." / "Good."
+
+00055  [empty]                 Empty room. Nav chrome only. No content. Whether
+                               intentional or broken is not indicated.
+
+00056  [empty]                 Empty room. Nav chrome only. No content. Whether
+                               intentional or broken is not indicated.
+
+00057  [empty]                 Empty room. Nav chrome only. No content. Whether
+                               intentional or broken is not indicated.
+
+00058  [UNDER CONSTRUCTION]    Permanently 40% complete. Construction log stalled
+                               at Phase 2, December 2025. Progress bar will never
+                               advance. Blinking cursor on last log entry.
+
 ================================================================================
 DATA FILES
 ================================================================================

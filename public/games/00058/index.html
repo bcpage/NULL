@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NULL — [Under Construction]</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #050508;
+      color: #c8c8d0;
+      font-family: 'Courier New', Courier, monospace;
+      min-height: 100vh;
+      padding: 60px 40px 100px;
+    }
+    .room-id { color: #222; font-size: 0.65rem; margin-bottom: 10px; }
+    h1 {
+      color: #555;
+      font-size: 0.9rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      margin-bottom: 48px;
+    }
+    .progress-label {
+      font-size: 0.65rem;
+      color: #333;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+    .progress-bar {
+      font-size: 0.9rem;
+      color: #e94560;
+      letter-spacing: 0.08em;
+      margin-bottom: 6px;
+    }
+    .progress-pct {
+      font-size: 0.65rem;
+      color: #444;
+      margin-bottom: 48px;
+    }
+    .log {
+      max-width: 600px;
+      font-size: 0.75rem;
+      line-height: 1.9;
+      color: #3a3a4a;
+    }
+    .log .entry {
+      display: flex;
+      gap: 20px;
+    }
+    .log .ts { color: #222; width: 90px; flex-shrink: 0; }
+    .log .msg { color: #3a3a4a; }
+    .log .msg.active { color: #555; }
+    .cursor {
+      display: inline-block;
+      width: 7px;
+      height: 0.85em;
+      background: #e94560;
+      vertical-align: middle;
+      animation: blink 1.1s step-end infinite;
+      opacity: 0.6;
+    }
+    @keyframes blink { 0%, 100% { opacity: 0.6; } 50% { opacity: 0; } }
+  </style>
+</head>
+<body data-game="00058" data-nav="matrix">
+  <div class="room-id">[00058]</div>
+  <h1>[Under Construction]</h1>
+
+  <div class="progress-label">Construction progress</div>
+  <div class="progress-bar">████████░░░░░░░░░░░░</div>
+  <div class="progress-pct">40% complete</div>
+
+  <div class="log">
+    <div class="entry"><span class="ts">2025-11-04</span><span class="msg">Construction initiated. Estimated completion: Q1 2026.</span></div>
+    <div class="entry"><span class="ts">2025-11-04</span><span class="msg">Foundation laid. Structural integrity confirmed.</span></div>
+    <div class="entry"><span class="ts">2025-11-12</span><span class="msg">Phase 1 complete. Beginning interior work.</span></div>
+    <div class="entry"><span class="ts">2025-11-19</span><span class="msg">Electrical roughed in. Awaiting inspection.</span></div>
+    <div class="entry"><span class="ts">2025-11-19</span><span class="msg">Inspection passed. Proceeding to Phase 2.</span></div>
+    <div class="entry"><span class="ts">2025-12-01</span><span class="msg">Phase 2 initiated.</span></div>
+    <div class="entry"><span class="ts">2025-12-01</span><span class="msg active">Progress: 40% <span class="cursor"></span></span></div>
+  </div>
+
+  <script src="/shared/matrix-nav.js"></script>
+</body>
+</html>

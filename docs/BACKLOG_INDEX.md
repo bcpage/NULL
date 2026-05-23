@@ -1,5 +1,7 @@
 # NULL — Backlog Index
 Last updated: 2026-05-23
+Built since last update: Illegal Prime (00052), Random Linux Man Page (00053),
+Inspirational Comments (00054), Empty Rooms ×3 (00055–00057), Half Constructed Room (00058)
 
 For full specs, grep docs/BACKLOG.md for the room name.
 
@@ -13,7 +15,7 @@ For full specs, grep docs/BACKLOG.md for the room name.
 | The Invisible Character Room | Easy | 3 | Unicode zero-width, BOM, soft hyphen; detector |
 | Binary Control Panel | Easy | 4 | 8-bit toggle keyboard; each combo = ASCII char; WS sync |
 | The Joshua Room | Easy | 3 | Black screen + sentence; unlocks on Tic Tac Toe draw |
-| The Illegal Prime | Trivial | 1 | 1401-digit prime number; historical account |
+| ~~The Illegal Prime~~ | ~~Trivial~~ | — | **BUILT** → 00052 |
 | Prime Number Generator | Easy | 3 | Nth prime on demand; special N=1401 case |
 | Compression Engine | Medium | 8 | Huffman coding; interactive tree; trilogy with BCP+ICR |
 | Paradox: Bootstrap | Easy | 2 | Causal loop diagram; click any node |
@@ -21,10 +23,10 @@ For full specs, grep docs/BACKLOG.md for the room name.
 | Paradox: Banach-Tarski | Easy | 2 | One sphere decomposed into two |
 | Paradox: Russell's Barber | Easy | 2 | Broke set theory; barber paradox |
 | Physics Engine | Easy–Med | 5 | Matter.js sandbox; boxes, ragdoll, negative gravity |
-| Random Linux Man Page | Trivial | 1 | Curated list: man true, man false, man man |
+| ~~Random Linux Man Page~~ | ~~Trivial~~ | — | **BUILT** → 00053 |
 | Jabberwocky | Easy | 3 | Fill in nonsense words; personal version + aggregate |
 | Tamagotchi — Shared Pet | Hard | 15 | One pet; all users responsible; neglect kills it |
-| Inspirational Comments | Trivial | 1 | Sincere institutional voice; ~50 in pool |
+| ~~Inspirational Comments~~ | ~~Trivial~~ | — | **BUILT** → 00054 |
 | User Activity Stats Histogram | Easy | 3 | When you play; clinical observation |
 | IP Geolocation Room | Easy | 4 | Approximate location + imagery; consent framing included |
 | Calendar Room | Easy–Med | 5 | Changeable date/time; feeds lock conditions |
@@ -37,9 +39,9 @@ For full specs, grep docs/BACKLOG.md for the room name.
 | Jump Scare Room | Easy | 3 | Once per user ever; room is empty on return |
 | TARDIS-inspired | Medium | 10 | Blue box, bigger inside; needs design session first |
 | The Hookah-Smoking Caterpillar | Easy | 3 | "Who are you?" asked forever; every answer rejected |
-| Empty Rooms ×3 | Trivial | 1 | Nav chrome only; scattered; intentional or broken? |
+| ~~Empty Rooms ×3~~ | ~~Trivial~~ | — | **BUILT** → 00055, 00056, 00057 |
 | Links to Nonexistent Rooms ×3–5 | Trivial | 1 | Real 404s; indistinguishable from real rooms until clicked |
-| Half Constructed Room | Trivial | 1 | Permanently 40% complete; progress bar never moves |
+| ~~Half Constructed Room~~ | ~~Trivial~~ | — | **BUILT** → 00058 |
 | Alternate Hangman — One Life | Medium | 8 | One game ever; outcome becomes permanent inventory item |
 | Dead Rooms ×2–3 | Trivial | 1 | Looks alive; nothing responds; not broken |
 | Game Over Rooms ×3–5 | Easy | 3 | 24hr server-side lockout; random duration |

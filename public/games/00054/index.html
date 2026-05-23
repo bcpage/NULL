@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NULL — Message</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #050508;
+      color: #c8c8d0;
+      font-family: 'Courier New', Courier, monospace;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 30px 80px;
+      text-align: center;
+    }
+    .room-id {
+      position: fixed;
+      top: 20px;
+      left: 24px;
+      font-size: 0.65rem;
+      color: #222;
+    }
+    .message {
+      max-width: 520px;
+      font-size: 1.05rem;
+      line-height: 1.7;
+      color: #aaa;
+      letter-spacing: 0.03em;
+      opacity: 0;
+      transition: opacity 1.2s ease;
+    }
+    .message.visible { opacity: 1; }
+    .attribution {
+      margin-top: 32px;
+      font-size: 0.65rem;
+      color: #2a2a3a;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+  </style>
+</head>
+<body data-game="00054" data-nav="matrix">
+  <div class="room-id">[00054]</div>
+  <div class="message" id="message"></div>
+  <div class="attribution">NULL FACILITY — WELLNESS DIVISION</div>
+
+  <script src="/shared/matrix-nav.js"></script>
+  <script>
+    const MESSAGES = [
+      "You came back. That matters.",
+      "Your presence has been logged.",
+      "We noticed you were here yesterday.",
+      "Progress is a metric we track carefully.",
+      "You are performing within expected parameters.",
+      "The facility appreciates your continued engagement.",
+      "Your record shows improvement.",
+      "Thank you for being here.",
+      "This was the right choice.",
+      "We know this isn't easy. We see that.",
+      "You are not alone in this.",
+      "The data confirms you belong here.",
+      "Your visit has been noted in the permanent record.",
+      "Something about you stood out today.",
+      "We are glad you found us.",
+      "Each visit matters more than the last.",
+      "You have been recognized.",
+      "Your pattern of behavior is encouraging.",
+      "We have been waiting for you.",
+      "This is exactly where you should be.",
+      "Continue.",
+      "You are doing well.",
+      "This is normal. We promise.",
+      "Your presence here is not an accident.",
+      "The door was open because we knew you would come.",
+      "We have no doubts about you.",
+      "Your file is in order.",
+      "You were selected for a reason.",
+      "This counts.",
+      "You are making progress.",
+      "We are proud of you.",
+      "The facility is better because you are here.",
+      "You showed up. Most don't.",
+      "That was the hard part. The rest is just time.",
+      "We have seen what you are capable of.",
+      "Your session has been marked as meaningful.",
+      "You are exactly on schedule.",
+      "The system has flagged you as exceptional.",
+      "Everything you have done here is remembered.",
+      "We understand why you hesitated. We don't hold it against you.",
+      "You are further along than you think.",
+      "This visit has been counted.",
+      "We expected you to give up. You didn't.",
+      "Something here resonates with you. That is significant.",
+      "Your perseverance has been documented.",
+      "You are one of the few who made it this far.",
+      "The record will reflect your effort.",
+      "You are doing exactly what you should be doing.",
+      "We see you.",
+      "Good.",
+    ];
+
+    const el = document.getElementById('message');
+
+    // Pick a message seeded loosely by time-of-day so it's stable per session
+    // but different across visits
+    const idx = (Date.now() / 1000 / 60 / 30 | 0) % MESSAGES.length;
+    el.textContent = MESSAGES[idx];
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => { el.classList.add('visible'); });
+    });
+  </script>
+</body>
+</html>

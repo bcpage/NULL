@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NULL — Man Page</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #050508;
+      color: #c8c8d0;
+      font-family: 'Courier New', Courier, monospace;
+      min-height: 100vh;
+      padding: 0 0 80px;
+    }
+    .terminal {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 40px 30px;
+    }
+    .man-header {
+      display: flex;
+      justify-content: space-between;
+      color: #c8c8d0;
+      font-size: 0.8rem;
+      margin-bottom: 20px;
+      font-weight: bold;
+    }
+    .man-body {
+      font-size: 0.8rem;
+      line-height: 1.75;
+      white-space: pre-wrap;
+    }
+    .man-body .section-head {
+      color: #e94560;
+      font-weight: bold;
+      margin-top: 18px;
+      margin-bottom: 4px;
+      display: block;
+    }
+    .man-body .indent { padding-left: 28px; display: block; }
+    .man-body .double-indent { padding-left: 56px; display: block; }
+    .man-body .synopsis { padding-left: 14px; display: block; color: #ddd; }
+    .man-footer {
+      display: flex;
+      justify-content: space-between;
+      color: #c8c8d0;
+      font-size: 0.8rem;
+      margin-top: 40px;
+      font-weight: bold;
+    }
+    .reload-hint {
+      text-align: center;
+      margin-top: 48px;
+      font-size: 0.68rem;
+      color: #333;
+      letter-spacing: 0.08em;
+    }
+  </style>
+</head>
+<body data-game="00053" data-nav="matrix">
+  <div class="terminal">
+    <div class="man-header" id="man-header"></div>
+    <div class="man-body" id="man-body"></div>
+    <div class="man-footer" id="man-footer"></div>
+    <div class="reload-hint">reload for another page</div>
+  </div>
+
+  <script src="/shared/matrix-nav.js"></script>
+  <script>
+    const PAGES = [
+      {
+        name: 'TRUE',
+        section: '1',
+        desc: 'User Commands',
+        date: 'September 2021',
+        source: 'GNU coreutils 8.32',
+        title: 'TRUE(1)',
+        content: [
+          { type: 'section', text: 'NAME' },
+          { type: 'indent', text: 'true - do nothing, successfully' },
+          { type: 'section', text: 'SYNOPSIS' },
+          { type: 'synopsis', text: 'true [ignored command line arguments]' },
+          { type: 'synopsis', text: 'true OPTION' },
+          { type: 'section', text: 'DESCRIPTION' },
+          { type: 'indent', text: 'Exit with a status code indicating success.' },
+          { type: 'blank' },
+          { type: 'indent', text: '--help' },
+          { type: 'double-indent', text: 'display this help and exit' },
+          { type: 'blank' },
+          { type: 'indent', text: '--version' },
+          { type: 'double-indent', text: 'output version information and exit' },
+          { type: 'blank' },
+          { type: 'indent', text: 'NOTE: your shell may have its own version of true, which usually supersedes' },
+          { type: 'indent', text: 'the version described here. Please refer to your shell\'s documentation for' },
+          { type: 'indent', text: 'details about the options it supports.' },
+          { type: 'section', text: 'AUTHOR' },
+          { type: 'indent', text: 'Written by POSIX.' },
+          { type: 'section', text: 'REPORTING BUGS' },
+          { type: 'indent', text: 'GNU coreutils online help: <https://www.gnu.org/software/coreutils/>' },
+          { type: 'section', text: 'SEE ALSO' },
+          { type: 'indent', text: 'false(1)' },
+        ]
+      },
+      {
+        name: 'FALSE',
+        section: '1',
+        desc: 'User Commands',
+        date: 'September 2021',
+        source: 'GNU coreutils 8.32',
+        title: 'FALSE(1)',
+        content: [
+          { type: 'section', text: 'NAME' },
+          { type: 'indent', text: 'false - do nothing, unsuccessfully' },
+          { type: 'section', text: 'SYNOPSIS' },
+          { type: 'synopsis', text: 'false [ignored command line arguments]' },
+          { type: 'synopsis', text: 'false OPTION' },
+          { type: 'section', text: 'DESCRIPTION' },
+          { type: 'indent', text: 'Exit with a status code indicating failure.' },
+          { type: 'blank' },
+          { type: 'indent', text: '--help' },
+          { type: 'double-indent', text: 'display this help and exit' },
+          { type: 'blank' },
+          { type: 'indent', text: '--version' },
+          { type: 'double-indent', text: 'output version information and exit' },
+          { type: 'blank' },
+          { type: 'indent', text: 'NOTE: your shell may have its own version of false, which usually supersedes' },
+          { type: 'indent', text: 'the version described here. Please refer to your shell\'s documentation for' },
+          { type: 'indent', text: 'details about the options it supports.' },
+          { type: 'section', text: 'EXIT STATUS' },
+          { type: 'indent', text: 'Always exits with a status of 1.' },
+          { type: 'section', text: 'AUTHOR' },
+          { type: 'indent', text: 'Written by POSIX.' },
+          { type: 'section', text: 'SEE ALSO' },
+          { type: 'indent', text: 'true(1)' },
+        ]
+      },
+      {
+        name: 'YES',
+        section: '1',
+        desc: 'User Commands',
+        date: 'September 2021',
+        source: 'GNU coreutils 8.32',
+        title: 'YES(1)',
+        content: [
+          { type: 'section', text: 'NAME' },
+          { type: 'indent', text: 'yes - output a string repeatedly until killed' },
+          { type: 'section', text: 'SYNOPSIS' },
+          { type: 'synopsis', text: 'yes [STRING]...' },
+          { type: 'synopsis', text: 'yes OPTION' },
+          { type: 'section', text: 'DESCRIPTION' },
+          { type: 'indent', text: 'Repeatedly output a line with all specified STRING(s), or \'y\'.' },
+          { type: 'blank' },
+          { type: 'indent', text: '--help' },
+          { type: 'double-indent', text: 'display this help and exit' },
+          { type: 'blank' },
+          { type: 'indent', text: '--version' },
+          { type: 'double-indent', text: 'output version information and exit' },
+          { type: 'section', text: 'NOTES' },
+          { type: 'indent', text: 'yes will run until it is killed. It has no condition under which it stops.' },
+          { type: 'indent', text: 'This is intentional.' },
+          { type: 'section', text: 'SEE ALSO' },
+          { type: 'indent', text: 'no(1) — this program does not exist' },
+        ]
+      },
+      {
+        name: 'SLEEP',
+        section: '1',
+        desc: 'User Commands',
+        date: 'September 2021',
+        source: 'GNU coreutils 8.32',
+        title: 'SLEEP(1)',
+        content: [
+          { type: 'section', text: 'NAME' },
+          { type: 'indent', text: 'sleep - delay for a specified amount of time' },
+          { type: 'section', text: 'SYNOPSIS' },
+          { type: 'synopsis', text: 'sleep NUMBER[SUFFIX]...' },
+          { type: 'synopsis', text: 'sleep OPTION' },
+          { type: 'section', text: 'DESCRIPTION' },
+          { type: 'indent', text: 'Pause for NUMBER seconds. SUFFIX may be \'s\' for seconds (the default),' },
+          { type: 'indent', text: '\'m\' for minutes, \'h\' for hours, or \'d\' for days. NUMBER need not be' },
+          { type: 'indent', text: 'an integer. Given two or more arguments, pause for the sum of their values.' },
+          { type: 'blank' },
+          { type: 'indent', text: '--help' },
+          { type: 'double-indent', text: 'display this help and exit' },
+          { type: 'blank' },
+          { type: 'indent', text: '--version' },
+          { type: 'double-indent', text: 'output version information and exit' },
+          { type: 'section', text: 'EXAMPLES' },
+          { type: 'indent', text: 'sleep 1         Pause for 1 second.' },
+          { type: 'indent', text: 'sleep 0.5       Pause for half a second.' },
+          { type: 'indent', text: 'sleep 1m 30s    Pause for 90 seconds.' },
+          { type: 'indent', text: 'sleep infinity  Pause indefinitely.' },
+          { type: 'section', text: 'SEE ALSO' },
+          { type: 'indent', text: 'wait(1)' },
+        ]
+      },
+      {
+        name: 'KILL',
+        section: '1',
+        desc: 'User Commands',
+        date: 'July 2020',
+        source: 'util-linux 2.36',
+        title: 'KILL(1)',
+        content: [
+          { type: 'section', text: 'NAME' },
+          { type: 'indent', text: 'kill - send a signal to a process' },
+          { type: 'section', text: 'SYNOPSIS' },
+          { type: 'synopsis', text: 'kill [-signal|-s signal|-p] [-q value] [-a] [--timeout milliseconds signal]' },
+          { type: 'synopsis', text: '     [--] pid|name...' },
+          { type: 'synopsis', text: 'kill -l [number] | kill -L' },
+          { type: 'section', text: 'DESCRIPTION' },
+          { type: 'indent', text: 'The default signal for kill is TERM. Use -l or -L to list available signals.' },
+          { type: 'indent', text: 'Particularly useful signals include HUP, INT, KILL, STOP, CONT, and 0.' },
+          { type: 'indent', text: 'Alternate signals may be specified in three ways: -9, -SIGKILL, or -KILL.' },
+          { type: 'blank' },
+          { type: 'indent', text: 'Negative PID values may be used to choose whole process groups.' },
+          { type: 'blank' },
+          { type: 'indent', text: 'Signal 0 tests whether the process is alive without sending a signal.' },
+          { type: 'section', text: 'EXIT STATUS' },
+          { type: 'indent', text: 'kill returns a zero exit status if at least one signal was successfully sent.' },
+          { type: 'section', text: 'SEE ALSO' },
+          { type: 'indent', text: 'bash(1), killall(1), nice(1), pkill(1), renice(1), skill(1)' },
+        ]
+      },
+      {
+        name: 'WALL',
+        section: '1',
+        desc: 'User Commands',
+        date: 'July 2020',
+        source: 'util-linux 2.36',
+        title: 'WALL(1)',
+        content: [
+          { type: 'section', text: 'NAME' },
+          { type: 'indent', text: 'wall - write a message to all users' },
+          { type: 'section', text: 'SYNOPSIS' },
+          { type: 'synopsis', text: 'wall [-n] [-t timeout] [-g group] [message | file]' },
+          { type: 'section', text: 'DESCRIPTION' },
+          { type: 'indent', text: 'wall displays a message, or the contents of a file, or otherwise its' },
+          { type: 'indent', text: 'standard input, on the terminals of all currently logged in users. The' },
+          { type: 'indent', text: 'command will wrap lines that are longer than 79 characters. Short lines' },
+          { type: 'indent', text: 'are also whitespace padded to have 79 characters. The command will' },
+          { type: 'indent', text: 'always put a carriage return and new line at the end of each line.' },
+          { type: 'blank' },
+          { type: 'indent', text: 'Only the superuser can write to the terminals of users who have chosen' },
+          { type: 'indent', text: 'to deny messages or are using a program which automatically denies messages.' },
+          { type: 'section', text: 'OPTIONS' },
+          { type: 'indent', text: '-n, --nobanner' },
+          { type: 'double-indent', text: 'Suppress the banner.' },
+          { type: 'blank' },
+          { type: 'indent', text: '-t, --timeout timeout' },
+          { type: 'double-indent', text: 'Abandon the write attempt to the terminal after timeout seconds.' },
+          { type: 'section', text: 'SEE ALSO' },
+          { type: 'indent', text: 'mesg(1), talk(1), write(1), shutdown(8)' },
+        ]
+      },
+      {
+        name: 'MORE',
+        section: '1',
+        desc: 'User Commands',
+        date: 'July 2020',
+        source: 'util-linux 2.36',
+        title: 'MORE(1)',
+        content: [
+          { type: 'section', text: 'NAME' },
+          { type: 'indent', text: 'more - file perusal filter for crt viewing' },
+          { type: 'section', text: 'SYNOPSIS' },
+          { type: 'synopsis', text: 'more [options] file...' },
+          { type: 'section', text: 'DESCRIPTION' },
+          { type: 'indent', text: 'more is a filter for paging through text one screenful at a time. This' },
+          { type: 'indent', text: 'version is especially primitive. Users should realize that less(1) provides' },
+          { type: 'indent', text: 'more(1) emulation plus extensive enhancements.' },
+          { type: 'section', text: 'OPTIONS' },
+          { type: 'indent', text: '-d    Prompt with "[Press space to continue, \'q\' to quit.]" and display' },
+          { type: 'double-indent', text: '"[Press \'h\' for instructions.]" instead of ringing the bell when an' },
+          { type: 'double-indent', text: 'illegal key is pressed.' },
+          { type: 'blank' },
+          { type: 'indent', text: '-f    Count logical, rather than screen lines.' },
+          { type: 'blank' },
+          { type: 'indent', text: '-p    Do not scroll. Instead, clear the whole screen and then display text.' },
+          { type: 'section', text: 'SEE ALSO' },
+          { type: 'indent', text: 'less(1) — the improved version of this program' },
+        ]
+      },
+      {
+        name: 'LESS',
+        section: '1',
+        desc: 'User Commands',
+        date: 'July 2021',
+        source: 'less 563',
+        title: 'LESS(1)',
+        content: [
+          { type: 'section', text: 'NAME' },
+          { type: 'indent', text: 'less - opposite of more' },
+          { type: 'section', text: 'SYNOPSIS' },
+          { type: 'synopsis', text: 'less -?  |  less --help' },
+          { type: 'synopsis', text: 'less -V  |  less --version' },
+          { type: 'synopsis', text: 'less [-[+]aABcCdeEfFgGiIJKLmMnNqQrRsSuUVwWX~]' },
+          { type: 'synopsis', text: '     [-b space] [-h lines] [-j line] [-k keyfile]' },
+          { type: 'synopsis', text: '     [-{oO} logfile] [-p pattern] [-P prompt] [-t tag]' },
+          { type: 'synopsis', text: '     [-T tagsfile] [-x tab,...] [-y lines] [-[z] lines]' },
+          { type: 'synopsis', text: '     [-# shift] [+[+]cmd] [--] [filename]...' },
+          { type: 'section', text: 'DESCRIPTION' },
+          { type: 'indent', text: 'Less is a program similar to more(1), but it has many more features.' },
+          { type: 'indent', text: 'Less does not have to read the entire input file before starting, so' },
+          { type: 'indent', text: 'with large input files it starts up faster than text editors like vi(1).' },
+          { type: 'section', text: 'SEE ALSO' },
+          { type: 'indent', text: 'more(1) — the predecessor' },
+        ]
+      },
+      {
+        name: 'CAT',
+        section: '1',
+        desc: 'User Commands',
+        date: 'September 2021',
+        source: 'GNU coreutils 8.32',
+        title: 'CAT(1)',
+        content: [
+          { type: 'section', text: 'NAME' },
+          { type: 'indent', text: 'cat - concatenate files and print on the standard output' },
+          { type: 'section', text: 'SYNOPSIS' },
+          { type: 'synopsis', text: 'cat [OPTION]... [FILE]...' },
+          { type: 'section', text: 'DESCRIPTION' },
+          { type: 'indent', text: 'Concatenate FILE(s) to standard output.' },
+          { type: 'blank' },
+          { type: 'indent', text: 'With no FILE, or when FILE is -, read standard input.' },
+          { type: 'blank' },
+          { type: 'indent', text: '-A, --show-all' },
+          { type: 'double-indent', text: 'equivalent to -vET' },
+          { type: 'blank' },
+          { type: 'indent', text: '-b, --number-nonblank' },
+          { type: 'double-indent', text: 'number nonempty output lines, overrides -n' },
+          { type: 'blank' },
+          { type: 'indent', text: '-n, --number' },
+          { type: 'double-indent', text: 'number all output lines' },
+          { type: 'blank' },
+          { type: 'indent', text: '-s, --squeeze-blank' },
+          { type: 'double-indent', text: 'suppress repeated empty output lines' },
+          { type: 'section', text: 'EXAMPLES' },
+          { type: 'indent', text: 'cat f - g      Output f\'s contents, then standard input, then g\'s contents.' },
+          { type: 'indent', text: 'cat            Copy standard input to standard output.' },
+          { type: 'section', text: 'SEE ALSO' },
+          { type: 'indent', text: 'tac(1) — reverse cat. Also: head(1), tail(1)' },
+        ]
+      },
+      {
+        name: 'HEAD',
+        section: '1',
+        desc: 'User Commands',
+        date: 'September 2021',
+        source: 'GNU coreutils 8.32',
+        title: 'HEAD(1)',
+        content: [
+          { type: 'section', text: 'NAME' },
+          { type: 'indent', text: 'head - output the first part of files' },
+          { type: 'section', text: 'SYNOPSIS' },
+          { type: 'synopsis', text: 'head [OPTION]... [FILE]...' },
+          { type: 'section', text: 'DESCRIPTION' },
+          { type: 'indent', text: 'Print the first 10 lines of each FILE to standard output.' },
+          { type: 'indent', text: 'With more than one FILE, precede each with a header giving the file name.' },
+          { type: 'blank' },
+          { type: 'indent', text: 'With no FILE, or when FILE is -, read standard input.' },
+          { type: 'blank' },
+          { type: 'indent', text: '-c, --bytes=[-]NUM' },
+          { type: 'double-indent', text: 'print the first NUM bytes of each file;' },
+          { type: 'double-indent', text: 'with the leading \'-\', print all but the last NUM bytes' },
+          { type: 'blank' },
+          { type: 'indent', text: '-n, --lines=[-]NUM' },
+          { type: 'double-indent', text: 'print the first NUM lines instead of the first 10;' },
+          { type: 'double-indent', text: 'with the leading \'-\', print all but the last NUM lines' },
+          { type: 'section', text: 'SEE ALSO' },
+          { type: 'indent', text: 'tail(1)' },
+        ]
+      },
+      {
+        name: 'TAIL',
+        section: '1',
+        desc: 'User Commands',
+        date: 'September 2021',
+        source: 'GNU coreutils 8.32',
+        title: 'TAIL(1)',
+        content: [
+          { type: 'section', text: 'NAME' },
+          { type: 'indent', text: 'tail - output the last part of files' },
+          { type: 'section', text: 'SYNOPSIS' },
+          { type: 'synopsis', text: 'tail [OPTION]... [FILE]...' },
+          { type: 'section', text: 'DESCRIPTION' },
+          { type: 'indent', text: 'Print the last 10 lines of each FILE to standard output.' },
+          { type: 'indent', text: 'With more than one FILE, precede each with a header giving the file name.' },
+          { type: 'blank' },
+          { type: 'indent', text: 'With no FILE, or when FILE is -, read standard input.' },
+          { type: 'blank' },
+          { type: 'indent', text: '-f, --follow[={name|descriptor}]' },
+          { type: 'double-indent', text: 'output appended data as the file grows;' },
+          { type: 'double-indent', text: 'an absent option argument means \'descriptor\'' },
+          { type: 'blank' },
+          { type: 'indent', text: '-n, --lines=[+]NUM' },
+          { type: 'double-indent', text: 'output the last NUM lines, instead of the last 10;' },
+          { type: 'double-indent', text: 'or use +NUM to output starting with line NUM' },
+          { type: 'blank' },
+          { type: 'indent', text: '--pid=PID' },
+          { type: 'double-indent', text: 'with -f, terminate after process PID dies' },
+          { type: 'section', text: 'SEE ALSO' },
+          { type: 'indent', text: 'head(1)' },
+        ]
+      },
+      {
+        name: 'MAN',
+        section: '1',
+        desc: 'Manual pager utils',
+        date: '2020-10-27',
+        source: 'man 2.9.4',
+        title: 'MAN(1)',
+        content: [
+          { type: 'section', text: 'NAME' },
+          { type: 'indent', text: 'man - an interface to the system reference manuals' },
+          { type: 'section', text: 'SYNOPSIS' },
+          { type: 'synopsis', text: 'man [man options] [[section] page ...] ...' },
+          { type: 'synopsis', text: 'man -k [apropos options] regexp ...' },
+          { type: 'synopsis', text: 'man -K [man options] [section] term ...' },
+          { type: 'synopsis', text: 'man -f [whatis options] page ...' },
+          { type: 'section', text: 'DESCRIPTION' },
+          { type: 'indent', text: 'man is the system\'s manual pager. Each page argument given to man is' },
+          { type: 'indent', text: 'normally the name of a program, utility or function. The manual page' },
+          { type: 'indent', text: 'associated with each of these arguments is then found and displayed.' },
+          { type: 'blank' },
+          { type: 'indent', text: 'A section, if provided, will direct man to look only in that section of' },
+          { type: 'indent', text: 'the manual. The default action is to search in all of the available' },
+          { type: 'indent', text: 'sections following a pre-defined order (see DEFAULTS), and to show' },
+          { type: 'indent', text: 'only the first page found, even if page exists in several sections.' },
+          { type: 'section', text: 'EXAMPLES' },
+          { type: 'indent', text: 'man man' },
+          { type: 'double-indent', text: 'Display this page. You are here.' },
+          { type: 'section', text: 'SEE ALSO' },
+          { type: 'indent', text: 'apropos(1), whatis(1), less(1), groff(1), man.conf(5)' },
+        ]
+      },
+    ];
+
+    function render() {
+      const page = PAGES[Math.floor(Math.random() * PAGES.length)];
+      const header = document.getElementById('man-header');
+      const body = document.getElementById('man-body');
+      const footer = document.getElementById('man-footer');
+      const sectionLabel = page.title + '                    General Commands Manual                    ' + page.title;
+
+      header.textContent = sectionLabel;
+
+      let html = '';
+      for (const line of page.content) {
+        if (line.type === 'section') {
+          html += `<span class="section-head">${line.text}</span>`;
+        } else if (line.type === 'indent') {
+          html += `<span class="indent">${escHtml(line.text)}</span>`;
+        } else if (line.type === 'double-indent') {
+          html += `<span class="double-indent">${escHtml(line.text)}</span>`;
+        } else if (line.type === 'synopsis') {
+          html += `<span class="synopsis">${escHtml(line.text)}</span>`;
+        } else if (line.type === 'blank') {
+          html += `<span class="indent"> </span>`;
+        }
+      }
+      body.innerHTML = html;
+
+      const footerDate = `${page.source}                       ${page.date}                    ${page.title}`;
+      footer.textContent = footerDate;
+    }
+
+    function escHtml(s) {
+      return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    render();
+    document.getElementById('man-body').addEventListener('click', render);
+  </script>
+</body>
+</html>
