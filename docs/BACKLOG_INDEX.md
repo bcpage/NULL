@@ -1,0 +1,76 @@
+# NULL — Backlog Index
+Last updated: 2026-05-23
+
+For full specs, grep docs/BACKLOG.md for the room name.
+
+| Room Name | Difficulty | Est. Cost (pts) | Notes |
+|-----------|------------|-----------------|-------|
+| LORD — Red Dragon | Hard | 20 | Full RPG loop; needs dedicated spec first |
+| Zork II: Wizard of Frobozz | Easy–Med | 5 | Option A: embed Z-machine; Option B: original IF |
+| ELIZA — Upgraded | Easy+Med | 6 | Glitch sequence + Claude API breakthrough layer |
+| External Observation Windows | Easy | 3 | NCDOT live feeds; framed as proof the outside exists |
+| The Observation Room | Medium | 8 | Watch another user live inside their current room |
+| The Invisible Character Room | Easy | 3 | Unicode zero-width, BOM, soft hyphen; detector |
+| Binary Control Panel | Easy | 4 | 8-bit toggle keyboard; each combo = ASCII char; WS sync |
+| The Joshua Room | Easy | 3 | Black screen + sentence; unlocks on Tic Tac Toe draw |
+| The Illegal Prime | Trivial | 1 | 1401-digit prime number; historical account |
+| Prime Number Generator | Easy | 3 | Nth prime on demand; special N=1401 case |
+| Compression Engine | Medium | 8 | Huffman coding; interactive tree; trilogy with BCP+ICR |
+| Paradox: Bootstrap | Easy | 2 | Causal loop diagram; click any node |
+| Paradox: Grandfather | Easy | 2 | Button that breaks itself; loop runs visually |
+| Paradox: Banach-Tarski | Easy | 2 | One sphere decomposed into two |
+| Paradox: Russell's Barber | Easy | 2 | Broke set theory; barber paradox |
+| Physics Engine | Easy–Med | 5 | Matter.js sandbox; boxes, ragdoll, negative gravity |
+| Random Linux Man Page | Trivial | 1 | Curated list: man true, man false, man man |
+| Jabberwocky | Easy | 3 | Fill in nonsense words; personal version + aggregate |
+| Tamagotchi — Shared Pet | Hard | 15 | One pet; all users responsible; neglect kills it |
+| Inspirational Comments | Trivial | 1 | Sincere institutional voice; ~50 in pool |
+| User Activity Stats Histogram | Easy | 3 | When you play; clinical observation |
+| IP Geolocation Room | Easy | 4 | Approximate location + imagery; consent framing included |
+| Calendar Room | Easy–Med | 5 | Changeable date/time; feeds lock conditions |
+| MS-DOS HELP Interface | Medium | 8 | NULL platform in 1993 DOS aesthetic |
+| Interactive MS-DOS Prompt | Medium | 8 | Fake C:\NULL> terminal; FORMAT C: never completes |
+| Information Rooms — pairs ×5 | Trivial | 2 | Identical pairs; one subtly wrong; neither labeled |
+| Useless Information B — Expired | Trivial | 1 | Accurate data whose relevance has expired |
+| Useless Information C — Fossil Room | Trivial | 1 | Documents a previous version of NULL; will not be updated |
+| Ominous Countdown Timer | Easy | 3 | Unknown duration; logs out at zero; always counting |
+| Jump Scare Room | Easy | 3 | Once per user ever; room is empty on return |
+| TARDIS-inspired | Medium | 10 | Blue box, bigger inside; needs design session first |
+| The Hookah-Smoking Caterpillar | Easy | 3 | "Who are you?" asked forever; every answer rejected |
+| Empty Rooms ×3 | Trivial | 1 | Nav chrome only; scattered; intentional or broken? |
+| Links to Nonexistent Rooms ×3–5 | Trivial | 1 | Real 404s; indistinguishable from real rooms until clicked |
+| Half Constructed Room | Trivial | 1 | Permanently 40% complete; progress bar never moves |
+| Alternate Hangman — One Life | Medium | 8 | One game ever; outcome becomes permanent inventory item |
+| Dead Rooms ×2–3 | Trivial | 1 | Looks alive; nothing responds; not broken |
+| Game Over Rooms ×3–5 | Easy | 3 | 24hr server-side lockout; random duration |
+| Black Hole | Easy | 3 | Random redirect; some rooms reachable only by falling |
+| Tower of Hanoi | Easy | 4 | 3–8 rings; monks' 64-ring legend; solve animation |
+| Cracker Barrel Peg Solitaire | Easy | 3 | 15-hole triangle; "Eg-no-ra-mus" scoring verbatim |
+| River Crossing | Trivial–Easy | 2 | Alcuin 800 AD; fox/chicken/grain; two solutions |
+| Wire Connection Puzzle | Easy–Med | 5 | Number Link mechanic; TV screen framing; fill every cell |
+| NULL Navigation Board | Hard | 20 | Sokoban blocks ARE rooms; pushing a block rewires platform nav |
+| Sokoban — Block Pusher | Medium | 8 | Build first; navigation board reuses its engine |
+| Sliding Tile Puzzle | Easy | 4 | 15-puzzle; rare variant shows live platform map |
+| Dig Dug | Medium | 10 | Faithful Namco 1982 clone; music plays only when player moves |
+| Wrong Tetris | Medium | 8 | Unfittable shapes; game cannot be won |
+| Shape Factory | Easy | 4 | User-drawn pieces enter Wrong Tetris pool |
+| Wrong Pong | Easy | 3 | Ball bounces at random angle |
+| Wrong Snake | Easy | 3 | Grows at tail instead of head |
+| Wrong Space Invaders | Medium | 6 | Shots originate from player's position |
+| Wrong Pac-Man | Medium | 6 | Ghosts flee; no win condition |
+| Wrong Breakout | Easy | 3 | Broken bricks spawn replacements |
+| HAL 9000 Room(s) | TBD | ? | Multiple ideas: the eye, regression, AE-35; needs spec pass |
+| The NULL Room (full matrix) | Medium | 6 | Full matrix view + live presence; see yourself glow |
+| Partial Matrix Fragments ×5 | Medium | 6 | Scattered partial views; comparing reveals patterns |
+| The Tile Room (interactive matrix) | Hard | 15 | Players mutate the map; auto-separation algorithm |
+| The Signal | Easy | 3 | Facility activity feed; every action as a flicker |
+| The Bulletin Board | Easy | 3 | Persistent pins; accumulates; becomes archaeology |
+| The Switchboard | Easy | 3 | One toggle per room; some do things, most don't |
+| The Intercom | Easy | 3 | One-way PA broadcast; sender doesn't know if received |
+| The NULL Zoo | Hard | 20 | 10 enclosures with mini map nav; palindromes→uncomputable |
+| Source Code Room | Medium | 10 | Live platform code; comments as narrative; line 247 |
+| 2D Platformer (Llama) | Medium | 8 | Concept only — canvas 60fps, gravity + jump physics |
+| Sprouts | Hard | 15 | Concept only — free-form curve + intersection detection |
+| Dungeon Explorer | Hard | 15 | Concept only — original IF; backrooms setting |
+| Paper Soccer | Medium | 8 | Concept only — grid graph, bounce rules, goal detection |
+| Racetrack / Vector Race | Medium | 8 | Concept only — grid vector physics; strong candidate |
