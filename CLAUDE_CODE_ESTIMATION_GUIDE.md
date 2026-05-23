@@ -330,7 +330,7 @@ accurate these guidelines are over time.
 | 2026-05-23 | NULL | Repo restructure, 52 SPEC files (phases 1-6, 8-11) | 86 pts | ~45 pts | 1.9x over | Writing was 4x cheaper than estimated. Reads underestimated. |
 | 2026-05-23 | NULL | Large file cross-reference: read 200KB, compare, write 2 output files (phase 7) | 17 pts | 18 pts | 1.0x | Most accurate estimate of the project. Validates large-file-read cost range. |
 | 2026-05-23 | NULL | Full project total across both windows | 103 pts | 63 pts | 1.63x over | Writing phases drove the overestimate. Large file phase was accurate. |
-| 2026-05-23 | NULL | 7 quick-win rooms (session started at 46% used); read 2 small files for nav context, wrote 7 HTML + 7 SPEC.md + updated 4 files | ~17 pts est. | ~16 pts actual | 1.06x | Accurate. Small file reads (server.js head, room-index.txt tail, matrix.json) kept read cost low. Writing 7 rooms was ~12 pts total; file updates ~3 pts. No debugging needed. |
+| 2026-05-23 | NULL | 7 quick-win rooms (session started at 46% used); read 2 small files for nav context, wrote 7 HTML + 7 SPEC.md + updated 4 files | ~17 pts est. | 11 pts actual | 1.55x over | Measured post-completion (46%→57%). Writing 7 rooms cost far less than estimated — the 3 empty rooms (~15 lines each) barely registered, and even the larger rooms (Man Page ~280 lines, Illegal Prime ~230 lines) were cheap output. Pattern holds: writing is cheap, reading drives cost. |
 
 Add rows as data is collected. If the ratio column drifts
 consistently above 1.5x or below 0.7x, revise the base
