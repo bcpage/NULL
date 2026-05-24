@@ -72,6 +72,14 @@ Writing 200-500 lines of code costs 5-12 pts depending on
 complexity. Writing under 200 lines costs 2-6 pts.
 Writing markdown or config is nearly free regardless of length.
 
+**Exception — self-contained room/page builds:** Writing a batch
+of standalone HTML rooms (each 80-280 lines, no cross-file
+dependencies, no debugging) costs roughly **1-2 pts per room**
+regardless of room complexity. Four confirmed data points put
+9 rooms at 14 pts total, 7 rooms at 11 pts total. If the task
+is "write N independent files from spec," use 1.5 pts × N,
+not the per-file line-count table above.
+
 ### Cheap — Sequential operations on warm context
 After Claude Code reads a file in chunk 1, chunks 2 and 3 of
 the same task reuse that loaded context. The cost per chunk
@@ -124,6 +132,12 @@ What is Claude Code actually producing?
 - Standard code file 100-300 lines: ~3-6 pts
 - Complex code file 300-500 lines: ~6-10 pts
 - Multiple files totalling 500+ lines: ~10-18 pts
+
+**If the task is N independent self-contained files (rooms, pages,
+components) built from clear specs with no expected debugging:**
+use **1.5 pts × N** instead of the table above. The table above
+was calibrated for single-file tasks with cross-file context
+loading. Batch independent writes are significantly cheaper.
 
 ### Step 3 — Add session startup if applicable
 
@@ -331,6 +345,7 @@ accurate these guidelines are over time.
 | 2026-05-23 | NULL | Large file cross-reference: read 200KB, compare, write 2 output files (phase 7) | 17 pts | 18 pts | 1.0x | Most accurate estimate of the project. Validates large-file-read cost range. |
 | 2026-05-23 | NULL | Full project total across both windows | 103 pts | 63 pts | 1.63x over | Writing phases drove the overestimate. Large file phase was accurate. |
 | 2026-05-23 | NULL | 7 quick-win rooms (session started at 46% used); read 2 small files for nav context, wrote 7 HTML + 7 SPEC.md + updated 4 files | ~17 pts est. | 11 pts actual | 1.55x over | Measured post-completion (46%→57%). Writing 7 rooms cost far less than estimated — the 3 empty rooms (~15 lines each) barely registered, and even the larger rooms (Man Page ~280 lines, Illegal Prime ~230 lines) were cheap output. Pattern holds: writing is cheap, reading drives cost. |
+| 2026-05-23 | NULL | 9 rooms (00059–00067): 4 paradox rooms, 3 canvas games, river crossing puzzle, countdown timer; read minimal (nav tail only); wrote 9 HTML + 9 SPEC.md + updated 4 files | ~28 pts est. | 14 pts actual | 2.0x over | Measured post-completion (64%→78%). Worst write-heavy overestimate yet. Canvas games (Pong, Snake, Breakout) estimated at 4 pts each — actually ~1.5 pts each. Batch of independent rooms consistently runs ~1.5 pts/room regardless of complexity. |
 
 Add rows as data is collected. If the ratio column drifts
 consistently above 1.5x or below 0.7x, revise the base
