@@ -306,6 +306,27 @@ ROOM INDEX (00000 — 00051)
                                zero, user is redirected to /game/00000 and timer
                                resets to a new random duration (2–48 hours).
 
+00068  USELESS INFORMATION B   Eight facts accurate at time of recording, now
+                               obsolete. Label / fact / expiry date format. Topics:
+                               supercomputer, Yahoo, Sears Tower, genome, floppy,
+                               hard drive capacity, planet count, marathon record.
+
+00069  FOSSIL ROOM             Documents an earlier version of NULL (14 rooms,
+                               sequential nav, IP tracking). Some rooms noted as
+                               removed. Some planned features never built. States
+                               it will not be updated. It will not be updated.
+
+00070  [DEAD ROOM A]           Facility feedback form. Subject, dropdowns, textarea,
+                               three buttons. Nothing responds. Not broken.
+
+00071  [DEAD ROOM B]           System status monitor. Seven status rows, four
+                               action buttons. Clock ticks. Nothing else responds.
+                               Statuses never change. Buttons do nothing.
+
+00072  THE HOOKAH-SMOKING      "Who are you?" Text input. Every answer rejected
+       CATERPILLAR             from pool of 30 variations. Question never changes.
+                               No answer is ever accepted.
+
 ================================================================================
 DATA FILES
 ================================================================================

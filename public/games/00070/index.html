@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NULL</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #050508;
+      color: #c8c8d0;
+      font-family: 'Courier New', Courier, monospace;
+      min-height: 100vh;
+      padding: 60px 40px 100px;
+    }
+    .room-id { color: #222; font-size: 0.65rem; margin-bottom: 40px; }
+    .panel {
+      max-width: 480px;
+      border: 1px solid #0f0f1e;
+      padding: 24px;
+    }
+    .panel-title {
+      font-size: 0.65rem;
+      color: #1e1e2e;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+    .field { margin-bottom: 16px; }
+    .field label {
+      display: block;
+      font-size: 0.65rem;
+      color: #1e1e2e;
+      letter-spacing: 0.08em;
+      margin-bottom: 6px;
+    }
+    .field input, .field select, .field textarea {
+      width: 100%;
+      background: #07070e;
+      border: 1px solid #111128;
+      color: #333;
+      font-family: 'Courier New', monospace;
+      font-size: 0.75rem;
+      padding: 7px 10px;
+      outline: none;
+    }
+    .field textarea { height: 60px; resize: none; }
+    .field select option { background: #07070e; }
+    .btn-row { display: flex; gap: 10px; margin-top: 20px; }
+    button {
+      background: none;
+      border: 1px solid #111128;
+      color: #222;
+      font-family: 'Courier New', monospace;
+      font-size: 0.72rem;
+      padding: 8px 18px;
+      cursor: pointer;
+      letter-spacing: 0.08em;
+    }
+    /* Buttons do nothing */
+  </style>
+</head>
+<body data-game="00070" data-nav="matrix">
+  <div class="room-id">[00070]</div>
+
+  <div class="panel">
+    <div class="panel-title">Facility Feedback Form — Internal Use Only</div>
+
+    <div class="field">
+      <label>Subject</label>
+      <input type="text" placeholder="Enter subject">
+    </div>
+    <div class="field">
+      <label>Category</label>
+      <select>
+        <option>-- select --</option>
+        <option>Room malfunction</option>
+        <option>Navigation error</option>
+        <option>Content concern</option>
+        <option>Other</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Priority</label>
+      <select>
+        <option>-- select --</option>
+        <option>Low</option>
+        <option>Normal</option>
+        <option>High</option>
+        <option>Critical</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Message</label>
+      <textarea placeholder="Describe the issue"></textarea>
+    </div>
+
+    <div class="btn-row">
+      <button type="button">Submit</button>
+      <button type="button">Clear</button>
+      <button type="button">Save Draft</button>
+    </div>
+  </div>
+
+  <script src="/shared/matrix-nav.js"></script>
+  <!-- Nothing responds. This is not broken. -->
+</body>
+</html>

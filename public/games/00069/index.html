@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NULL — Fossil Room</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #050508;
+      color: #c8c8d0;
+      font-family: 'Courier New', Courier, monospace;
+      min-height: 100vh;
+      padding: 60px 40px 100px;
+    }
+    .room-id { color: #222; font-size: 0.65rem; margin-bottom: 6px; }
+    h1 { color: #e94560; font-size: 0.9rem; letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 6px; }
+    .subtitle { font-size: 0.65rem; color: #2a2a3a; letter-spacing: 0.1em; margin-bottom: 40px; }
+    .notice {
+      max-width: 620px;
+      border: 1px solid #0f0f1e;
+      padding: 14px 18px;
+      font-size: 0.72rem;
+      color: #2a2a3a;
+      margin-bottom: 48px;
+      line-height: 1.7;
+    }
+    .section { max-width: 620px; margin-bottom: 36px; }
+    .section-head {
+      font-size: 0.65rem;
+      color: #1e1e2e;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      border-bottom: 1px solid #0c0c18;
+      padding-bottom: 6px;
+    }
+    .section-body {
+      font-size: 0.78rem;
+      color: #3a3a4a;
+      line-height: 1.85;
+    }
+    .section-body p { margin-bottom: 10px; }
+    .feature {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 8px;
+      font-size: 0.72rem;
+    }
+    .feature-name { color: #2a2a3a; width: 180px; flex-shrink: 0; }
+    .feature-desc { color: #333; }
+    .feature-desc.gone { text-decoration: line-through; color: #1e1e2e; }
+    .strike { color: #1e1e2e; }
+  </style>
+</head>
+<body data-game="00069" data-nav="matrix">
+  <div class="room-id">[00069]</div>
+  <h1>Fossil Room</h1>
+  <div class="subtitle">CATEGORY C — DOCUMENT OF A PREVIOUS VERSION / will not be updated</div>
+
+  <div class="notice">
+    This room documents an earlier version of the NULL facility. The information below was accurate at the time of writing. It has not been updated and will not be updated. Some features described here no longer exist. Some rooms described here were never built. The discrepancies are intentional.
+  </div>
+
+  <div class="section">
+    <div class="section-head">Platform overview — as of initial deployment</div>
+    <div class="section-body">
+      <p>NULL is a 14-room web facility running on a shared hosting plan. Players enter through the welcome screen and navigate using left and right arrow buttons. There is no matrix. Navigation is linear.</p>
+      <p>The facility tracks visitors by IP address. There is no cookie system. Visitors cannot be distinguished across sessions.</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-head">Room inventory — original 14 rooms</div>
+    <div class="feature"><span class="feature-name">Room 01 — Welcome</span><span class="feature-desc">Entry screen. Title animates in. No rotating text pool.</span></div>
+    <div class="feature"><span class="feature-name">Room 02 — Color Game</span><span class="feature-desc gone">Click the correct color. Score tracked in URL parameter.</span></div>
+    <div class="feature"><span class="feature-name">Room 03 — Snake</span><span class="feature-desc">Classic snake. No leaderboard.</span></div>
+    <div class="feature"><span class="feature-name">Room 04 — Ticker</span><span class="feature-desc gone">Stock-ticker-style text scroll. Data was hardcoded.</span></div>
+    <div class="feature"><span class="feature-name">Room 05 — Clock</span><span class="feature-desc gone">A clock. It showed the time.</span></div>
+    <div class="feature"><span class="feature-name">Room 06 — Plant</span><span class="feature-desc">Shared plant. Still exists. Same plant.</span></div>
+    <div class="feature"><span class="feature-name">Room 07 — Cards</span><span class="feature-desc">Deck shuffle. Still exists.</span></div>
+    <div class="feature"><span class="feature-name">Room 08 — Voice</span><span class="feature-desc">Voice notes. Still exists.</span></div>
+    <div class="feature"><span class="feature-name">Room 09 — Ticket</span><span class="feature-desc">Ticket dispenser. Still exists.</span></div>
+    <div class="feature"><span class="feature-name">Rooms 10–14</span><span class="feature-desc strike">[content not recorded]</span></div>
+  </div>
+
+  <div class="section">
+    <div class="section-head">Navigation system — original</div>
+    <div class="section-body">
+      <p>Navigation was sequential: ◀ and ▶ buttons moved between rooms in order. There was no matrix. There were no directional connections. You could not reach a room by going "up." The concept of "up" did not exist in this facility.</p>
+      <p>The matrix navigation system was introduced in a later version. The rooms that existed before the matrix were retrofitted into it. Not all of them translated cleanly.</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-head">Features that were planned and not built</div>
+    <div class="feature"><span class="feature-name">Leaderboard room</span><span class="feature-desc gone">Global scores for all games. Never implemented.</span></div>
+    <div class="feature"><span class="feature-name">Chat room</span><span class="feature-desc gone">Real-time text between visitors. Removed from spec.</span></div>
+    <div class="feature"><span class="feature-name">Admin room</span><span class="feature-desc">Built later, not public-facing. Exists at /admin.</span></div>
+    <div class="feature"><span class="feature-name">Daily puzzle</span><span class="feature-desc gone">New puzzle each day. Never implemented.</span></div>
+  </div>
+
+  <script src="/shared/matrix-nav.js"></script>
+</body>
+</html>

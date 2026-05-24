@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NULL</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #050508;
+      color: #c8c8d0;
+      font-family: 'Courier New', Courier, monospace;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 30px 100px;
+      text-align: center;
+    }
+    .room-id { position: fixed; top: 20px; left: 24px; font-size: 0.65rem; color: #111; }
+    .question {
+      font-size: 1.1rem;
+      color: #555;
+      margin-bottom: 32px;
+      letter-spacing: 0.05em;
+    }
+    .input-row {
+      display: flex;
+      gap: 0;
+      max-width: 400px;
+      width: 100%;
+      margin-bottom: 20px;
+    }
+    input[type="text"] {
+      flex: 1;
+      background: #07070e;
+      border: 1px solid #111128;
+      border-right: none;
+      color: #888;
+      font-family: 'Courier New', monospace;
+      font-size: 0.82rem;
+      padding: 10px 14px;
+      outline: none;
+    }
+    input[type="text"]::placeholder { color: #1e1e2e; }
+    button {
+      background: none;
+      border: 1px solid #111128;
+      color: #333;
+      font-family: 'Courier New', monospace;
+      font-size: 0.72rem;
+      padding: 10px 18px;
+      cursor: pointer;
+      letter-spacing: 0.08em;
+      white-space: nowrap;
+    }
+    button:hover { color: #555; border-color: #2a2a3a; }
+    .rejection {
+      font-size: 0.75rem;
+      color: #2a2a3a;
+      min-height: 24px;
+      letter-spacing: 0.04em;
+      max-width: 440px;
+      line-height: 1.6;
+      transition: opacity 0.3s;
+    }
+    .rejection.visible { color: #555; }
+  </style>
+</head>
+<body data-game="00072" data-nav="matrix">
+  <div class="room-id">[00072]</div>
+  <div class="question">Who are you?</div>
+  <div class="input-row">
+    <input type="text" id="answer" placeholder="answer here" autocomplete="off" maxlength="120">
+    <button id="submit">Submit</button>
+  </div>
+  <div class="rejection" id="rejection"></div>
+
+  <script src="/shared/matrix-nav.js"></script>
+  <script>
+    const rejections = [
+      "That is not an answer.",
+      "No.",
+      "Try again.",
+      "That is what everyone says.",
+      "That is not what I asked.",
+      "I did not ask what you do.",
+      "I did not ask where you are from.",
+      "I did not ask your name.",
+      "I did not ask what you think.",
+      "I did not ask how you feel.",
+      "You are stalling.",
+      "That is a description, not an answer.",
+      "That is a category, not an answer.",
+      "That is not sufficient.",
+      "You are not paying attention.",
+      "Again.",
+      "No. Who are you?",
+      "Elaborate.",
+      "That is not it.",
+      "Wrong.",
+      "You keep saying things. None of them are answers.",
+      "Think carefully.",
+      "That is what you do, not what you are.",
+      "That is not what you are.",
+      "That is what others call you.",
+      "Consider the question.",
+      "You are not listening.",
+      "That was not an answer the last time either.",
+      "Unsatisfactory.",
+      "That explains nothing.",
+    ];
+
+    let count = 0;
+    const input = document.getElementById('answer');
+    const btn = document.getElementById('submit');
+    const rej = document.getElementById('rejection');
+
+    function submit() {
+      const val = input.value.trim();
+      if (!val) return;
+      rej.classList.remove('visible');
+      setTimeout(() => {
+        const r = rejections[count % rejections.length];
+        count++;
+        rej.textContent = r;
+        rej.classList.add('visible');
+      }, 120);
+      input.value = '';
+      input.focus();
+    }
+
+    btn.addEventListener('click', submit);
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
+    input.focus();
+  </script>
+</body>
+</html>

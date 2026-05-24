@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NULL</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #050508;
+      color: #c8c8d0;
+      font-family: 'Courier New', Courier, monospace;
+      min-height: 100vh;
+      padding: 60px 40px 100px;
+    }
+    .room-id { color: #222; font-size: 0.65rem; margin-bottom: 40px; }
+    .status-panel {
+      max-width: 520px;
+      border: 1px solid #0f0f1e;
+    }
+    .status-header {
+      background: #07070e;
+      border-bottom: 1px solid #0f0f1e;
+      padding: 10px 16px;
+      font-size: 0.65rem;
+      color: #1a1a2e;
+      letter-spacing: 0.1em;
+      display: flex;
+      justify-content: space-between;
+    }
+    .status-row {
+      display: flex;
+      align-items: center;
+      padding: 12px 16px;
+      border-bottom: 1px solid #0a0a14;
+      gap: 12px;
+    }
+    .status-row:last-child { border-bottom: none; }
+    .indicator {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .ind-green { background: #1a3a1a; }
+    .ind-yellow { background: #3a3a1a; }
+    .ind-red { background: #3a1a1a; }
+    .status-label { font-size: 0.72rem; color: #2a2a3a; flex: 1; }
+    .status-value { font-size: 0.65rem; color: #1e1e2e; text-align: right; }
+    .actions {
+      margin-top: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-width: 520px;
+    }
+    button {
+      background: none;
+      border: 1px solid #0f0f1e;
+      color: #1e1e2e;
+      font-family: 'Courier New', monospace;
+      font-size: 0.72rem;
+      padding: 9px 16px;
+      text-align: left;
+      cursor: pointer;
+      letter-spacing: 0.06em;
+      width: 100%;
+    }
+  </style>
+</head>
+<body data-game="00071" data-nav="matrix">
+  <div class="room-id">[00071]</div>
+
+  <div class="status-panel">
+    <div class="status-header">
+      <span>SYSTEM STATUS MONITOR</span>
+      <span id="clock"></span>
+    </div>
+    <div class="status-row">
+      <div class="indicator ind-green"></div>
+      <div class="status-label">Core processes</div>
+      <div class="status-value">NOMINAL</div>
+    </div>
+    <div class="status-row">
+      <div class="indicator ind-green"></div>
+      <div class="status-label">Navigation subsystem</div>
+      <div class="status-value">NOMINAL</div>
+    </div>
+    <div class="status-row">
+      <div class="indicator ind-yellow"></div>
+      <div class="status-label">User tracking</div>
+      <div class="status-value">DEGRADED</div>
+    </div>
+    <div class="status-row">
+      <div class="indicator ind-green"></div>
+      <div class="status-label">Persistence layer</div>
+      <div class="status-value">NOMINAL</div>
+    </div>
+    <div class="status-row">
+      <div class="indicator ind-red"></div>
+      <div class="status-label">Room 00070 feedback queue</div>
+      <div class="status-value">OFFLINE</div>
+    </div>
+    <div class="status-row">
+      <div class="indicator ind-green"></div>
+      <div class="status-label">WebSocket relay</div>
+      <div class="status-value">NOMINAL</div>
+    </div>
+    <div class="status-row">
+      <div class="indicator ind-yellow"></div>
+      <div class="status-label">Facility integrity check</div>
+      <div class="status-value">RUNNING</div>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button type="button">Run diagnostic</button>
+    <button type="button">Refresh status</button>
+    <button type="button">Export log</button>
+    <button type="button">Escalate to facility management</button>
+  </div>
+
+  <script src="/shared/matrix-nav.js"></script>
+  <script>
+    // Clock ticks. Nothing else does.
+    function updateClock() {
+      const now = new Date();
+      document.getElementById('clock').textContent =
+        String(now.getHours()).padStart(2,'0') + ':' +
+        String(now.getMinutes()).padStart(2,'0') + ':' +
+        String(now.getSeconds()).padStart(2,'0');
+    }
+    updateClock();
+    setInterval(updateClock, 1000);
+  </script>
+</body>
+</html>

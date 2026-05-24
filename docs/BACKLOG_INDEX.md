@@ -3,7 +3,9 @@ Last updated: 2026-05-23
 Built since last update: Illegal Prime (00052), Random Linux Man Page (00053),
 Inspirational Comments (00054), Empty Rooms ×3 (00055–00057), Half Constructed Room (00058),
 Paradox rooms ×4 (00059–00062), Wrong Pong/Snake/Breakout (00063–00065),
-River Crossing (00066), Ominous Countdown Timer (00067)
+River Crossing (00066), Ominous Countdown Timer (00067),
+Useless Info B (00068), Fossil Room (00069), Dead Rooms ×2 (00070–00071),
+Hookah-Smoking Caterpillar (00072)
 
 For full specs, grep docs/BACKLOG.md for the room name.
 
@@ -35,17 +37,17 @@ For full specs, grep docs/BACKLOG.md for the room name.
 | MS-DOS HELP Interface | Medium | 8 | NULL platform in 1993 DOS aesthetic |
 | Interactive MS-DOS Prompt | Medium | 8 | Fake C:\NULL> terminal; FORMAT C: never completes |
 | Information Rooms — pairs ×5 | Trivial | 2 | Identical pairs; one subtly wrong; neither labeled |
-| Useless Information B — Expired | Trivial | 1 | Accurate data whose relevance has expired |
-| Useless Information C — Fossil Room | Trivial | 1 | Documents a previous version of NULL; will not be updated |
+| ~~Useless Information B — Expired~~ | ~~Trivial~~ | — | **BUILT** → 00068 |
+| ~~Useless Information C — Fossil Room~~ | ~~Trivial~~ | — | **BUILT** → 00069 |
 | ~~Ominous Countdown Timer~~ | ~~Easy~~ | — | **BUILT** → 00067 |
 | Jump Scare Room | Easy | 3 | Once per user ever; room is empty on return |
 | TARDIS-inspired | Medium | 10 | Blue box, bigger inside; needs design session first |
-| The Hookah-Smoking Caterpillar | Easy | 3 | "Who are you?" asked forever; every answer rejected |
+| ~~The Hookah-Smoking Caterpillar~~ | ~~Easy~~ | — | **BUILT** → 00072 |
 | ~~Empty Rooms ×3~~ | ~~Trivial~~ | — | **BUILT** → 00055, 00056, 00057 |
 | Links to Nonexistent Rooms ×3–5 | Trivial | 1 | Real 404s; indistinguishable from real rooms until clicked |
 | ~~Half Constructed Room~~ | ~~Trivial~~ | — | **BUILT** → 00058 |
 | Alternate Hangman — One Life | Medium | 8 | One game ever; outcome becomes permanent inventory item |
-| Dead Rooms ×2–3 | Trivial | 1 | Looks alive; nothing responds; not broken |
+| ~~Dead Rooms ×2~~ | ~~Trivial~~ | — | **BUILT** → 00070, 00071 |
 | Game Over Rooms ×3–5 | Easy | 3 | 24hr server-side lockout; random duration |
 | Black Hole | Easy | 3 | Random redirect; some rooms reachable only by falling |
 | Tower of Hanoi | Easy | 4 | 3–8 rings; monks' 64-ring legend; solve animation |
