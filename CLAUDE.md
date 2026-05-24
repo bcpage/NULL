@@ -181,6 +181,25 @@ fetch('/api/user/me').then(r => r.json()).then(user => { ... });
 
 ---
 
+## Session planning
+
+**Before starting any build work, check two files:**
+
+1. **`docs/BACKLOG_INDEX.md`** — scannable list of all unbuilt rooms with difficulty and estimated cost. Read this to pick what to build next. Items marked `~~strikethrough~~` + **BUILT** are done.
+
+2. **`CLAUDE_CODE_ESTIMATION_GUIDE.md`** — calibration data and rules for estimating token cost before starting a batch. Read the *Quick Planning Reference* and *Calibration Log* sections. Key rules:
+   - Fresh session or post-compaction: **~1.5–1.8 pts/room**
+   - Warm mid-session (context already loaded): **~1.0 pts/room**
+   - Reading large files (>50KB) is the dominant cost driver
+   - After estimating, update the Calibration Log row with actual pts when done
+
+**Resume prompt** (paste at start of any new session):
+> `current usage is X%. continue building rooms from the backlog.`
+
+Claude will read BACKLOG_INDEX.md, pick a batch that fits the remaining quota, and proceed.
+
+---
+
 ## Conventions
 
 - Room numbers are zero-padded 5 digits: `00001`, `00013`, `00051`
