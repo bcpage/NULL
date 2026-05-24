@@ -135,9 +135,14 @@ What is Claude Code actually producing?
 
 **If the task is N independent self-contained files (rooms, pages,
 components) built from clear specs with no expected debugging:**
-use **1.5 pts × N** instead of the table above. The table above
-was calibrated for single-file tasks with cross-file context
-loading. Batch independent writes are significantly cheaper.
+use **1.0–1.5 pts × N** instead of the table above.
+- Fresh session or first batch: use 1.5 pts × N (context loading adds cost)
+- Continuing warm session: use 1.0 pts × N (context already loaded, overhead near zero)
+
+The table above was calibrated for single-file tasks with cross-file
+context loading. Batch independent writes are significantly cheaper.
+Four data points: 7 rooms = 11 pts (1.57/room), 9 rooms = 14 pts (1.56/room),
+5 rooms = 5 pts (1.0/room warm session). Warm session cost is noticeably lower.
 
 ### Step 3 — Add session startup if applicable
 
@@ -346,6 +351,7 @@ accurate these guidelines are over time.
 | 2026-05-23 | NULL | Full project total across both windows | 103 pts | 63 pts | 1.63x over | Writing phases drove the overestimate. Large file phase was accurate. |
 | 2026-05-23 | NULL | 7 quick-win rooms (session started at 46% used); read 2 small files for nav context, wrote 7 HTML + 7 SPEC.md + updated 4 files | ~17 pts est. | 11 pts actual | 1.55x over | Measured post-completion (46%→57%). Writing 7 rooms cost far less than estimated — the 3 empty rooms (~15 lines each) barely registered, and even the larger rooms (Man Page ~280 lines, Illegal Prime ~230 lines) were cheap output. Pattern holds: writing is cheap, reading drives cost. |
 | 2026-05-23 | NULL | 9 rooms (00059–00067): 4 paradox rooms, 3 canvas games, river crossing puzzle, countdown timer; read minimal (nav tail only); wrote 9 HTML + 9 SPEC.md + updated 4 files | ~28 pts est. | 14 pts actual | 2.0x over | Measured post-completion (64%→78%). Worst write-heavy overestimate yet. Canvas games (Pong, Snake, Breakout) estimated at 4 pts each — actually ~1.5 pts each. Batch of independent rooms consistently runs ~1.5 pts/room regardless of complexity. |
+| 2026-05-23 | NULL | 5 rooms (00068–00072): 2 static content, 2 dead rooms, 1 input room; wrote 5 HTML + 5 SPEC.md + updated 4 files | ~9.5 pts est. | 5 pts actual | 1.9x over | Measured post-completion (78%→83%). 1.5 pts/room rule predicted 7.5 pts write + 2 pts overhead = 9.5 pts. Actual was 5 pts. Overhead was ~0 (context warm, minimal reads). Rule still overshoots by ~2x. True cost for warm-session trivial rooms is closer to 1.0 pts/room. |
 
 Add rows as data is collected. If the ratio column drifts
 consistently above 1.5x or below 0.7x, revise the base
