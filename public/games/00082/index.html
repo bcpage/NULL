@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Signal — NULL</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #050508;
+  color: #8fa878;
+  font-family: monospace;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.header {
+  padding: 1.2rem 1.5rem 0.8rem;
+  border-bottom: 1px solid rgba(143, 168, 120, 0.1);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+}
+.header-title {
+  font-size: 0.65rem;
+  letter-spacing: 0.3em;
+  color: rgba(143,168,120,0.4);
+  text-transform: uppercase;
+}
+.status {
+  font-size: 0.6rem;
+  letter-spacing: 0.15em;
+  color: rgba(143,168,120,0.3);
+}
+.status.live::before {
+  content: '● ';
+  color: #8fa878;
+  animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+.feed {
+  flex: 1;
+  overflow: hidden;
+  padding: 0.8rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  position: relative;
+}
+.feed::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 60px;
+  background: linear-gradient(#050508, transparent);
+  pointer-events: none;
+  z-index: 2;
+}
+.events {
+  flex: 1;
+  display: flex;
+  flex-direction: column-reverse;
+  overflow: hidden;
+  gap: 0.15rem;
+}
+.event {
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  line-height: 1.5;
+  color: rgba(143,168,120,0.55);
+  display: flex;
+  gap: 1rem;
+  opacity: 0;
+  animation: fadeIn 0.4s forwards;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.event.fresh { color: rgba(200,230,170,0.9); }
+@keyframes fadeIn { to { opacity: 1; } }
+.event .time { color: rgba(143,168,120,0.25); flex-shrink: 0; }
+.event .src  { color: rgba(143,168,120,0.4);  flex-shrink: 0; min-width: 60px; }
+.event .desc { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+.idle {
+  font-size: 0.65rem;
+  letter-spacing: 0.15em;
+  color: rgba(143,168,120,0.2);
+  padding: 2rem 0;
+  text-align: center;
+}
+.noise {
+  position: fixed;
+  bottom: 50px;
+  right: 20px;
+  width: 60px;
+  height: 40px;
+  opacity: 0.15;
+}
+</style>
+</head>
+<body data-game="00082" data-nav="matrix">
+
+<div class="header">
+  <div class="header-title">THE SIGNAL — FACILITY ACTIVITY MONITOR</div>
+  <div class="status" id="status">connecting...</div>
+</div>
+
+<div class="feed">
+  <div class="events" id="events">
+    <div class="idle" id="idle">Listening for facility activity...</div>
+  </div>
+</div>
+
+<canvas class="noise" id="noise" width="60" height="40"></canvas>
+
+<script src="/shared/matrix-nav.js"></script>
+<script>
+const eventsEl = document.getElementById('events');
+const idleEl   = document.getElementById('idle');
+const statusEl = document.getElementById('status');
+
+// Human-readable descriptions for known game/type combos
+function describe(data) {
+  const g = data.game || '';
+  const t = data.type  || '';
+
+  if (g === 'paint')      return ['GRID-01',  'pixel placed on shared canvas'];
+  if (g === 'plant') {
+    if (t === 'state' && data.wilted) return ['LIFE-01', 'plant entered wilted state'];
+    if (t === 'water')  return ['LIFE-01',  'plant watered'];
+    if (t === 'state')  return ['LIFE-01',  `plant growth at ${data.growth ?? '?'}%`];
+  }
+  if (g === 'chat')       return ['COMM-01',  'message transmitted'];
+  if (g === 'rec')        return ['AUDIO-01', t === 'new' ? 'voice note recorded' : 'voice note deleted'];
+  if (g === 'ttt') {
+    if (t === 'move')   return ['GAME-03', 'tic-tac-toe move made'];
+    if (t === 'state' && data.winner) return ['GAME-03', `tic-tac-toe won by ${data.winner}`];
+    if (t === 'reset')  return ['GAME-03', 'tic-tac-toe reset'];
+  }
+  if (g === 'pong')       return ['GAME-05', 'pong event'];
+  if (g === 'c4')         return ['GAME-06', 'connect four move'];
+  if (g === 'gallery')    return ['GAME-30', 'shooting gallery event'];
+  if (g === 'trolley') {
+    if (data.pull > (window._lastPull || 0)) { window._lastPull = data.pull; return ['PHIL-35', 'lever pulled — trolley diverted']; }
+    window._lastPull = data.pull;
+    return ['PHIL-35', 'lever left — trolley continued'];
+  }
+  if (g === 'ascii')      return ['TERM-18', 'ASCII panel toggled'];
+  if (g === 'form')       return ['FORM-XX', 'form submission received'];
+  if (g === 'snake')      return ['GAME-15', 'snake score submitted'];
+  if (g === 'chalk') {
+    if (t === 'stroke')  return ['BOARD-38', 'stroke added to chalkboard'];
+    if (t === 'clear')   return ['BOARD-38', 'chalkboard cleared'];
+  }
+  if (g === 'metro')      return ['SYNC-37', 'metronome event'];
+  if (g === 'cowsay')     return ['TERM-XX', `cowsay: "${String(data.text||'').slice(0,40)}"`];
+  if (g === 'intercom')   return ['COMM-84', `PA broadcast: "${String(data.text||'').slice(0,40)}"`];
+
+  // Unknown — still show it
+  return [`SYS-${g.toUpperCase().slice(0,6)||'??'}`, `${t || 'event'} received`];
+}
+
+function ts() {
+  const d = new Date();
+  return [d.getHours(), d.getMinutes(), d.getSeconds()]
+    .map(x => String(x).padStart(2,'0')).join(':');
+}
+
+let eventCount = 0;
+
+function addEvent(data, fresh) {
+  if (idleEl) idleEl.remove();
+  eventCount++;
+
+  const [src, desc] = describe(data);
+  const el = document.createElement('div');
+  el.className = 'event' + (fresh ? ' fresh' : '');
+  el.innerHTML =
+    `<span class="time">${ts()}</span>` +
+    `<span class="src">${src}</span>` +
+    `<span class="desc">${desc}</span>`;
+
+  eventsEl.insertBefore(el, eventsEl.firstChild);
+
+  // After a moment, dim the fresh highlight
+  if (fresh) setTimeout(() => el.classList.remove('fresh'), 800);
+
+  // Cap at 60 events
+  while (eventsEl.children.length > 60) {
+    eventsEl.removeChild(eventsEl.lastChild);
+  }
+}
+
+// WebSocket
+let ws;
+function connect() {
+  ws = new WebSocket(`ws://${location.host}`);
+
+  ws.onopen = () => {
+    statusEl.textContent = 'live';
+    statusEl.className = 'status live';
+  };
+
+  ws.onmessage = e => {
+    try {
+      const data = JSON.parse(e.data);
+      // Filter out our own room's init type messages if any
+      addEvent(data, true);
+    } catch (_) {}
+  };
+
+  ws.onclose = () => {
+    statusEl.textContent = 'disconnected';
+    statusEl.className = 'status';
+    setTimeout(connect, 3000);
+  };
+}
+connect();
+
+// Noise canvas — always flickering to show the signal is alive
+const nc = document.getElementById('noise');
+const nctx = nc.getContext('2d');
+function drawNoise() {
+  const img = nctx.createImageData(nc.width, nc.height);
+  for (let i = 0; i < img.data.length; i += 4) {
+    const v = Math.random() > 0.85 ? Math.floor(Math.random() * 120 + 60) : 0;
+    img.data[i] = img.data[i+1] = img.data[i+2] = v;
+    img.data[i+3] = 200;
+  }
+  nctx.putImageData(img, 0, 0);
+  setTimeout(drawNoise, 80);
+}
+drawNoise();
+</script>
+</body>
+</html>
