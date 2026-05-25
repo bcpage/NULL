@@ -1,13 +1,11 @@
 # NULL — Backlog Index
-Last updated: 2026-05-25
-Built since last update: The Hallway (00078), Unix Timestamp (00079), Monty Hall (00080),
-Tower of Hanoi (00081), The Signal (00082), The Registry (00083), The Intercom (00084),
-Something Under the Bed (00085), Bulletin Board (00086), Jabberwocky (00087),
-2am Room (00088), Invisible Characters (00089), Peg Solitaire (00090),
-Observation Windows (00091), Cheshire Cat (00092), Grade School Clock (00093),
-Cowsay (00094), The Yellow Door (00095), UUID Generator (00096), MASH (00097),
-Activity Histogram (00098), Joshua Room (00099), Nonexistent Rooms (00100),
-Sliding Tile Puzzle (00101)
+Last updated: 2026-05-26
+Built since last update: Binary Control Panel (00102), IP Geolocation (00103),
+Game Over ×3 (00104–00106), Wrong Tetris (00107), Wrong Pac-Man (00108),
+Physics Engine (00109), Info Room pairs ×3 (00110–00115),
+Facility Calendar (00116), Wire Connection Panel (00117)
+
+See docs/BUILD_PRIORITY.md for full ratings, status, and recommended build order.
 
 For full specs, grep docs/BACKLOG.md for the room name.
 
@@ -19,7 +17,7 @@ For full specs, grep docs/BACKLOG.md for the room name.
 | ~~External Observation Windows~~ | ~~Easy~~ | — | **BUILT** → 00091 |
 | The Observation Room | Medium | 8 | Watch another user live inside their current room |
 | ~~The Invisible Character Room~~ | ~~Easy~~ | — | **BUILT** → 00089 |
-| Binary Control Panel | Easy | 4 | 8-bit toggle keyboard; each combo = ASCII char; WS sync |
+| ~~Binary Control Panel~~ | ~~Easy~~ | — | **BUILT** → 00102 |
 | ~~The Joshua Room~~ | ~~Easy~~ | — | **BUILT** → 00099 |
 | ~~The Illegal Prime~~ | ~~Trivial~~ | — | **BUILT** → 00052 |
 | ~~Prime Number Generator~~ | ~~Easy~~ | — | **BUILT** → 00073 |
@@ -28,17 +26,17 @@ For full specs, grep docs/BACKLOG.md for the room name.
 | ~~Paradox: Grandfather~~ | ~~Easy~~ | — | **BUILT** → 00060 |
 | ~~Paradox: Banach-Tarski~~ | ~~Easy~~ | — | **BUILT** → 00061 |
 | ~~Paradox: Russell's Barber~~ | ~~Easy~~ | — | **BUILT** → 00062 |
-| Physics Engine | Easy–Med | 5 | Matter.js sandbox; boxes, ragdoll, negative gravity |
+| ~~Physics Engine~~ | ~~Easy–Med~~ | — | **BUILT** → 00109 |
 | ~~Random Linux Man Page~~ | ~~Trivial~~ | — | **BUILT** → 00053 |
 | ~~Jabberwocky~~ | ~~Easy~~ | — | **BUILT** → 00087 |
 | Tamagotchi — Shared Pet | Hard | 15 | One pet; all users responsible; neglect kills it |
 | ~~Inspirational Comments~~ | ~~Trivial~~ | — | **BUILT** → 00054 |
 | ~~User Activity Stats Histogram~~ | ~~Easy~~ | — | **BUILT** → 00098 |
-| IP Geolocation Room | Easy | 4 | Approximate location + imagery; consent framing included |
-| Calendar Room | Easy–Med | 5 | Changeable date/time; feeds lock conditions |
+| ~~IP Geolocation Room~~ | ~~Easy~~ | — | **BUILT** → 00103 |
+| ~~Calendar Room~~ | ~~Easy–Med~~ | — | **BUILT** → 00116 |
 | MS-DOS HELP Interface | Medium | 8 | NULL platform in 1993 DOS aesthetic |
 | Interactive MS-DOS Prompt | Medium | 8 | Fake C:\NULL> terminal; FORMAT C: never completes |
-| Information Rooms — pairs ×5 | Trivial | 2 | Identical pairs; one subtly wrong; neither labeled |
+| Information Rooms — pairs ×5 | Trivial | 2 | **3 of 5 BUILT** → 00110–00115; 2 pairs remaining |
 | ~~Useless Information B — Expired~~ | ~~Trivial~~ | — | **BUILT** → 00068 |
 | ~~Useless Information C — Fossil Room~~ | ~~Trivial~~ | — | **BUILT** → 00069 |
 | ~~Ominous Countdown Timer~~ | ~~Easy~~ | — | **BUILT** → 00067 |
@@ -50,22 +48,22 @@ For full specs, grep docs/BACKLOG.md for the room name.
 | ~~Half Constructed Room~~ | ~~Trivial~~ | — | **BUILT** → 00058 |
 | Alternate Hangman — One Life | Medium | 8 | One game ever; outcome becomes permanent inventory item |
 | ~~Dead Rooms ×2~~ | ~~Trivial~~ | — | **BUILT** → 00070, 00071 |
-| Game Over Rooms ×3–5 | Easy | 3 | 24hr server-side lockout; random duration |
+| ~~Game Over Rooms ×3~~ | ~~Easy~~ | — | **BUILT** → 00104, 00105, 00106 |
 | ~~Black Hole~~ | ~~Easy~~ | — | **BUILT** → 00075 |
 | ~~Tower of Hanoi~~ | ~~Easy~~ | — | **BUILT** → 00081 |
 | ~~Cracker Barrel Peg Solitaire~~ | ~~Easy~~ | — | **BUILT** → 00090 |
 | ~~River Crossing~~ | ~~Trivial–Easy~~ | — | **BUILT** → 00066 |
-| Wire Connection Puzzle | Easy–Med | 5 | Number Link mechanic; TV screen framing; fill every cell |
+| ~~Wire Connection Puzzle~~ | ~~Easy–Med~~ | — | **BUILT** → 00117 |
 | NULL Navigation Board | Hard | 20 | Sokoban blocks ARE rooms; pushing a block rewires platform nav |
 | Sokoban — Block Pusher | Medium | 8 | Build first; navigation board reuses its engine |
 | ~~Sliding Tile Puzzle~~ | ~~Easy~~ | — | **BUILT** → 00101 |
 | Dig Dug | Medium | 10 | Faithful Namco 1982 clone; music plays only when player moves |
-| Wrong Tetris | Medium | 8 | Unfittable shapes; game cannot be won |
+| ~~Wrong Tetris~~ | ~~Medium~~ | — | **BUILT** → 00107 |
 | Shape Factory | Easy | 4 | User-drawn pieces enter Wrong Tetris pool |
 | ~~Wrong Pong~~ | ~~Easy~~ | — | **BUILT** → 00063 |
 | ~~Wrong Snake~~ | ~~Easy~~ | — | **BUILT** → 00064 |
 | ~~Wrong Space Invaders~~ | ~~Medium~~ | — | **BUILT** → 00077 |
-| Wrong Pac-Man | Medium | 6 | Ghosts flee; no win condition |
+| ~~Wrong Pac-Man~~ | ~~Medium~~ | — | **BUILT** → 00108 |
 | ~~Wrong Breakout~~ | ~~Easy~~ | — | **BUILT** → 00065 |
 | HAL 9000 Room(s) | TBD | ? | Multiple ideas: the eye, regression, AE-35; needs spec pass |
 | The NULL Room (full matrix) | Medium | 6 | Full matrix view + live presence; see yourself glow |
