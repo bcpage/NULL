@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Additional Sectors — NULL</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #050508;
+  color: #bbb;
+  font-family: monospace;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  gap: 2rem;
+}
+.title {
+  font-size: 0.65rem;
+  letter-spacing: 0.35em;
+  color: rgba(200,180,140,0.3);
+  text-transform: uppercase;
+  text-align: center;
+}
+.subtitle {
+  font-size: 0.6rem;
+  letter-spacing: 0.15em;
+  color: rgba(200,180,140,0.15);
+  text-align: center;
+}
+.sector-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 380px;
+}
+.sector-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.7rem 1rem;
+  border: 1px solid rgba(200,180,140,0.1);
+  text-decoration: none;
+  transition: border-color 0.2s;
+  cursor: pointer;
+}
+.sector-item:hover {
+  border-color: rgba(200,180,140,0.3);
+}
+.sector-id {
+  font-size: 0.8rem;
+  letter-spacing: 0.1em;
+  color: rgba(200,180,140,0.5);
+}
+.sector-status {
+  font-size: 0.6rem;
+  letter-spacing: 0.15em;
+  color: rgba(200,180,140,0.2);
+  text-transform: uppercase;
+}
+.sector-item:hover .sector-status { color: rgba(200,180,140,0.4); }
+.note {
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  color: rgba(200,180,140,0.12);
+  text-align: center;
+  line-height: 1.9;
+  max-width: 360px;
+}
+</style>
+</head>
+<body data-game="00100" data-nav="matrix">
+
+<div class="title">Additional Sectors</div>
+<div class="subtitle">Access Status: Unverified</div>
+
+<div class="sector-list">
+  <a class="sector-item" href="/game/00201">
+    <span class="sector-id">SECTOR 00201</span>
+    <span class="sector-status">Attempting Access →</span>
+  </a>
+  <a class="sector-item" href="/game/00202">
+    <span class="sector-id">SECTOR 00202</span>
+    <span class="sector-status">Attempting Access →</span>
+  </a>
+  <a class="sector-item" href="/game/00203">
+    <span class="sector-id">SECTOR 00203</span>
+    <span class="sector-status">Attempting Access →</span>
+  </a>
+  <a class="sector-item" href="/game/00204">
+    <span class="sector-id">SECTOR 00204</span>
+    <span class="sector-status">Attempting Access →</span>
+  </a>
+  <a class="sector-item" href="/game/00205">
+    <span class="sector-id">SECTOR 00205</span>
+    <span class="sector-status">Attempting Access →</span>
+  </a>
+</div>
+
+<div class="note">
+  These sectors appear in the facility index.<br>
+  Navigation to them has not been confirmed.<br>
+  Proceed at your own discretion.
+</div>
+
+<script src="/shared/matrix-nav.js"></script>
+</body>
+</html>

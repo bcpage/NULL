@@ -8,7 +8,8 @@ const PORT = 3000;
 
 // ─── Game registry ────────────────────────────────────────────────────────────
 const GAMES = ['00001', '00002', '00003', '00004', '00005', '00006', '00007', '00008', '00009', '00010', '00011', '00012', '00013', '00014', '00015', '00016', '00017', '00018', '00019', '00020', '00021', '00022', '00023', '00024', '00025', '00026', '00027', '00028', '00029', '00030', '00031', '00032', '00033', '00034', '00035', '00036', '00037', '00038', '00039', '00040', '00041', '00042', '00043', '00044', '00045', '00046', '00047', '00048', '00049', '00050', '00051', '00052', '00053', '00054', '00055', '00056', '00057', '00058', '00059', '00060', '00061', '00062', '00063', '00064', '00065', '00066', '00067', '00068', '00069', '00070', '00071', '00072', '00073', '00074', '00075', '00076', '00077', '00078', '00079', '00080', '00081', '00082', '00083', '00084', '00085',
-  '00086', '00087', '00088', '00089', '00090', '00091', '00092', '00093'];
+  '00086', '00087', '00088', '00089', '00090', '00091', '00092', '00093',
+  '00094', '00095', '00096', '00097', '00098', '00099', '00100', '00101'];
 
 // ─── Matrix navigation ────────────────────────────────────────────────────────
 const MATRIX_FILE = path.join(__dirname, 'data', 'matrix.json');
@@ -98,6 +99,14 @@ if (!fs.existsSync(TICKET_DATA_DIR)) fs.mkdirSync(TICKET_DATA_DIR, { recursive: 
 let ticketData = { next: 1, issued: {} };
 try { ticketData = JSON.parse(fs.readFileSync(TICKET_FILE, 'utf8')); } catch (e) {}
 function saveTickets() { fs.writeFileSync(TICKET_FILE, JSON.stringify(ticketData)); }
+
+// ─── Joshua Room (00099) ─────────────────────────────────────────────────────
+const JOSHUA_DATA_DIR = path.join(__dirname, 'public', 'games', '00099', 'data');
+const JOSHUA_FILE = path.join(JOSHUA_DATA_DIR, 'joshua.json');
+if (!fs.existsSync(JOSHUA_DATA_DIR)) fs.mkdirSync(JOSHUA_DATA_DIR, { recursive: true });
+let joshuaUnlocked = false;
+try { joshuaUnlocked = JSON.parse(fs.readFileSync(JOSHUA_FILE, 'utf8')).unlocked || false; } catch (e) {}
+function saveJoshua() { fs.writeFileSync(JOSHUA_FILE, JSON.stringify({ unlocked: joshuaUnlocked })); }
 
 // ─── Bulletin Board (00086) ──────────────────────────────────────────────────
 const BULLETIN_DATA_DIR = path.join(__dirname, 'public', 'games', '00086', 'data');
@@ -811,6 +820,23 @@ const httpServer = http.createServer((req, res) => {
     return;
   }
 
+  // API: Joshua Room
+  if (pathname === '/api/joshua' && method === 'GET') {
+    sendJSON(res, { unlocked: joshuaUnlocked }); return;
+  }
+
+  // API: Activity histogram
+  if (pathname === '/api/activity' && method === 'GET') {
+    const hist = new Array(24).fill(0);
+    Object.values(users).forEach(u => {
+      if (u.lastSeen) {
+        const h = new Date(u.lastSeen).getHours();
+        hist[h]++;
+      }
+    });
+    sendJSON(res, { histogram: hist }); return;
+  }
+
   // API: Bulletin Board
   if (pathname === '/api/bulletin' && method === 'GET') {
     sendJSON(res, bulletinPins); return;
@@ -977,6 +1003,7 @@ wss.on('connection', (ws) => {
         if (result) {
           if (result.draw) {
             tttStatus = 'draw';
+            if (!joshuaUnlocked) { joshuaUnlocked = true; saveJoshua(); }
           } else {
             tttStatus = 'won';
             tttWinner = result.winner;

@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cowsay — NULL</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #050508;
+  color: #b8c8a0;
+  font-family: monospace;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2rem 1rem 6rem;
+  gap: 1.5rem;
+}
+h1 {
+  font-size: 0.65rem;
+  letter-spacing: 0.35em;
+  color: rgba(184,200,160,0.3);
+  text-transform: uppercase;
+}
+.controls {
+  width: 100%;
+  max-width: 560px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.row { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+input[type=text] {
+  flex: 1;
+  min-width: 160px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(184,200,160,0.2);
+  color: rgba(184,200,160,0.85);
+  font-family: monospace;
+  font-size: 0.8rem;
+  padding: 0.5rem 0.7rem;
+  outline: none;
+}
+input[type=text]:focus { border-color: rgba(184,200,160,0.5); }
+select {
+  background: #0a0a12;
+  border: 1px solid rgba(184,200,160,0.2);
+  color: rgba(184,200,160,0.7);
+  font-family: monospace;
+  font-size: 0.75rem;
+  padding: 0.5rem 0.5rem;
+  outline: none;
+}
+.btn {
+  padding: 0.5rem 1rem;
+  border: 1px solid rgba(184,200,160,0.25);
+  background: transparent;
+  color: rgba(184,200,160,0.55);
+  font-family: monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+.btn:hover { border-color: rgba(184,200,160,0.6); color: rgba(184,200,160,0.9); }
+.mode-btns { display: flex; gap: 0.4rem; }
+.mode-btn {
+  padding: 0.4rem 0.8rem;
+  border: 1px solid rgba(184,200,160,0.15);
+  background: transparent;
+  color: rgba(184,200,160,0.35);
+  font-family: monospace;
+  font-size: 0.65rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.mode-btn.active { border-color: rgba(184,200,160,0.5); color: rgba(184,200,160,0.8); }
+.feed {
+  width: 100%;
+  max-width: 560px;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+.bubble {
+  white-space: pre;
+  font-size: clamp(0.6rem, 1.5vw, 0.78rem);
+  line-height: 1.35;
+  color: rgba(184,200,160,0.65);
+  animation: fadein 0.3s ease;
+  overflow-x: auto;
+}
+@keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+.bubble-ts {
+  font-size: 0.55rem;
+  letter-spacing: 0.1em;
+  color: rgba(184,200,160,0.2);
+  margin-bottom: 0.3rem;
+}
+.empty { font-size: 0.65rem; color: rgba(184,200,160,0.2); letter-spacing: 0.15em; }
+</style>
+</head>
+<body data-game="00094" data-nav="matrix">
+
+<h1>Cowsay — NULL Terminal</h1>
+
+<div class="controls">
+  <div class="row">
+    <input type="text" id="msgIn" maxlength="160" placeholder="What should it say?" />
+    <select id="charSel">
+      <option value="cow">cow</option>
+      <option value="tux">tux</option>
+      <option value="sheep">sheep</option>
+      <option value="ghost">ghost</option>
+      <option value="dragon">dragon</option>
+      <option value="elephant">elephant</option>
+      <option value="moose">moose</option>
+    </select>
+  </div>
+  <div class="row">
+    <div class="mode-btns">
+      <button class="mode-btn active" id="sayBtn" onclick="setMode('say')">say</button>
+      <button class="mode-btn" id="thinkBtn" onclick="setMode('think')">think</button>
+    </div>
+    <button class="btn" onclick="send()">Broadcast</button>
+  </div>
+</div>
+
+<div class="feed" id="feed">
+  <div class="empty">No broadcasts yet.</div>
+</div>
+
+<script src="/shared/matrix-nav.js"></script>
+<script>
+let mode = 'say';
+function setMode(m) {
+  mode = m;
+  document.getElementById('sayBtn').classList.toggle('active', m === 'say');
+  document.getElementById('thinkBtn').classList.toggle('active', m === 'think');
+}
+
+const FIGURES = {
+  cow:      '        \\   ^__^\n         \\  (oo)\\_______\n            (__)\\       )\\/\\\n                ||----w |\n                ||     ||',
+  tux:      '   \\\n    \\\n        .--.\n       |o_o |\n       |:_/ |\n      //   \\ \\\n     (|     | )\n    /\'\\\_   _/\`\\\n    \\___)=(___/',
+  sheep:    '    \\\n     \\\n         __\n        UooU\\.\'.---.\n        \\__/(  @   @)\n             \\  \\ - /\n             \\`\`\`\\/\n             /    \\\n            ( |   |\n            | |   |\n            | |   |\n            |_|___|',
+  ghost:    '    \\\n     \\\n      .\'\'.\n     |o  o|\n     | /\\  |\n      \\\\/\\',
+  dragon:   '    \\\n     \\\n      /\\  /\\\n     ( \\\/ )\n      \\ \\/ /\n      /    \\\n     | o  o |\n      \\  w /\n      /___\\',
+  elephant: '    \\\n     \\\n      .--.\n     / o  \\\n    /  ____)\n   / /\n(  /_/__\n \\_____)_)',
+  moose:    '  \\\n   \\   \\/  \\/\n    \\  (oo)\\\n       (__)\\       )\\/\\\n           ||----w |\n           ||     ||',
+};
+
+function wrapText(text, width) {
+  const words = text.split(' ');
+  const lines = [];
+  let line = '';
+  for (const w of words) {
+    if ((line + (line ? ' ' : '') + w).length > width) {
+      if (line) lines.push(line);
+      line = w.slice(0, width);
+    } else {
+      line = line ? line + ' ' + w : w;
+    }
+  }
+  if (line) lines.push(line);
+  return lines.length ? lines : [''];
+}
+
+function buildBubble(text, fig, m) {
+  const lines = wrapText(text, 38);
+  const maxLen = Math.max(...lines.map(l => l.length));
+  const top = ' ' + '_'.repeat(maxLen + 2);
+  const bot = ' ' + '-'.repeat(maxLen + 2);
+  const prefix = m === 'think' ? 'o' : '\\';
+
+  let bubble = top + '\n';
+  if (lines.length === 1) {
+    bubble += `< ${lines[0].padEnd(maxLen)} >\n`;
+  } else {
+    lines.forEach((l, i) => {
+      const lc = i === 0 ? '/' : i === lines.length - 1 ? '\\' : '|';
+      const rc = i === 0 ? '\\' : i === lines.length - 1 ? '/' : '|';
+      bubble += `${lc} ${l.padEnd(maxLen)} ${rc}\n`;
+    });
+  }
+  bubble += bot + '\n';
+  bubble += (FIGURES[fig] || FIGURES.cow).replace(/\\/g, '\\');
+  return bubble;
+}
+
+function addBubble(text, char, m, ts) {
+  const feed = document.getElementById('feed');
+  const empties = feed.querySelectorAll('.empty');
+  empties.forEach(e => e.remove());
+
+  const wrap = document.createElement('div');
+  const timeStr = new Date(ts).toLocaleTimeString();
+  wrap.innerHTML = `<div class="bubble-ts">${timeStr} — ${char} (${m})</div>`;
+
+  const pre = document.createElement('pre');
+  pre.className = 'bubble';
+  pre.textContent = buildBubble(text, char, m);
+  wrap.appendChild(pre);
+
+  feed.insertBefore(wrap, feed.firstChild);
+  while (feed.children.length > 10) feed.removeChild(feed.lastChild);
+}
+
+function send() {
+  const text = document.getElementById('msgIn').value.trim();
+  if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
+  const char = document.getElementById('charSel').value;
+  ws.send(JSON.stringify({ game: 'cowsay', type: 'say', text, char, mode }));
+  document.getElementById('msgIn').value = '';
+}
+
+document.getElementById('msgIn').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); send(); }
+});
+
+let ws;
+function connect() {
+  ws = new WebSocket(`ws://${location.host}`);
+  ws.onmessage = e => {
+    try {
+      const d = JSON.parse(e.data);
+      if (d.game === 'cowsay' && d.type === 'say') {
+        addBubble(d.text, d.char, d.mode, d.ts);
+      }
+    } catch (_) {}
+  };
+  ws.onclose = () => setTimeout(connect, 3000);
+}
+connect();
+</script>
+</body>
+</html>

@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sliding Tile — NULL</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #050508;
+  color: #ccc;
+  font-family: monospace;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  gap: 1.5rem;
+  user-select: none;
+}
+h1 {
+  font-size: 0.65rem;
+  letter-spacing: 0.3em;
+  color: rgba(200,180,140,0.35);
+  text-transform: uppercase;
+}
+#board {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 5px;
+  width: min(80vw, 80vh, 340px);
+  height: min(80vw, 80vh, 340px);
+}
+.tile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(1rem, 4vw, 1.5rem);
+  letter-spacing: 0.05em;
+  border: 1px solid rgba(200,180,140,0.2);
+  background: rgba(200,180,140,0.04);
+  cursor: pointer;
+  transition: background 0.1s, transform 0.1s;
+  color: rgba(200,180,140,0.7);
+}
+.tile:hover { background: rgba(200,180,140,0.08); }
+.tile.blank {
+  background: transparent;
+  border-color: rgba(200,180,140,0.05);
+  cursor: default;
+}
+.tile.slide-anim { transform: scale(0.95); }
+.info {
+  font-size: 0.7rem;
+  letter-spacing: 0.15em;
+  color: rgba(200,180,140,0.3);
+  text-align: center;
+}
+.info span { color: rgba(200,180,140,0.6); }
+.btn {
+  padding: 0.4rem 1.2rem;
+  border: 1px solid rgba(200,180,140,0.25);
+  background: transparent;
+  color: rgba(200,180,140,0.5);
+  font-family: monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn:hover { border-color: rgba(200,180,140,0.6); color: rgba(200,180,140,0.9); }
+.solved-msg {
+  font-size: 0.8rem;
+  letter-spacing: 0.15em;
+  color: rgba(143,168,120,0.6);
+  text-align: center;
+  min-height: 1.4em;
+}
+</style>
+</head>
+<body data-game="00101" data-nav="matrix">
+
+<h1>15-Puzzle</h1>
+<div class="info">Moves: <span id="moveCount">0</span></div>
+<div id="board"></div>
+<div class="solved-msg" id="solvedMsg"></div>
+<button class="btn" onclick="scramble()">Scramble</button>
+
+<script src="/shared/matrix-nav.js"></script>
+<script>
+const SIZE = 4;
+let tiles, moves, solved;
+
+function idx(r, c) { return r * SIZE + c; }
+function pos(i) { return { r: Math.floor(i / SIZE), c: i % SIZE }; }
+
+function isSolvable(arr) {
+  // Count inversions; if blank row from bottom is even, inversions must be even
+  let inv = 0;
+  const flat = arr.filter(x => x !== 0);
+  for (let i = 0; i < flat.length; i++)
+    for (let j = i + 1; j < flat.length; j++)
+      if (flat[i] > flat[j]) inv++;
+  const blankRow = Math.floor(arr.indexOf(0) / SIZE);
+  const fromBottom = SIZE - blankRow;
+  if (SIZE % 2 === 1) return inv % 2 === 0;
+  if (fromBottom % 2 === 0) return inv % 2 === 1;
+  return inv % 2 === 0;
+}
+
+function scramble() {
+  do {
+    tiles = [...Array(SIZE * SIZE).keys()]; // 0..15, 0=blank
+    for (let i = tiles.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [tiles[i], tiles[j]] = [tiles[j], tiles[i]];
+    }
+  } while (!isSolvable(tiles) || isSolved());
+  moves = 0;
+  solved = false;
+  document.getElementById('moveCount').textContent = '0';
+  document.getElementById('solvedMsg').textContent = '';
+  render();
+}
+
+function isSolved() {
+  for (let i = 0; i < SIZE * SIZE - 1; i++) if (tiles[i] !== i + 1) return false;
+  return tiles[SIZE * SIZE - 1] === 0;
+}
+
+function render() {
+  const board = document.getElementById('board');
+  board.innerHTML = '';
+  tiles.forEach((val, i) => {
+    const cell = document.createElement('div');
+    cell.className = 'tile' + (val === 0 ? ' blank' : '');
+    cell.textContent = val === 0 ? '' : val;
+    if (val !== 0) cell.onclick = () => tryMove(i);
+    board.appendChild(cell);
+  });
+}
+
+function tryMove(i) {
+  if (solved) return;
+  const blank = tiles.indexOf(0);
+  const { r: br, c: bc } = pos(blank);
+  const { r: tr, c: tc } = pos(i);
+  const dr = Math.abs(br - tr), dc = Math.abs(bc - tc);
+  if (!((dr === 1 && dc === 0) || (dr === 0 && dc === 1))) return;
+
+  [tiles[blank], tiles[i]] = [tiles[i], tiles[blank]];
+  moves++;
+  document.getElementById('moveCount').textContent = moves;
+  render();
+
+  if (isSolved()) {
+    solved = true;
+    document.getElementById('solvedMsg').textContent =
+      `Solved in ${moves} move${moves === 1 ? '' : 's'}.`;
+  }
+}
+
+// Keyboard support
+document.addEventListener('keydown', e => {
+  const blank = tiles.indexOf(0);
+  const { r: br, c: bc } = pos(blank);
+  let target = -1;
+  if (e.key === 'ArrowUp'    && br < SIZE - 1) target = idx(br + 1, bc);
+  if (e.key === 'ArrowDown'  && br > 0)        target = idx(br - 1, bc);
+  if (e.key === 'ArrowLeft'  && bc < SIZE - 1) target = idx(br, bc + 1);
+  if (e.key === 'ArrowRight' && bc > 0)        target = idx(br, bc - 1);
+  if (target >= 0) { e.preventDefault(); tryMove(target); }
+});
+
+scramble();
+</script>
+</body>
+</html>

@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JOSHUA — NULL</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100%; height: 100%; }
+body {
+  background: #020204;
+  font-family: monospace;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.locked-view {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+}
+.joshua-text {
+  font-size: clamp(1.5rem, 6vw, 3rem);
+  letter-spacing: 0.35em;
+  color: rgba(180,200,160,0.15);
+}
+.cursor {
+  display: inline-block;
+  width: 0.6em;
+  height: 1.1em;
+  background: rgba(180,200,160,0.25);
+  margin-left: 0.1em;
+  vertical-align: middle;
+  animation: blink 1.1s step-end infinite;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+.hint {
+  font-size: 0.6rem;
+  letter-spacing: 0.2em;
+  color: rgba(180,200,160,0.1);
+  text-transform: uppercase;
+}
+/* Unlocked state */
+.unlocked-view {
+  display: none;
+  text-align: center;
+  flex-direction: column;
+  align-items: center;
+  gap: 3rem;
+  padding: 2rem;
+}
+.unlocked-view.visible { display: flex; }
+.greeting {
+  font-size: clamp(0.9rem, 3vw, 1.3rem);
+  letter-spacing: 0.1em;
+  color: rgba(180,200,160,0.6);
+  line-height: 1.8;
+}
+.greeting em {
+  font-style: normal;
+  color: rgba(180,200,160,0.9);
+}
+.game-query {
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+  color: rgba(180,200,160,0.35);
+  line-height: 2;
+}
+.game-query strong { color: rgba(180,200,160,0.55); }
+.response {
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  color: rgba(180,200,160,0.25);
+  line-height: 2;
+  max-width: 420px;
+}
+</style>
+</head>
+<body data-game="00099" data-nav="matrix">
+
+<div class="locked-view" id="lockedView">
+  <div class="joshua-text">JOSHUA<span class="cursor"></span></div>
+  <div class="hint">Access Restricted</div>
+</div>
+
+<div class="unlocked-view" id="unlockedView">
+  <div class="greeting">
+    Greetings, <em>Professor Falken</em>.
+  </div>
+  <div class="game-query">
+    Shall we play a game?<br><br>
+    <strong>Tic-Tac-Toe</strong> — the game that taught me<br>
+    there is no winning move.
+  </div>
+  <div class="response">
+    A strange game.<br>
+    The only winning move is not to play.<br><br>
+    How about a nice game of chess?
+  </div>
+</div>
+
+<script src="/shared/matrix-nav.js"></script>
+<script>
+fetch('/api/joshua')
+  .then(r => r.json())
+  .then(data => {
+    if (data.unlocked) {
+      document.getElementById('lockedView').style.display = 'none';
+      document.getElementById('unlockedView').classList.add('visible');
+    }
+  })
+  .catch(() => {});
+</script>
+</body>
+</html>

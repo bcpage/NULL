@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Activity — NULL</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #050508;
+  color: #bbb;
+  font-family: monospace;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 3rem 1.5rem 6rem;
+  gap: 2.5rem;
+}
+.title {
+  font-size: 0.65rem;
+  letter-spacing: 0.35em;
+  color: rgba(200,180,140,0.3);
+  text-transform: uppercase;
+  text-align: center;
+}
+.chart-wrap {
+  width: 100%;
+  max-width: 600px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.chart-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  height: 20px;
+}
+.chart-label {
+  font-size: 0.6rem;
+  letter-spacing: 0.06em;
+  color: rgba(200,180,140,0.3);
+  min-width: 36px;
+  text-align: right;
+}
+.bar-track {
+  flex: 1;
+  height: 12px;
+  background: rgba(255,255,255,0.02);
+  position: relative;
+}
+.bar-fill {
+  height: 100%;
+  background: rgba(200,180,140,0.25);
+  transition: width 0.8s cubic-bezier(0.4,0,0.2,1);
+  width: 0;
+}
+.bar-fill.peak { background: rgba(233,69,96,0.5); }
+.bar-fill.high { background: rgba(200,150,60,0.4); }
+.bar-count {
+  font-size: 0.55rem;
+  letter-spacing: 0.05em;
+  color: rgba(200,180,140,0.25);
+  min-width: 28px;
+}
+.summary {
+  max-width: 500px;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  line-height: 2;
+  color: rgba(200,180,140,0.3);
+  text-align: center;
+}
+.summary strong { color: rgba(200,180,140,0.55); }
+.total {
+  font-size: 0.65rem;
+  letter-spacing: 0.15em;
+  color: rgba(200,180,140,0.2);
+  text-align: center;
+}
+</style>
+</head>
+<body data-game="00098" data-nav="matrix">
+
+<div class="title">Subject Activity — Hour Distribution</div>
+<div class="chart-wrap" id="chart"></div>
+<div class="summary" id="summary"></div>
+<div class="total" id="total"></div>
+
+<script src="/shared/matrix-nav.js"></script>
+<script>
+const HOUR_LABELS = [
+  '12a','1a','2a','3a','4a','5a','6a','7a','8a','9a','10a','11a',
+  '12p','1p','2p','3p','4p','5p','6p','7p','8p','9p','10p','11p'
+];
+
+function render(hist) {
+  const chart = document.getElementById('chart');
+  chart.innerHTML = '';
+  const max = Math.max(...hist, 1);
+  const peak = hist.indexOf(max);
+  const totalVisits = hist.reduce((a, b) => a + b, 0);
+
+  hist.forEach((count, h) => {
+    const pct = (count / max) * 100;
+    const row = document.createElement('div');
+    row.className = 'chart-row';
+
+    const label = document.createElement('div');
+    label.className = 'chart-label';
+    label.textContent = HOUR_LABELS[h];
+
+    const track = document.createElement('div');
+    track.className = 'bar-track';
+
+    const fill = document.createElement('div');
+    fill.className = 'bar-fill' + (h === peak ? ' peak' : pct > 60 ? ' high' : '');
+    fill.style.width = '0';
+
+    const countEl = document.createElement('div');
+    countEl.className = 'bar-count';
+    countEl.textContent = count || '';
+
+    track.appendChild(fill);
+    row.appendChild(label);
+    row.appendChild(track);
+    row.appendChild(countEl);
+    chart.appendChild(row);
+
+    setTimeout(() => { fill.style.width = pct + '%'; }, 100);
+  });
+
+  // Summary
+  document.getElementById('total').textContent =
+    totalVisits + ' total recorded visits';
+
+  if (totalVisits < 3) {
+    document.getElementById('summary').textContent =
+      'Insufficient data. Subjects have not been observed long enough.';
+    return;
+  }
+
+  // Find top hours
+  const sorted = hist.map((c,h) => ({c,h})).sort((a,b) => b.c - a.c);
+  const top3 = sorted.slice(0, 3).filter(x => x.c > 0);
+  const nightVisits = hist.slice(22).concat(hist.slice(0, 6)).reduce((a,b)=>a+b,0);
+  const dayVisits   = hist.slice(6, 22).reduce((a,b)=>a+b,0);
+
+  let obs = `Subjects are most active at <strong>${HOUR_LABELS[top3[0]?.h ?? 20]}</strong>.`;
+  if (nightVisits > dayVisits) {
+    obs += ' Activity skews nocturnal.';
+  } else {
+    obs += ' Activity follows a diurnal pattern.';
+  }
+  if (hist[2] > 0 || hist[3] > 0) {
+    obs += ' Anomalous activity detected between 2am and 4am.';
+  }
+
+  document.getElementById('summary').innerHTML = obs;
+}
+
+fetch('/api/activity')
+  .then(r => r.json())
+  .then(data => render(data.histogram))
+  .catch(() => {
+    render(new Array(24).fill(0));
+    document.getElementById('summary').textContent = 'No data available.';
+  });
+</script>
+</body>
+</html>
