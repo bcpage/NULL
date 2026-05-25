@@ -119,3 +119,5 @@ For full specs, grep docs/BACKLOG.md for the room name.
 | ~~Color Mixer~~ | ~~Easy~~ | — | **BUILT** → 00170 |
 | ~~Typing Test~~ | ~~Easy-Med~~ | — | **BUILT** → 00171 |
 | ~~Base Converter~~ | ~~Trivial~~ | — | **BUILT** → 00172 |
+| ~~Lissajous Figures~~ | ~~Easy~~ | — | **BUILT** → 00173 |
+| ~~Noise Room (Perlin)~~ | ~~Medium~~ | — | **BUILT** → 00174 |

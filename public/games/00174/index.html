@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>00174 — Noise Room</title>
+<link rel="icon" href="data:,">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #050508; color: #8a9aaa;
+    font-family: 'Courier New', monospace;
+    min-height: 100vh; display: flex; flex-direction: column;
+    align-items: center; gap: 12px;
+    padding: 30px 20px 50px;
+  }
+  .room-id { font-size: 10px; letter-spacing: 5px; color: #223; }
+  .title { font-size: 11px; letter-spacing: 5px; color: #445; text-transform: uppercase; }
+
+  #noise-canvas { display: block; border: 1px solid #0f0f1e; image-rendering: pixelated; }
+
+  .controls { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+  .ctrl-group { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .ctrl-label { font-size: 8px; letter-spacing: 2px; color: #223; }
+  .ctrl-val { font-size: 9px; letter-spacing: 1px; color: #334; }
+  input[type=range] {
+    -webkit-appearance: none; width: 90px; height: 3px;
+    background: #0f0f18; outline: none;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 10px; height: 10px;
+    border-radius: 50%; background: #3a5a7a; cursor: pointer;
+  }
+
+  .mode-row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  button {
+    background: #060610; border: 1px solid #0f0f18; color: #334;
+    font-family: 'Courier New', monospace; font-size: 9px;
+    letter-spacing: 2px; padding: 7px 14px; cursor: pointer;
+  }
+  button:hover { background: #0a0a18; color: #556; }
+  button.active { border-color: #2a4a2a; color: #7acc7a; }
+
+  #entropy-row { font-size: 9px; letter-spacing: 2px; color: #1a2a3a; text-align: center; min-height: 16px; }
+
+  .note { font-size: 10px; letter-spacing: 1px; color: #223; text-align: center; line-height: 2.2; max-width: 380px; border-top: 1px solid #111120; padding-top: 12px; }
+</style>
+</head>
+<body data-game="00174" data-nav="matrix">
+<div class="room-id">ROOM 00174</div>
+<div class="title">Noise Room</div>
+
+<canvas id="noise-canvas" width="440" height="330"></canvas>
+
+<div class="controls">
+  <div class="ctrl-group">
+    <div class="ctrl-label">SCALE</div>
+    <input type="range" id="scale-sl" min="1" max="20" value="4" step="1">
+    <div class="ctrl-val" id="scale-val">4</div>
+  </div>
+  <div class="ctrl-group">
+    <div class="ctrl-label">OCTAVES</div>
+    <input type="range" id="oct-sl" min="1" max="6" value="4" step="1">
+    <div class="ctrl-val" id="oct-val">4</div>
+  </div>
+  <div class="ctrl-group">
+    <div class="ctrl-label">PERSISTENCE</div>
+    <input type="range" id="pers-sl" min="0.1" max="0.9" value="0.5" step="0.05">
+    <div class="ctrl-val" id="pers-val">0.50</div>
+  </div>
+  <div class="ctrl-group">
+    <div class="ctrl-label">ANIMATE SPEED</div>
+    <input type="range" id="anim-sl" min="0" max="0.05" value="0.005" step="0.001">
+    <div class="ctrl-val" id="anim-val">0.005</div>
+  </div>
+</div>
+
+<div class="mode-row">
+  <button id="mode-gray" class="active">GRAYSCALE</button>
+  <button id="mode-terrain">TERRAIN</button>
+  <button id="mode-fire">FIRE</button>
+  <button id="mode-plasma">PLASMA</button>
+  <button id="mode-digital">DIGITAL</button>
+  <button id="regen-btn">RESEED</button>
+</div>
+
+<div id="entropy-row"></div>
+
+<div class="note">
+  This is Perlin noise.<br>
+  Procedurally generated, infinitely extensible.<br>
+  Every terrain in every game<br>
+  begins with something like this.
+</div>
+
+<script src="/shared/matrix-nav.js"></script>
+<script>
+const canvas = document.getElementById('noise-canvas');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+
+let scale = 4;
+let octaves = 4;
+let persistence = 0.5;
+let animSpeed = 0.005;
+let colorMode = 'gray';
+let zOff = 0;
+let perm = [];
+
+function reseed() {
+  const p = Array.from({length: 256}, (_, i) => i);
+  for (let i = 255; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i+1));
+    [p[i], p[j]] = [p[j], p[i]];
+  }
+  perm = [...p, ...p];
+  ctx.fillStyle = '#050508'; ctx.fillRect(0, 0, W, H);
+}
+
+function fade(t) { return t * t * t * (t * (t * 6 - 15) + 10); }
+function lerp(a, b, t) { return a + t * (b - a); }
+function grad(hash, x, y, z) {
+  const h = hash & 15;
+  const u = h < 8 ? x : y;
+  const v = h < 4 ? y : h === 12 || h === 14 ? x : z;
+  return ((h & 1) ? -u : u) + ((h & 2) ? -v : v);
+}
+
+function noise3(x, y, z) {
+  const X = Math.floor(x) & 255, Y = Math.floor(y) & 255, Z = Math.floor(z) & 255;
+  x -= Math.floor(x); y -= Math.floor(y); z -= Math.floor(z);
+  const u = fade(x), v = fade(y), w = fade(z);
+  const A = perm[X]+Y, AA = perm[A]+Z, AB = perm[A+1]+Z;
+  const B = perm[X+1]+Y, BA = perm[B]+Z, BB = perm[B+1]+Z;
+  return lerp(lerp(lerp(grad(perm[AA],x,y,z), grad(perm[BA],x-1,y,z), u),
+                   lerp(grad(perm[AB],x,y-1,z), grad(perm[BB],x-1,y-1,z), u), v),
+              lerp(lerp(grad(perm[AA+1],x,y,z-1), grad(perm[BA+1],x-1,y,z-1), u),
+                   lerp(grad(perm[AB+1],x,y-1,z-1), grad(perm[BB+1],x-1,y-1,z-1), u), v), w);
+}
+
+function fbm(x, y, z) {
+  let val = 0, amp = 1, freq = 1, max = 0;
+  for (let i = 0; i < octaves; i++) {
+    val += noise3(x * freq, y * freq, z * freq) * amp;
+    max += amp;
+    amp *= persistence;
+    freq *= 2;
+  }
+  return val / max;
+}
+
+function applyColor(v, mode) {
+  // v is in [-1, 1]
+  const n = (v + 1) / 2; // normalize to [0,1]
+  if (mode === 'gray') {
+    const c = Math.round(n * 255);
+    return [c, c, c];
+  } else if (mode === 'terrain') {
+    if (n < 0.3) return [20, 40, 100]; // deep water
+    if (n < 0.42) return [40, 80, 180]; // water
+    if (n < 0.46) return [200, 180, 120]; // sand
+    if (n < 0.65) return [40, 120, 40]; // grass
+    if (n < 0.78) return [80, 100, 60]; // forest
+    if (n < 0.88) return [120, 100, 80]; // mountain
+    return [200, 200, 210]; // snow
+  } else if (mode === 'fire') {
+    const r = Math.min(255, Math.round(n * 400));
+    const g = Math.min(255, Math.round(n * n * 255));
+    const b = Math.round(n < 0.3 ? 0 : (n - 0.3) * 100);
+    return [r, g, b];
+  } else if (mode === 'plasma') {
+    const angle = n * Math.PI * 4;
+    const r = Math.round(128 + 127 * Math.sin(angle));
+    const g = Math.round(128 + 127 * Math.sin(angle + 2.094));
+    const b = Math.round(128 + 127 * Math.sin(angle + 4.189));
+    return [r, g, b];
+  } else { // digital
+    const t = n > 0.5 ? 1 : 0;
+    const grid = (t === 1) ? [20, 80, 20] : [5, 20, 5];
+    const glow = Math.round(n * 60);
+    return [grid[0] + glow, grid[1] + glow, grid[2] + glow];
+  }
+}
+
+let frameCount = 0;
+function render() {
+  if (animSpeed > 0) zOff += animSpeed;
+
+  const imageData = ctx.createImageData(W, H);
+  const d = imageData.data;
+
+  const cellSize = scale;
+  const cols = Math.ceil(W / cellSize);
+  const rows = Math.ceil(H / cellSize);
+
+  // Generate noise at cell resolution, then upscale
+  for (let cy = 0; cy < rows; cy++) {
+    for (let cx = 0; cx < cols; cx++) {
+      const nx = cx / cols;
+      const ny = cy / rows;
+      const v = fbm(nx * 4, ny * 4, zOff);
+      const [r, g, b] = applyColor(v, colorMode);
+
+      // Fill cell pixels
+      for (let py = 0; py < cellSize && cy*cellSize+py < H; py++) {
+        for (let px = 0; px < cellSize && cx*cellSize+px < W; px++) {
+          const idx = ((cy*cellSize+py)*W + (cx*cellSize+px)) * 4;
+          d[idx] = r; d[idx+1] = g; d[idx+2] = b; d[idx+3] = 255;
+        }
+      }
+    }
+  }
+
+  ctx.putImageData(imageData, 0, 0);
+
+  frameCount++;
+  if (frameCount % 30 === 0) {
+    document.getElementById('entropy-row').textContent = `z-offset: ${zOff.toFixed(3)}`;
+  }
+
+  requestAnimationFrame(render);
+}
+
+// Controls
+document.getElementById('scale-sl').addEventListener('input', e => {
+  scale = parseInt(e.target.value);
+  document.getElementById('scale-val').textContent = scale;
+});
+document.getElementById('oct-sl').addEventListener('input', e => {
+  octaves = parseInt(e.target.value);
+  document.getElementById('oct-val').textContent = octaves;
+});
+document.getElementById('pers-sl').addEventListener('input', e => {
+  persistence = parseFloat(e.target.value);
+  document.getElementById('pers-val').textContent = persistence.toFixed(2);
+});
+document.getElementById('anim-sl').addEventListener('input', e => {
+  animSpeed = parseFloat(e.target.value);
+  document.getElementById('anim-val').textContent = animSpeed.toFixed(3);
+});
+
+const modes = ['gray','terrain','fire','plasma','digital'];
+modes.forEach(m => {
+  document.getElementById(`mode-${m}`).addEventListener('click', () => {
+    colorMode = m;
+    modes.forEach(mm => document.getElementById(`mode-${mm}`).classList.remove('active'));
+    document.getElementById(`mode-${m}`).classList.add('active');
+  });
+});
+
+document.getElementById('regen-btn').addEventListener('click', () => {
+  reseed();
+  zOff = Math.random() * 100;
+});
+
+reseed();
+render();
+</script>
+</body>
+</html>
