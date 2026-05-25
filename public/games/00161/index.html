@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>00161 — Cellular Automata</title>
+<link rel="icon" href="data:,">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #050508; color: #8a9aaa;
+    font-family: 'Courier New', monospace;
+    min-height: 100vh; display: flex; flex-direction: column;
+    align-items: center; gap: 12px;
+    padding: 30px 20px 50px;
+  }
+  .room-id { font-size: 10px; letter-spacing: 5px; color: #223; }
+  .title { font-size: 11px; letter-spacing: 5px; color: #445; text-transform: uppercase; }
+  #ca-canvas { display: block; border: 1px solid #0f0f1e; }
+  .controls { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; align-items: center; }
+  button {
+    background: #060610; border: 1px solid #111120; color: #445;
+    font-family: 'Courier New', monospace; font-size: 9px;
+    letter-spacing: 2px; padding: 7px 14px; cursor: pointer;
+  }
+  button:hover { background: #0a0a18; color: #667; }
+  button.active { border-color: #2a4a2a; color: #7acc7a; }
+  select, input[type=number] {
+    background: #060610; border: 1px solid #111120; color: #445;
+    font-family: 'Courier New', monospace; font-size: 9px;
+    letter-spacing: 1px; padding: 7px 10px; cursor: pointer; outline: none;
+  }
+  input[type=number] { width: 80px; }
+  .info-row { display: flex; gap: 18px; flex-wrap: wrap; justify-content: center; }
+  .info { font-size: 9px; letter-spacing: 2px; color: #223; text-align: center; }
+  .info span { display: block; color: #445; margin-top: 2px; }
+  .rule-display {
+    display: flex; gap: 4px; flex-wrap: wrap; justify-content: center;
+  }
+  .rule-bit {
+    border: 1px solid #0f0f18; padding: 6px 8px;
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+  }
+  .rb-pattern { font-size: 8px; letter-spacing: 1px; color: #1a2030; }
+  .rb-result { width: 10px; height: 10px; border-radius: 1px; }
+  .rb-result.on { background: #2a4a6a; }
+  .rb-result.off { background: #050508; border: 1px solid #0a0a14; }
+  .note { font-size: 10px; letter-spacing: 1px; color: #223; text-align: center; line-height: 2.2; max-width: 380px; border-top: 1px solid #111120; padding-top: 12px; }
+</style>
+</head>
+<body data-game="00161" data-nav="matrix">
+<div class="room-id">ROOM 00161</div>
+<div class="title">Cellular Automata</div>
+
+<canvas id="ca-canvas" width="520" height="360"></canvas>
+
+<div class="controls">
+  <button id="run-btn" class="active">■ STOP</button>
+  <button id="reset-btn">RESET</button>
+  <button id="random-btn">RANDOM IC</button>
+  <label style="font-size:9px;letter-spacing:2px;color:#334">RULE
+    <input type="number" id="rule-input" value="110" min="0" max="255">
+  </label>
+  <select id="speed-sel">
+    <option value="80">Slow</option>
+    <option value="40" selected>Medium</option>
+    <option value="10">Fast</option>
+  </select>
+</div>
+
+<div class="rule-display" id="rule-display"></div>
+
+<div class="info-row">
+  <div class="info">RULE<span id="rule-label">110</span></div>
+  <div class="info">GENERATION<span id="gen-label">0</span></div>
+  <div class="info">CLASS<span id="class-label">—</span></div>
+</div>
+
+<div class="note">
+  One dimension. Two states. Three neighbors.<br>
+  256 possible rules. Rule 110 is Turing-complete.<br>
+  Rule 30 is used as a random number generator.<br>
+  Stephen Wolfram, 1983.
+</div>
+
+<script src="/shared/matrix-nav.js"></script>
+<script>
+const canvas = document.getElementById('ca-canvas');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+const CELL = 3;
+const COLS = Math.floor(W / CELL);
+const ROWS = Math.floor(H / CELL);
+
+let rule = 110;
+let ruleBits = new Array(8).fill(0);
+let cells = new Uint8Array(COLS);
+let generation = 0;
+let running = true;
+let timer = null;
+
+const CLASSES = {
+  0: 'I — Uniform', 1: 'II — Periodic', 2: 'III — Chaotic', 3: 'IV — Complex',
+};
+const RULE_CLASSES = {
+  0:'I',1:'I',2:'I',4:'I',8:'I',16:'I',32:'I',
+  18:'III',22:'III',30:'III',45:'III',54:'III',90:'III',
+  110:'IV',124:'IV',126:'IV',137:'IV',
+  // Default anything with period-2 behavior as II
+};
+
+function setRule(r) {
+  rule = ((r % 256) + 256) % 256;
+  document.getElementById('rule-input').value = rule;
+  document.getElementById('rule-label').textContent = rule;
+  ruleBits = Array.from({ length: 8 }, (_, i) => (rule >> i) & 1);
+  document.getElementById('class-label').textContent = CLASSES[RULE_CLASSES[rule]] || 'II — Periodic';
+  updateRuleDisplay();
+}
+
+function updateRuleDisplay() {
+  const el = document.getElementById('rule-display');
+  el.innerHTML = Array.from({ length: 8 }, (_, i) => {
+    const idx = 7 - i;
+    const pattern = ['█ █','█ ░','█░█','█░░','░█░','░█░','░░█','░░░'][i]
+      .replace(/█/g, '▪').replace(/░/g, '·');
+    const on = ruleBits[idx];
+    return `<div class="rule-bit">
+      <div class="rb-pattern">${String(idx).padStart(3,'0').split('').map((b,j)=>
+        ((idx>>2)&1)===parseInt(b)?b:b).join('')}${idx.toString(2).padStart(3,'0')}</div>
+      <div class="rb-result ${on ? 'on' : 'off'}"></div>
+    </div>`;
+  }).join('');
+}
+
+function initSingle() {
+  cells.fill(0);
+  cells[Math.floor(COLS / 2)] = 1;
+  generation = 0;
+}
+
+function initRandom() {
+  for (let i = 0; i < COLS; i++) cells[i] = Math.random() < 0.5 ? 1 : 0;
+  generation = 0;
+}
+
+function step() {
+  const next = new Uint8Array(COLS);
+  for (let i = 0; i < COLS; i++) {
+    const l = cells[(i - 1 + COLS) % COLS];
+    const c = cells[i];
+    const r = cells[(i + 1) % COLS];
+    const idx = (l << 2) | (c << 1) | r;
+    next[i] = ruleBits[idx];
+  }
+  // Scroll canvas up
+  const imageData = ctx.getImageData(0, CELL, W, H - CELL);
+  ctx.putImageData(imageData, 0, 0);
+  ctx.fillStyle = '#020205';
+  ctx.fillRect(0, H - CELL, W, CELL);
+
+  // Draw new row at bottom
+  for (let i = 0; i < COLS; i++) {
+    if (next[i]) {
+      ctx.fillStyle = `hsl(${210 + generation * 0.5 % 60}, 50%, ${25 + generation * 0.01 % 20}%)`;
+      ctx.fillRect(i * CELL, H - CELL, CELL, CELL);
+    }
+  }
+
+  cells = next;
+  generation++;
+  document.getElementById('gen-label').textContent = generation;
+}
+
+function drawFull() {
+  ctx.fillStyle = '#020205';
+  ctx.fillRect(0, 0, W, H);
+  // Draw from current state, stepping back to fill screen
+  const history = [];
+  let cur = cells.slice();
+  history.push(cur.slice());
+  // Can't go back, so just draw current row and continue
+  for (let i = 0; i < COLS; i++) {
+    if (cur[i]) {
+      ctx.fillStyle = '#2a4a6a';
+      ctx.fillRect(i * CELL, H - CELL, CELL, CELL);
+    }
+  }
+}
+
+function start() {
+  if (timer) clearInterval(timer);
+  ctx.fillStyle = '#020205';
+  ctx.fillRect(0, 0, W, H);
+  const speed = parseInt(document.getElementById('speed-sel').value);
+  timer = setInterval(step, speed);
+}
+
+function stop() {
+  clearInterval(timer);
+  timer = null;
+}
+
+document.getElementById('run-btn').addEventListener('click', () => {
+  running = !running;
+  const btn = document.getElementById('run-btn');
+  if (running) { btn.textContent = '■ STOP'; btn.classList.add('active'); start(); }
+  else { btn.textContent = '▶ RUN'; btn.classList.remove('active'); stop(); }
+});
+
+document.getElementById('reset-btn').addEventListener('click', () => {
+  initSingle();
+  ctx.fillStyle = '#020205';
+  ctx.fillRect(0, 0, W, H);
+  generation = 0;
+  document.getElementById('gen-label').textContent = 0;
+});
+
+document.getElementById('random-btn').addEventListener('click', () => {
+  initRandom();
+  ctx.fillStyle = '#020205';
+  ctx.fillRect(0, 0, W, H);
+  generation = 0;
+  document.getElementById('gen-label').textContent = 0;
+});
+
+document.getElementById('rule-input').addEventListener('change', e => {
+  setRule(parseInt(e.target.value) || 0);
+  initSingle();
+  ctx.fillStyle = '#020205';
+  ctx.fillRect(0, 0, W, H);
+  generation = 0;
+  document.getElementById('gen-label').textContent = 0;
+});
+
+document.getElementById('speed-sel').addEventListener('change', () => {
+  if (running) { stop(); start(); }
+});
+
+// Init
+setRule(110);
+initSingle();
+start();
+</script>
+</body>
+</html>

@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>00164 — Brainfuck</title>
+<link rel="icon" href="data:,">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #050508; color: #8a9aaa;
+    font-family: 'Courier New', monospace;
+    min-height: 100vh; display: flex; flex-direction: column;
+    align-items: center; gap: 12px;
+    padding: 30px 20px 50px;
+  }
+  .room-id { font-size: 10px; letter-spacing: 5px; color: #223; }
+  .title { font-size: 11px; letter-spacing: 5px; color: #445; text-transform: uppercase; }
+  .subtitle { font-size: 9px; letter-spacing: 3px; color: #223; }
+
+  .panel { max-width: 560px; width: 100%; border: 1px solid #0f0f1a; background: #030306; }
+  .panel-label { font-size: 8px; letter-spacing: 4px; color: #1a1a28; padding: 8px 12px; border-bottom: 1px solid #0a0a14; }
+  textarea {
+    width: 100%; background: #030306; border: none; color: #6a7a5a;
+    font-family: 'Courier New', monospace; font-size: 14px; letter-spacing: 2px;
+    padding: 12px; resize: none; outline: none; line-height: 2;
+  }
+  .output-box {
+    padding: 12px; font-size: 12px; letter-spacing: 1px; color: #5a8a6a;
+    min-height: 60px; line-height: 1.8; white-space: pre-wrap; word-break: break-all;
+    border-top: 1px solid #0a0a14;
+  }
+  .output-box.error { color: #cc4444; }
+
+  .controls { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  button {
+    background: #060610; border: 1px solid #111120; color: #445;
+    font-family: 'Courier New', monospace; font-size: 9px;
+    letter-spacing: 2px; padding: 7px 14px; cursor: pointer;
+  }
+  button:hover { background: #0a0a18; color: #667; }
+
+  .examples { max-width: 560px; width: 100%; display: flex; flex-direction: column; gap: 4px; }
+  .ex-label { font-size: 8px; letter-spacing: 3px; color: #1a1a28; margin-bottom: 4px; }
+  .example {
+    border: 1px solid #0a0a14; padding: 8px 12px; cursor: pointer;
+    display: flex; justify-content: space-between; align-items: center;
+    background: #030306; transition: border-color 0.15s;
+  }
+  .example:hover { border-color: #1a2a1a; }
+  .ex-name { font-size: 9px; letter-spacing: 2px; color: #2a4a3a; }
+  .ex-desc { font-size: 8px; letter-spacing: 1px; color: #1a2a1a; }
+
+  .tape-display {
+    max-width: 560px; width: 100%; border: 1px solid #0a0a14;
+    background: #030306; padding: 10px; display: flex; gap: 2px; overflow-x: auto;
+  }
+  .tape-cell {
+    min-width: 28px; height: 28px; border: 1px solid #0a0a14; background: #040408;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px; color: #1a2a3a; flex-shrink: 0;
+  }
+  .tape-cell.current { border-color: #2a4a2a; background: #060e08; color: #5a9a6a; }
+
+  .note { font-size: 10px; letter-spacing: 1px; color: #223; text-align: center; line-height: 2.2; max-width: 380px; border-top: 1px solid #111120; padding-top: 12px; }
+</style>
+</head>
+<body data-game="00164" data-nav="matrix">
+<div class="room-id">ROOM 00164</div>
+<div class="title">Brainfuck</div>
+<div class="subtitle">eight commands. turing complete.</div>
+
+<div class="panel">
+  <div class="panel-label">PROGRAM</div>
+  <textarea id="code-input" rows="5" placeholder="enter brainfuck code...">++++++++[>++++[>++>+++>+++>+<<<<-]>+>+>->>+[<]<-]>>.>---.+++++++..+++.>>.<-.<.+++.------.--------.>>+.>++.</textarea>
+  <div class="panel-label" style="border-top:1px solid #0a0a14">INPUT (optional)</div>
+  <textarea id="stdin-input" rows="1" placeholder="stdin..." style="font-size:11px;color:#4a6a7a"></textarea>
+</div>
+
+<div class="controls">
+  <button id="run-btn">▶ RUN</button>
+  <button id="clear-btn">CLEAR</button>
+  <button id="step-btn">STEP</button>
+</div>
+
+<div class="panel">
+  <div class="panel-label">OUTPUT</div>
+  <div class="output-box" id="output-box">Ready.</div>
+</div>
+
+<div class="tape-display" id="tape-display"></div>
+
+<div class="examples">
+  <div class="ex-label">EXAMPLES</div>
+  <div class="example" data-code="++++++++[>++++[>++>+++>+++>+<<<<-]>+>+>->>+[<]<-]>>.>---.+++++++..+++.>>.<-.<.+++.------.--------.>>+.>++.">
+    <span class="ex-name">Hello World</span><span class="ex-desc">prints "Hello World!"</span>
+  </div>
+  <div class="example" data-code="++++++++++[>++++++++++<-]>+++++.">
+    <span class="ex-name">A</span><span class="ex-desc">prints ASCII 65 (A)</span>
+  </div>
+  <div class="example" data-code=",[.,]" data-stdin="Hello">
+    <span class="ex-name">Echo</span><span class="ex-desc">echoes stdin</span>
+  </div>
+  <div class="example" data-code=">++++++++[-<+++++++++>]<.>>+>-[+]++>++>+++[>[->+++<<+++>]<<]>-----.>->+++..+++.>-.<<+[>[+>+]>>]<--------------.>>.+++.------.--------.>+.>+.">
+    <span class="ex-name">Hello World (alt)</span><span class="ex-desc">alternative implementation</span>
+  </div>
+  <div class="example" data-code="+++++[->+++++<]>[->>+<<]>>[->+<]>[-<+>]<.">
+    <span class="ex-name">Multiply 5×5</span><span class="ex-desc">outputs ASCII 25 (→ check tape)</span>
+  </div>
+</div>
+
+<div class="note">
+  Eight commands. Turing complete.<br>
+  +  −  >  &lt;  [  ]  .  ,<br>
+  Urban Müller, 1993.<br>
+  The language was designed to have the smallest possible compiler.
+</div>
+
+<script src="/shared/matrix-nav.js"></script>
+<script>
+// Brainfuck interpreter
+function brainfuck(code, input, maxSteps = 1000000) {
+  const tape = new Uint8Array(30000);
+  let dp = 0; // data pointer
+  let ip = 0; // instruction pointer
+  let inputPos = 0;
+  let output = '';
+  let steps = 0;
+
+  // Precompute bracket pairs
+  const brackets = {};
+  const stack = [];
+  for (let i = 0; i < code.length; i++) {
+    if (code[i] === '[') stack.push(i);
+    else if (code[i] === ']') {
+      if (stack.length === 0) return { output: '', tape, dp, error: `Unmatched ] at ${i}` };
+      const j = stack.pop();
+      brackets[j] = i;
+      brackets[i] = j;
+    }
+  }
+  if (stack.length > 0) return { output: '', tape, dp, error: `Unmatched [ at ${stack[0]}` };
+
+  while (ip < code.length && steps < maxSteps) {
+    steps++;
+    switch (code[ip]) {
+      case '>': dp = (dp + 1) % 30000; break;
+      case '<': dp = (dp - 1 + 30000) % 30000; break;
+      case '+': tape[dp] = (tape[dp] + 1) % 256; break;
+      case '-': tape[dp] = (tape[dp] - 1 + 256) % 256; break;
+      case '.': output += String.fromCharCode(tape[dp]); break;
+      case ',':
+        tape[dp] = inputPos < input.length ? input.charCodeAt(inputPos++) : 0;
+        break;
+      case '[': if (tape[dp] === 0) ip = brackets[ip]; break;
+      case ']': if (tape[dp] !== 0) ip = brackets[ip]; break;
+    }
+    ip++;
+  }
+
+  return { output, tape, dp, error: steps >= maxSteps ? 'Step limit exceeded (infinite loop?)' : null };
+}
+
+// Step mode
+let stepState = null;
+
+function run() {
+  const code = document.getElementById('code-input').value;
+  const stdin = document.getElementById('stdin-input').value;
+  const outEl = document.getElementById('output-box');
+  stepState = null;
+
+  outEl.className = 'output-box';
+  outEl.textContent = 'Running...';
+
+  setTimeout(() => {
+    const result = brainfuck(code, stdin);
+    if (result.error) {
+      outEl.className = 'output-box error';
+      outEl.textContent = `Error: ${result.error}`;
+    } else if (result.output === '') {
+      outEl.textContent = '(no output)';
+    } else {
+      outEl.textContent = result.output;
+    }
+    renderTape(result.tape, result.dp);
+  }, 10);
+}
+
+function renderTape(tape, dp) {
+  const el = document.getElementById('tape-display');
+  // Show 20 cells around dp
+  const start = Math.max(0, dp - 10);
+  const end = Math.min(29999, start + 24);
+  el.innerHTML = '';
+  for (let i = start; i <= end; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'tape-cell' + (i === dp ? ' current' : '');
+    cell.textContent = tape[i] || '0';
+    cell.title = `cell[${i}] = ${tape[i]}`;
+    el.appendChild(cell);
+  }
+}
+
+document.getElementById('run-btn').addEventListener('click', run);
+document.getElementById('clear-btn').addEventListener('click', () => {
+  document.getElementById('code-input').value = '';
+  document.getElementById('output-box').textContent = '';
+  document.getElementById('tape-display').innerHTML = '';
+});
+
+// Step mode
+document.getElementById('step-btn').addEventListener('click', () => {
+  if (!stepState) {
+    const code = document.getElementById('code-input').value.split('')
+      .filter(c => '><+-.,[]'.includes(c)).join('');
+    const stdin = document.getElementById('stdin-input').value;
+    const tape = new Uint8Array(30000);
+    const brackets = {};
+    const stack = [];
+    for (let i = 0; i < code.length; i++) {
+      if (code[i] === '[') stack.push(i);
+      else if (code[i] === ']') {
+        const j = stack.pop();
+        if (j !== undefined) { brackets[j] = i; brackets[i] = j; }
+      }
+    }
+    stepState = { code, tape, dp: 0, ip: 0, inputPos: 0, output: '', brackets, stdin };
+  }
+
+  const s = stepState;
+  if (s.ip >= s.code.length) {
+    document.getElementById('output-box').textContent = s.output || '(no output)';
+    renderTape(s.tape, s.dp);
+    stepState = null; return;
+  }
+
+  // Execute one instruction
+  const c = s.code[s.ip];
+  switch (c) {
+    case '>': s.dp = (s.dp + 1) % 30000; break;
+    case '<': s.dp = (s.dp - 1 + 30000) % 30000; break;
+    case '+': s.tape[s.dp] = (s.tape[s.dp] + 1) % 256; break;
+    case '-': s.tape[s.dp] = (s.tape[s.dp] - 1 + 256) % 256; break;
+    case '.': s.output += String.fromCharCode(s.tape[s.dp]); break;
+    case ',': s.tape[s.dp] = s.inputPos < s.stdin.length ? s.stdin.charCodeAt(s.inputPos++) : 0; break;
+    case '[': if (s.tape[s.dp] === 0) s.ip = s.brackets[s.ip]; break;
+    case ']': if (s.tape[s.dp] !== 0) s.ip = s.brackets[s.ip]; break;
+  }
+  s.ip++;
+
+  document.getElementById('output-box').textContent =
+    `ip=${s.ip} dp=${s.dp} cell=${s.tape[s.dp]} cmd='${c}'\nOutput so far: ${s.output || '(none)'}`;
+  renderTape(s.tape, s.dp);
+});
+
+// Examples
+document.querySelectorAll('.example').forEach(ex => {
+  ex.addEventListener('click', () => {
+    document.getElementById('code-input').value = ex.dataset.code;
+    if (ex.dataset.stdin) document.getElementById('stdin-input').value = ex.dataset.stdin;
+    document.getElementById('output-box').textContent = 'Ready.';
+    document.getElementById('tape-display').innerHTML = '';
+    stepState = null;
+  });
+});
+
+// Initial render: empty tape
+renderTape(new Uint8Array(30000), 0);
+</script>
+</body>
+</html>
