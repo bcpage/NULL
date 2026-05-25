@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>00137 — The Dungeon</title>
+<link rel="icon" href="data:,">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #000000;
+    color: #33ff33;
+    font-family: 'Courier New', monospace;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  #terminal {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 24px 8px;
+    font-size: 13px;
+    line-height: 1.6;
+    scroll-behavior: smooth;
+  }
+  .line { white-space: pre-wrap; word-break: break-word; }
+  .line.title { color: #55ff55; font-weight: bold; }
+  .line.room-name { color: #55ff55; font-weight: bold; margin-top: 8px; }
+  .line.desc { color: #22cc22; }
+  .line.system { color: #55ff55; }
+  .line.input-echo { color: #33ff33; }
+  .line.error { color: #ff5555; }
+  .line.wizard { color: #ff8833; }
+  .line.item { color: #44aaff; }
+  .line.blank { height: 1.2em; }
+  #input-row {
+    display: flex; align-items: center;
+    padding: 8px 24px 20px; gap: 0; flex-shrink: 0;
+  }
+  #prompt { color: #33ff33; white-space: nowrap; flex-shrink: 0; }
+  #cmd { background: transparent; border: none; outline: none;
+    color: #33ff33; font-family: 'Courier New', monospace; font-size: 13px;
+    flex: 1; caret-color: #33ff33; }
+  ::-webkit-scrollbar { width: 6px; background: #000; }
+  ::-webkit-scrollbar-thumb { background: #1a3a1a; }
+</style>
+</head>
+<body data-game="00137" data-nav="matrix">
+
+<div id="terminal"></div>
+<div id="input-row">
+  <span id="prompt">&gt; </span>
+  <input id="cmd" type="text" autocomplete="off" spellcheck="false" autofocus>
+</div>
+
+<script src="/shared/matrix-nav.js"></script>
+<script>
+// ── World ─────────────────────────────────────────────────────────────────────
+const ROOMS = {
+  entry: {
+    name: 'ENTRY VESTIBULE',
+    desc: 'You are standing in a low-ceilinged vestibule. The walls are featureless concrete, the colour of old teeth. A single fluorescent tube flickers above. To the north is a corridor. To the east is a door marked AUTHORISED PERSONNEL.',
+    exits: { north: 'corridor', east: 'office' },
+    items: ['visitor badge'],
+  },
+  corridor: {
+    name: 'FACILITY CORRIDOR',
+    desc: 'A long corridor extends north and south. The carpet is institutional grey, worn thin in the centre. Emergency lighting strips line the baseboards. To the west, a stairwell. To the east, a door marked B-WING.',
+    exits: { south: 'entry', north: 'canteen', west: 'stairwell', east: 'bwing' },
+    items: [],
+  },
+  office: {
+    name: 'PERSONNEL OFFICE',
+    desc: 'An empty office. A desk with nothing on it. A chair with nothing on it. A filing cabinet. The filing cabinet is labelled OBSERVATIONS — DO NOT REMOVE. The top drawer is open.',
+    exits: { west: 'entry' },
+    items: ['observation file'],
+  },
+  canteen: {
+    name: 'FACILITY CANTEEN',
+    desc: 'A canteen that has not served food in some time. Rows of plastic tables. Chairs stacked against the walls. A vending machine in the corner still has its internal light on. The machine is labelled with a hand-written card: OUT OF EVERYTHING EXCEPT C7.',
+    exits: { south: 'corridor', north: 'transit' },
+    items: ['C7 snack'],
+  },
+  stairwell: {
+    name: 'STAIRWELL B',
+    desc: 'A stairwell that goes up and down. The up direction leads somewhere the lights are on. The down direction leads somewhere the lights are not. A sign on the wall reads: LEVEL -1: RECORDS. LEVEL 0: OPERATIONS. LEVEL 1: ADMINISTRATION. You appear to be between levels.',
+    exits: { east: 'corridor', up: 'admin', down: 'records' },
+    items: [],
+  },
+  admin: {
+    name: 'ADMINISTRATION',
+    desc: 'A carpeted room with several desks. The computers are on, all displaying the same screen. The screen shows a cursor, blinking. Nothing else. On one desk there is a memo. The memo is addressed to all staff. The memo says: DISREGARD PREVIOUS MEMO. There is no previous memo.',
+    exits: { down: 'stairwell' },
+    items: ['memo'],
+    wizardChance: true,
+  },
+  records: {
+    name: 'LEVEL -1: RECORDS',
+    desc: 'A large room full of filing cabinets. The light is dim and yellowish. Most of the cabinets are labelled in a language you can read but that does not describe anything. One cabinet is labelled NULL. The cabinet labelled NULL is empty.',
+    exits: { up: 'stairwell', north: 'vault' },
+    items: ['empty folder'],
+  },
+  vault: {
+    name: 'VAULT',
+    desc: 'A heavy door stands open, which seems wrong. Beyond it is a small room with a single table. On the table is an object that is difficult to describe. It is not a box. It is not a sphere. It reflects light that is not present in the room. A placard reads: DO NOT REMOVE FROM VAULT.',
+    exits: { south: 'records' },
+    items: ['anomalous object'],
+    locked: false,
+  },
+  bwing: {
+    name: 'B-WING',
+    desc: 'B-Wing. The carpet here is a different shade of grey. Slightly darker. This may be significant. Rooms branch left and right. At the end of the corridor is a window, but the window shows another corridor, not outside.',
+    exits: { west: 'corridor', north: 'observation', south: 'server' },
+    items: [],
+  },
+  observation: {
+    name: 'OBSERVATION ROOM',
+    desc: 'A room with a one-way mirror. On your side of the mirror: two chairs. On the other side of the mirror: two chairs. Nobody is on either side, which is confusing given that you are here. A speaker on the wall produces a low, steady hum.',
+    exits: { south: 'bwing' },
+    items: ['hum'],
+  },
+  server: {
+    name: 'SERVER ROOM',
+    desc: 'Racks of servers, most with green lights. Three servers have red lights. Two servers have no lights at all, which may mean they are off, or may mean they are doing something else. The room is warm. A terminal in the corner shows a login prompt.',
+    exits: { north: 'bwing' },
+    items: ['server log printout'],
+  },
+  transit: {
+    name: 'TRANSIT CORRIDOR',
+    desc: 'This corridor was clearly built for a different purpose. The ceiling is much higher here. Large square sections are marked on the floor, as if for freight that no longer moves. The north door requires a keycard.',
+    exits: { south: 'canteen' },
+    items: [],
+    northLocked: true,
+  },
+};
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let currentRoom = 'entry';
+let inventory = [];
+let history = [];
+let histIdx = -1;
+let moveCount = 0;
+let wizardSeen = false;
+
+const WIZARD_LINES = [
+  'The Wizard appears suddenly. He gestures. Nothing happens. He seems disappointed.',
+  'The Wizard materialises. He mutters something. A small explosion occurs somewhere in the ceiling. Dust falls.',
+  'The Wizard arrives. He casts a spell. You feel slightly shorter. After a moment, this passes.',
+  'The Wizard appears behind you. "Behold," he says. Nothing is beheld. He leaves.',
+  'The Wizard manifests in the corner. He attempts to transform you into something. This fails. He makes a note in a small book.',
+  'The Wizard arrives in a flash of light. "The Dungeon Master will hear of this," he says. He disappears.',
+];
+
+// ── Terminal output ───────────────────────────────────────────────────────────
+const terminal = document.getElementById('terminal');
+function print(text, cls = 'desc') {
+  const d = document.createElement('div');
+  d.className = 'line ' + cls;
+  d.textContent = text;
+  terminal.appendChild(d);
+  terminal.scrollTop = terminal.scrollHeight;
+}
+function blank() { print('', 'blank'); }
+
+// ── Room display ──────────────────────────────────────────────────────────────
+function showRoom(roomId, first) {
+  const room = ROOMS[roomId];
+  if (!room) return;
+  blank();
+  print(room.name, 'room-name');
+  print(room.desc, 'desc');
+  if (room.items && room.items.length) {
+    blank();
+    room.items.forEach(item => {
+      if (item !== 'hum') print(`There is a ${item} here.`, 'item');
+      else print('The hum is not an item you can take. It is just a hum.', 'item');
+    });
+  }
+  // Random wizard appearance
+  if (!first && room.wizardChance && Math.random() < 0.35 && !wizardSeen) {
+    blank();
+    wizardSeen = true;
+    print(WIZARD_LINES[Math.floor(Math.random() * WIZARD_LINES.length)], 'wizard');
+  } else if (!first && Math.random() < 0.08) {
+    blank();
+    print(WIZARD_LINES[Math.floor(Math.random() * WIZARD_LINES.length)], 'wizard');
+  }
+}
+
+// ── Commands ──────────────────────────────────────────────────────────────────
+function look() {
+  showRoom(currentRoom, false);
+}
+
+function go(dir) {
+  const room = ROOMS[currentRoom];
+  const target = room.exits && room.exits[dir];
+
+  if (currentRoom === 'transit' && dir === 'north') {
+    if (!inventory.includes('keycard')) {
+      print('The door requires a keycard. You do not have a keycard.', 'error');
+      print('(The keycard is not in this dungeon. This is noted.)', 'error');
+      return;
+    }
+  }
+
+  if (!target) {
+    const blocked = ['up','down','north','south','east','west'].includes(dir);
+    print(blocked ? `You cannot go ${dir} from here.` : `That is not a direction.`, 'error');
+    return;
+  }
+  currentRoom = target;
+  moveCount++;
+  showRoom(currentRoom, false);
+}
+
+function take(item) {
+  const room = ROOMS[currentRoom];
+  if (!item) { print('Take what?', 'error'); return; }
+  if (item === 'hum') { print('You attempt to take the hum. This fails. The hum continues.', 'error'); return; }
+  if (item.includes('anomalous')) {
+    print('You pick up the anomalous object. It is heavier than it looks and lighter than it feels.', 'system');
+    print('The placard said not to remove it from the vault.', 'system');
+    print('You have removed it from the vault.', 'system');
+  }
+  const idx = room.items ? room.items.indexOf(item) : -1;
+  const fuzzy = room.items ? room.items.find(i => i.includes(item) || item.includes(i)) : null;
+  const match = idx >= 0 ? item : fuzzy;
+  if (!match) { print(`There is no ${item} here.`, 'error'); return; }
+  room.items.splice(room.items.indexOf(match), 1);
+  inventory.push(match);
+  print(`Taken: ${match}.`, 'system');
+}
+
+function drop(item) {
+  if (!item) { print('Drop what?', 'error'); return; }
+  const match = inventory.find(i => i.includes(item) || item.includes(i));
+  if (!match) { print(`You are not carrying a ${item}.`, 'error'); return; }
+  inventory.splice(inventory.indexOf(match), 1);
+  ROOMS[currentRoom].items = ROOMS[currentRoom].items || [];
+  ROOMS[currentRoom].items.push(match);
+  print(`Dropped: ${match}.`, 'system');
+}
+
+function inv() {
+  if (!inventory.length) { print('You are not carrying anything.', 'system'); return; }
+  print('You are carrying:', 'system');
+  inventory.forEach(i => print(`  - ${i}`, 'item'));
+}
+
+function read(item) {
+  if (!item) { print('Read what?', 'error'); return; }
+  if (item.includes('memo')) {
+    if (!inventory.includes('memo') && !ROOMS[currentRoom].items?.includes('memo')) {
+      print(`You don't have a memo.`, 'error'); return;
+    }
+    blank();
+    print('MEMO', 'room-name');
+    print('TO: All Staff', 'desc');
+    print('FROM: [REDACTED]', 'desc');
+    print('RE: Previous Memo', 'desc');
+    blank();
+    print('Please disregard the previous memo.', 'desc');
+    print('The previous memo was distributed in error.', 'desc');
+    print('Any actions taken based on the previous memo should be reversed if possible.', 'desc');
+    print('If reversal is not possible, please file form NULL-7.', 'desc');
+    print('Form NULL-7 is no longer available. This is unrelated.', 'desc');
+    return;
+  }
+  if (item.includes('observation') || item.includes('file')) {
+    if (!inventory.includes('observation file') && !ROOMS[currentRoom].items?.includes('observation file')) {
+      print(`You don't have the observation file.`, 'error'); return;
+    }
+    blank();
+    print('OBSERVATION FILE', 'room-name');
+    print('Subject: [REDACTED]', 'desc');
+    print('Observations:', 'desc');
+    blank();
+    print('  Was present.', 'desc');
+    print('  Was observed.', 'desc');
+    print('  Did not appear to notice being observed.', 'desc');
+    print('  Returned.', 'desc');
+    print('  Was observed again.', 'desc');
+    blank();
+    print('[Further pages appear to have been filed incorrectly]', 'desc');
+    return;
+  }
+  if (item.includes('log') || item.includes('printout')) {
+    if (!inventory.includes('server log printout') && !ROOMS[currentRoom].items?.includes('server log printout')) {
+      print(`You don't have the printout.`, 'error'); return;
+    }
+    blank();
+    print('SERVER LOG — PARTIAL', 'room-name');
+    print('2024-01-01 00:00:00 — System initialised.', 'desc');
+    print('2024-01-01 00:00:01 — User 00001 connected.', 'desc');
+    print('2024-01-01 00:00:03 — User 00001 clicked the cookie.', 'desc');
+    print('...', 'desc');
+    print(`${new Date().toISOString().slice(0,19).replace('T',' ')} — [YOU] entered this room.`, 'desc');
+    print(`${new Date().toISOString().slice(0,19).replace('T',' ')} — [YOU] read this log.`, 'desc');
+    print('...', 'desc');
+    print('[Log file truncated. Full log: ' + Math.floor(Math.random()*900000+100000) + ' lines]', 'desc');
+    return;
+  }
+  print(`You can't read that.`, 'error');
+}
+
+function examine(item) {
+  if (!item || item === 'room' || item === 'around' || item === 'here') { look(); return; }
+  if (item.includes('anomalous')) {
+    print('You examine the anomalous object.', 'system');
+    print('The more you look at it, the less certain you are of its shape.', 'desc');
+    print('It is definitely three-dimensional, or possibly not.', 'desc');
+    print('A small label on the base reads: DO NOT READ THIS LABEL.', 'desc');
+    print('You have read the label.', 'desc');
+    return;
+  }
+  if (item.includes('vending') || item.includes('machine')) {
+    print('The vending machine offers one option: C7.', 'system');
+    print('The display does not show what C7 is.', 'desc');
+    print('The price is listed as FREE.', 'desc');
+    return;
+  }
+  if (item.includes('c7') || item.includes('snack')) {
+    if (!inventory.includes('C7 snack') && !ROOMS[currentRoom].items?.includes('C7 snack')) {
+      print(`There is no C7 here.`, 'error'); return;
+    }
+    print('You examine the C7 snack.', 'system');
+    print('It is in an unmarked wrapper. The ingredients list is in a font too small to read.', 'desc');
+    print('It smells like a room that used to have furniture in it.', 'desc');
+    return;
+  }
+  if (item.includes('window')) {
+    if (currentRoom !== 'bwing') { print('There is no window here.', 'error'); return; }
+    print('You look at the window.', 'system');
+    print('The window shows another corridor. The corridor in the window has a window.', 'desc');
+    print('The window in the other corridor shows this corridor.', 'desc');
+    print('You can see yourself looking at the window.', 'desc');
+    print('You wave. The figure in the window does not wave back. This is because the reflections do not have that kind of initiative.', 'desc');
+    return;
+  }
+  if (item.includes('terminal') || item.includes('computer') || item.includes('screen')) {
+    print('You look at the terminal.', 'system');
+    const loginRooms = ['server','admin'];
+    if (loginRooms.includes(currentRoom)) {
+      print('LOGIN: ________', 'desc');
+      print('PASSWORD: ________', 'desc');
+      print('You do not know the login. You have never known the login.', 'desc');
+      print('Nobody knows the login. This is believed to be intentional.', 'desc');
+    } else {
+      print('There is no terminal here.', 'error');
+    }
+    return;
+  }
+  // Generic examine
+  const roomItems = ROOMS[currentRoom].items || [];
+  const found = inventory.find(i => i.includes(item) || item.includes(i)) ||
+                roomItems.find(i => i.includes(item) || item.includes(i));
+  if (found) {
+    print(`You examine the ${found}. It is a ${found}. It appears to be what it is.`, 'system');
+  } else {
+    print(`You don't see a ${item} to examine.`, 'error');
+  }
+}
+
+function eat(item) {
+  if (!item) { print('Eat what?', 'error'); return; }
+  if (item.includes('c7') || item.includes('snack')) {
+    const match = inventory.find(i => i.includes('C7'));
+    if (!match) { print('You are not carrying the C7 snack.', 'error'); return; }
+    inventory.splice(inventory.indexOf(match), 1);
+    print('You eat the C7 snack.', 'system');
+    print('It tastes like a decision you made a long time ago.', 'desc');
+    print('You feel neither better nor worse. This is probably fine.', 'desc');
+    return;
+  }
+  print(`You cannot eat that.`, 'error');
+}
+
+function wait_cmd() {
+  print('Time passes.', 'system');
+  if (Math.random() < 0.3) {
+    blank();
+    print(WIZARD_LINES[Math.floor(Math.random() * WIZARD_LINES.length)], 'wizard');
+  }
+}
+
+function score() {
+  print(`Moves: ${moveCount}. Items: ${inventory.length}. Rooms visited: [not tracked].`, 'system');
+  print('Your score is not a number that can be expressed in this context.', 'system');
+}
+
+function help() {
+  blank();
+  print('COMMANDS', 'room-name');
+  print('NORTH / SOUTH / EAST / WEST / UP / DOWN  — move', 'desc');
+  print('N / S / E / W / U / D                     — abbreviated movement', 'desc');
+  print('LOOK                                       — describe current room', 'desc');
+  print('EXAMINE [thing]                            — look at something closely', 'desc');
+  print('TAKE [item]                                — pick up an item', 'desc');
+  print('DROP [item]                                — drop an item', 'desc');
+  print('INVENTORY / I                              — list what you carry', 'desc');
+  print('READ [item]                                — read something', 'desc');
+  print('EAT [item]                                 — consume something', 'desc');
+  print('WAIT                                       — wait', 'desc');
+  print('SCORE                                      — check your score', 'desc');
+  print('QUIT                                       — you cannot quit', 'desc');
+  blank();
+}
+
+// ── Parser ────────────────────────────────────────────────────────────────────
+function parse(raw) {
+  const input = raw.trim().toLowerCase();
+  if (!input) return;
+
+  print('> ' + raw, 'input-echo');
+  blank();
+
+  const words = input.split(/\s+/);
+  const verb = words[0];
+  const rest = words.slice(1).join(' ');
+
+  const DIR_MAP = { n:'north',s:'south',e:'east',w:'west',u:'up',d:'down',
+    north:'north',south:'south',east:'east',west:'west',up:'up',down:'down' };
+
+  if (DIR_MAP[verb]) { go(DIR_MAP[verb]); return; }
+  if (verb === 'go') { go(DIR_MAP[rest] || rest); return; }
+  if (verb === 'look' || verb === 'l') { look(); return; }
+  if (verb === 'examine' || verb === 'x' || verb === 'inspect') { examine(rest); return; }
+  if (verb === 'take' || verb === 'get' || verb === 'pick') { take(rest.replace(/^up\s*/,'')); return; }
+  if (verb === 'drop' || verb === 'put' || verb === 'leave') { drop(rest); return; }
+  if (verb === 'inventory' || verb === 'i') { inv(); return; }
+  if (verb === 'read') { read(rest); return; }
+  if (verb === 'eat' || verb === 'drink' || verb === 'consume') { eat(rest); return; }
+  if (verb === 'wait' || verb === 'z') { wait_cmd(); return; }
+  if (verb === 'score' || verb === 'points') { score(); return; }
+  if (verb === 'help' || verb === '?') { help(); return; }
+  if (verb === 'quit' || verb === 'exit' || verb === 'q') {
+    print('You cannot quit. The dungeon does not have an exit in that sense.', 'error');
+    print('You may navigate to another room using the arrows.', 'error');
+    return;
+  }
+  if (verb === 'wave') {
+    if (currentRoom === 'bwing') { examine('window'); return; }
+    print('You wave. Nobody is here to see it.', 'system'); return;
+  }
+  if (verb === 'push' || verb === 'pull' || verb === 'move') {
+    print(`You ${verb} the ${rest || 'thing'}. Nothing changes. This is expected.`, 'system'); return;
+  }
+  if (verb === 'say' || verb === 'yell' || verb === 'shout') {
+    print(`You say "${rest}".`, 'system');
+    if (Math.random() < 0.25) { blank(); print(WIZARD_LINES[Math.floor(Math.random()*WIZARD_LINES.length)], 'wizard'); }
+    else print('Nothing happens.', 'system');
+    return;
+  }
+  if (verb === 'xyzzy' || verb === 'plugh' || verb === 'plover') {
+    print('A hollow voice says: Fool.', 'wizard'); return;
+  }
+
+  print(`I don't know the word "${verb}".`, 'error');
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+function boot() {
+  print('NULL DUNGEON — Version 1.0', 'title');
+  print('An Infocom-compatible text adventure.', 'title');
+  blank();
+  print('You are in a facility. The nature of the facility is not immediately clear.', 'system');
+  print('A small sign near the entrance reads: NULL — DO NOT REMOVE THIS SIGN.', 'system');
+  blank();
+  showRoom(currentRoom, true);
+  blank();
+  print('Type HELP for a list of commands.', 'system');
+  blank();
+}
+
+// ── Input ─────────────────────────────────────────────────────────────────────
+const cmd = document.getElementById('cmd');
+cmd.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    const raw = cmd.value;
+    cmd.value = '';
+    histIdx = -1;
+    if (raw.trim()) { history.unshift(raw); if (history.length > 50) history.pop(); }
+    parse(raw);
+  }
+  if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    if (histIdx < history.length - 1) { histIdx++; cmd.value = history[histIdx]; }
+  }
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    if (histIdx > 0) { histIdx--; cmd.value = history[histIdx]; }
+    else { histIdx = -1; cmd.value = ''; }
+  }
+});
+document.addEventListener('click', () => cmd.focus());
+
+boot();
+</script>
+</body>
+</html>
