@@ -1,5 +1,5 @@
 # NULL — Build Priority & Room Ratings
-Last updated: 2026-05-25
+Last updated: 2026-05-25 (session 2)
 
 This file is the working reference for all unbuilt rooms.
 It replaces re-generating assessments from scratch each session.
@@ -30,13 +30,13 @@ It replaces re-generating assessments from scratch each session.
 | ~~Interactive MS-DOS Prompt~~ | 8% | **BUILT → 00123** (2026-05-25). C:\NULL> terminal, ~20 commands, FORMAT stalls at 99%, CHKDSK finds 2B lost clusters, EXIT fails. |
 | ~~Alternate Hangman — One Life~~ | 9% | **BUILT → 00124** (2026-05-25). One shared global game, permanent outcome, ASCII gallows, /api/hangman routes. |
 | ~~Sokoban — Block Pusher~~ | 10% | **BUILT → 00125** (2026-05-25). 5 levels, canvas, unlimited undo, touch swipe. NULL Navigation Board can now use this engine. |
-| Compression Engine | 10% | Huffman coding with interactive tree visualization. Enter text → see tree build → compressed output. Pure client-side canvas. Interesting and self-contained. |
-| Source Code Room | 9% | Serve `server.js` via `/api/source`, display with syntax highlighting. Narrative comments baked into the source file become the room's story. Line 247 is noted in the spec as significant. |
-| Partial Matrix Fragments ×5 | 8% | Five rooms, each showing a different fragment of the full matrix graph. Atmospheric static display. ~1.5 pts/room. Compare them to find patterns. |
+| ~~Source Code Room~~ | 9% | **BUILT → 00126** (2026-05-25). Live server.js viewer, syntax highlighting, Ctrl+F search, line jump. Narrative comments added to server.js. |
+| ~~Compression Engine~~ | 10% | **BUILT → 00127** (2026-05-25). Interactive Huffman tree, frequency table, color-coded bitstream. Seeded with pangram. |
+| ~~Partial Matrix Fragments ×5~~ | 8% | **BUILT → 00128–00132** (2026-05-25). Five sector printouts A–E. Fragment C has corrupt node 00070. Fragment D flags JOSHUA/gameover rooms. Fragment E contains itself. |
+| ~~2D Platformer (Llama)~~ | 11% | **BUILT → 00133** (2026-05-25). 3 levels, moving platforms, gem collection, llama sprite with walking animation. |
 | Shape Factory | 7% | Draw custom tetromino-like pieces → they enter the Wrong Tetris piece pool (00107). Wrong Tetris is built but hardcoded client-side. Needs: server persistence for custom pieces + 00107 updated to load them. Small lift. |
 | Racetrack / Vector Race | 10% | Grid vector physics, 2-player turn-based racing. WebSocket multiplayer. Spec says "strong candidate." Clean, well-understood mechanic. |
 | Paper Soccer | 10% | Same pattern as Racetrack: grid graph, 2-player WS, bounce rules, goal detection. Build after or alongside Racetrack — shared WS pattern. |
-| 2D Platformer (Llama) | 11% | Canvas, gravity, jump physics, moving platforms. Pure client-side. Standard platformer implementation. Named "Llama" in spec — visual TBD. |
 
 ---
 
@@ -82,8 +82,9 @@ It replaces re-generating assessments from scratch each session.
 ~~MS-DOS HELP + MS-DOS Prompt + Info pairs ×2 + Alternate Hangman + Sokoban~~
 Built: 00118–00125 (8 rooms)
 
-### Session B — ~30% budget, mostly READY
-Source Code Room + Compression Engine + Partial Matrix Fragments ×5 + Racetrack + Paper Soccer
+### ~~Session B — ~30% budget, mostly READY~~ ✅ DONE (2026-05-25 session 2)
+~~Source Code Room + Compression Engine + Partial Matrix Fragments ×5 + Llama~~
+Built: 00126–00133 (8 rooms). Warm session ~1.5 pts/room.
 
 ### Session C — ~25% budget, READY + resolve one BLOCKED
 Shape Factory + 2D Platformer + resolve presence tracking → build Observation Room + NULL Room
@@ -110,3 +111,7 @@ These appear in BACKLOG_INDEX.md but are done:
 | Interactive MS-DOS Prompt | 00123 | 2026-05-25 |
 | Alternate Hangman — One Life | 00124 | 2026-05-25 |
 | Sokoban — Block Pusher | 00125 | 2026-05-25 |
+| Source Code Room | 00126 | 2026-05-25 |
+| Huffman Compression Engine | 00127 | 2026-05-25 |
+| Matrix Fragments ×5 | 00128–00132 | 2026-05-25 |
+| Llama (2D Platformer) | 00133 | 2026-05-25 |
