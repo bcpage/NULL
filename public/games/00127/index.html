@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>00127 — Compression Engine</title>
+<link rel="icon" href="data:,">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #050508;
+    color: #8a9aaa;
+    font-family: 'Courier New', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 24px;
+    padding: 40px 20px 80px;
+  }
+  .room-id { font-size: 10px; letter-spacing: 5px; color: #223; }
+  .title { font-size: 11px; letter-spacing: 5px; color: #445; text-transform: uppercase; }
+
+  .card {
+    width: 100%;
+    max-width: 720px;
+    border: 1px solid #1a1a2a;
+    background: #080810;
+  }
+  .card-header {
+    border-bottom: 1px solid #1a1a2a;
+    padding: 12px 20px;
+    font-size: 10px;
+    letter-spacing: 4px;
+    color: #334;
+    text-transform: uppercase;
+  }
+  .card-body { padding: 20px; }
+
+  textarea {
+    width: 100%;
+    background: #060609;
+    border: 1px solid #1a1a2a;
+    color: #8a9aaa;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    padding: 12px;
+    resize: vertical;
+    min-height: 80px;
+    outline: none;
+    line-height: 1.5;
+  }
+  textarea:focus { border-color: #2a3a4a; }
+  textarea::placeholder { color: #223; }
+
+  .stats-row {
+    display: flex;
+    gap: 0;
+    border: 1px solid #1a1a2a;
+    margin-top: 12px;
+  }
+  .stat {
+    flex: 1;
+    padding: 12px 16px;
+    border-right: 1px solid #1a1a2a;
+    font-size: 11px;
+  }
+  .stat:last-child { border-right: none; }
+  .stat .label { color: #334; letter-spacing: 2px; font-size: 10px; display: block; margin-bottom: 4px; }
+  .stat .val { color: #9ab4c4; font-size: 16px; }
+  .stat .val.good { color: #55cc88; }
+
+  /* Frequency table */
+  .freq-table {
+    width: 100%;
+    font-size: 11px;
+    border-collapse: collapse;
+    margin-top: 4px;
+  }
+  .freq-table th {
+    text-align: left;
+    color: #334;
+    letter-spacing: 2px;
+    font-size: 10px;
+    padding: 6px 8px;
+    border-bottom: 1px solid #1a1a2a;
+  }
+  .freq-table td {
+    padding: 4px 8px;
+    color: #7a9aaa;
+    border-bottom: 1px solid #0e0e18;
+  }
+  .freq-table td:last-child { color: #5a8a6a; font-size: 12px; letter-spacing: 1px; }
+  .freq-bar {
+    display: inline-block;
+    height: 8px;
+    background: #1a2a3a;
+    vertical-align: middle;
+    margin-left: 4px;
+  }
+
+  /* Tree canvas */
+  #tree-canvas {
+    display: block;
+    width: 100%;
+    background: #060609;
+    border: 1px solid #1a1a2a;
+    margin-top: 4px;
+  }
+
+  /* Encoded output */
+  .encoded-output {
+    background: #060609;
+    border: 1px solid #1a1a2a;
+    padding: 12px;
+    font-size: 12px;
+    color: #5a7a5a;
+    word-break: break-all;
+    line-height: 1.8;
+    max-height: 120px;
+    overflow-y: auto;
+    margin-top: 4px;
+  }
+  .encoded-output .b0 { color: #3a5a4a; }
+  .encoded-output .b1 { color: #6aaa7a; }
+
+  .section-label {
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: #334;
+    margin-bottom: 8px;
+    margin-top: 16px;
+    text-transform: uppercase;
+  }
+  .section-label:first-child { margin-top: 0; }
+
+  .empty-msg { color: #223; font-size: 11px; letter-spacing: 2px; padding: 20px 0; text-align: center; }
+</style>
+</head>
+<body data-game="00127" data-nav="matrix">
+
+<div class="room-id">ROOM 00127</div>
+<div class="title">Huffman Compression Engine</div>
+
+<div class="card">
+  <div class="card-header">Input</div>
+  <div class="card-body">
+    <textarea id="input-text" placeholder="Enter text to compress…" rows="3"></textarea>
+    <div class="stats-row" id="stats-row" style="display:none">
+      <div class="stat"><span class="label">ORIGINAL</span><span class="val" id="stat-orig">—</span></div>
+      <div class="stat"><span class="label">COMPRESSED</span><span class="val" id="stat-comp">—</span></div>
+      <div class="stat"><span class="label">RATIO</span><span class="val good" id="stat-ratio">—</span></div>
+      <div class="stat"><span class="label">SYMBOLS</span><span class="val" id="stat-sym">—</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="card" id="freq-card" style="display:none">
+  <div class="card-header">Symbol Frequencies</div>
+  <div class="card-body">
+    <table class="freq-table" id="freq-table">
+      <thead><tr><th>CHAR</th><th>COUNT</th><th>FREQ</th><th>CODE</th></tr></thead>
+      <tbody id="freq-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card" id="tree-card" style="display:none">
+  <div class="card-header">Huffman Tree</div>
+  <div class="card-body" style="padding:12px">
+    <canvas id="tree-canvas" height="280"></canvas>
+  </div>
+</div>
+
+<div class="card" id="output-card" style="display:none">
+  <div class="card-header">Encoded Output</div>
+  <div class="card-body">
+    <div class="section-label">Bitstream</div>
+    <div class="encoded-output" id="encoded-output"></div>
+  </div>
+</div>
+
+<script src="/shared/matrix-nav.js"></script>
+
+<script>
+// ── Huffman algorithm ─────────────────────────────────────────────────────────
+function buildFrequency(text) {
+  const freq = new Map();
+  for (const ch of text) {
+    freq.set(ch, (freq.get(ch) || 0) + 1);
+  }
+  return freq;
+}
+
+function buildHuffmanTree(freq) {
+  if (freq.size === 0) return null;
+
+  // Priority queue (min-heap simulation using sorted array)
+  let nodes = [...freq.entries()].map(([char, count]) => ({
+    char, count, left: null, right: null
+  }));
+
+  if (nodes.length === 1) {
+    const leaf = nodes[0];
+    return { char: null, count: leaf.count, left: leaf, right: null };
+  }
+
+  while (nodes.length > 1) {
+    nodes.sort((a, b) => a.count - b.count || (a.char || '').localeCompare(b.char || ''));
+    const left = nodes.shift();
+    const right = nodes.shift();
+    nodes.push({
+      char: null,
+      count: left.count + right.count,
+      left,
+      right
+    });
+  }
+
+  return nodes[0];
+}
+
+function buildCodes(node, prefix, codes) {
+  if (!node) return;
+  if (node.char !== null) {
+    codes.set(node.char, prefix || '0'); // single-symbol edge case
+    return;
+  }
+  buildCodes(node.left, prefix + '0', codes);
+  buildCodes(node.right, prefix + '1', codes);
+}
+
+// ── Tree rendering ────────────────────────────────────────────────────────────
+function renderTree(root, canvas) {
+  const ctx = canvas.getContext('2d');
+  const W = canvas.offsetWidth;
+  canvas.width = W;
+  ctx.fillStyle = '#060609';
+  ctx.fillRect(0, 0, W, canvas.height);
+
+  if (!root) return;
+
+  // Assign positions using BFS layout
+  const H = canvas.height;
+  const nodeRadius = 16;
+  const levelHeight = 60;
+
+  // Count depths
+  function depth(node) {
+    if (!node) return 0;
+    return 1 + Math.max(depth(node.left), depth(node.right));
+  }
+  const maxDepth = depth(root);
+  const levels = Math.min(maxDepth, 5); // cap display at 5 levels
+
+  // Assign positions
+  const positions = new Map();
+  let nodeId = 0;
+
+  function assignPos(node, level, left, right) {
+    if (!node || level > levels) return;
+    const id = nodeId++;
+    const x = (left + right) / 2;
+    const y = 24 + level * levelHeight;
+    positions.set(node, { x, y, id });
+    assignPos(node.left, level + 1, left, (left + right) / 2);
+    assignPos(node.right, level + 1, (left + right) / 2, right);
+  }
+  assignPos(root, 0, 0, W);
+
+  // Draw edges first
+  ctx.strokeStyle = '#1a2a2a';
+  ctx.lineWidth = 1;
+  positions.forEach((pos, node) => {
+    if (node.left && positions.has(node.left)) {
+      const c = positions.get(node.left);
+      ctx.beginPath();
+      ctx.moveTo(pos.x, pos.y);
+      ctx.lineTo(c.x, c.y);
+      ctx.stroke();
+      // Label: 0
+      const mx = (pos.x + c.x) / 2 - 8;
+      const my = (pos.y + c.y) / 2;
+      ctx.fillStyle = '#3a5a4a';
+      ctx.font = '10px Courier New';
+      ctx.fillText('0', mx, my);
+    }
+    if (node.right && positions.has(node.right)) {
+      const c = positions.get(node.right);
+      ctx.beginPath();
+      ctx.moveTo(pos.x, pos.y);
+      ctx.lineTo(c.x, c.y);
+      ctx.stroke();
+      const mx = (pos.x + c.x) / 2 + 4;
+      const my = (pos.y + c.y) / 2;
+      ctx.fillStyle = '#5a8a6a';
+      ctx.font = '10px Courier New';
+      ctx.fillText('1', mx, my);
+    }
+  });
+
+  // Draw nodes
+  positions.forEach((pos, node) => {
+    const isLeaf = node.char !== null;
+    ctx.fillStyle = isLeaf ? '#0a1e18' : '#0a0a18';
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, nodeRadius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = isLeaf ? '#2a5a4a' : '#2a2a4a';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    if (isLeaf) {
+      const label = node.char === ' ' ? '·' : node.char === '\n' ? '↵' : node.char;
+      ctx.fillStyle = '#7aaa8a';
+      ctx.font = 'bold 11px Courier New';
+      ctx.fillText(label, pos.x, pos.y - 4);
+      ctx.fillStyle = '#3a5a4a';
+      ctx.font = '9px Courier New';
+      ctx.fillText(node.count, pos.x, pos.y + 6);
+    } else {
+      ctx.fillStyle = '#4a5a7a';
+      ctx.font = '10px Courier New';
+      ctx.fillText(node.count, pos.x, pos.y);
+    }
+  });
+}
+
+// ── Encode ────────────────────────────────────────────────────────────────────
+function encode(text, codes) {
+  return [...text].map(ch => codes.get(ch) || '').join('');
+}
+
+// ── Main ──────────────────────────────────────────────────────────────────────
+let debounceTimer = null;
+
+function process() {
+  const text = document.getElementById('input-text').value;
+
+  const freqCard = document.getElementById('freq-card');
+  const treeCard = document.getElementById('tree-card');
+  const outputCard = document.getElementById('output-card');
+  const statsRow = document.getElementById('stats-row');
+
+  if (!text) {
+    freqCard.style.display = treeCard.style.display = outputCard.style.display = 'none';
+    statsRow.style.display = 'none';
+    return;
+  }
+
+  const freq = buildFrequency(text);
+  const root = buildHuffmanTree(freq);
+  const codes = new Map();
+  if (root) buildCodes(root, '', codes);
+
+  const bitstream = encode(text, codes);
+  const origBits = text.length * 8;
+  const ratio = origBits > 0 ? (1 - bitstream.length / origBits) * 100 : 0;
+
+  // Stats
+  statsRow.style.display = '';
+  document.getElementById('stat-orig').textContent = `${origBits} bits`;
+  document.getElementById('stat-comp').textContent = `${bitstream.length} bits`;
+  document.getElementById('stat-ratio').textContent = `${ratio.toFixed(1)}% saved`;
+  document.getElementById('stat-sym').textContent = `${freq.size}`;
+
+  // Frequency table
+  freqCard.style.display = '';
+  const sorted = [...freq.entries()].sort((a, b) => b[1] - a[1]);
+  const maxCount = sorted[0][1];
+  const tbody = document.getElementById('freq-body');
+  tbody.innerHTML = '';
+  sorted.forEach(([ch, count]) => {
+    const pct = (count / text.length * 100).toFixed(1);
+    const code = codes.get(ch) || '';
+    const barW = Math.max(4, Math.round(count / maxCount * 80));
+    const label = ch === ' ' ? '⎵' : ch === '\n' ? '↵' : ch === '\t' ? '→' : ch;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td style="color:#9ab4c4;font-weight:bold">${label === '<' ? '&lt;' : label === '>' ? '&gt;' : label === '&' ? '&amp;' : label}</td>
+      <td>${count}<span class="freq-bar" style="width:${barW}px"></span></td>
+      <td>${pct}%</td>
+      <td>${code}</td>`;
+    tbody.appendChild(tr);
+  });
+
+  // Tree
+  treeCard.style.display = '';
+  const canvas = document.getElementById('tree-canvas');
+  setTimeout(() => renderTree(root, canvas), 10);
+
+  // Encoded output
+  outputCard.style.display = '';
+  const outEl = document.getElementById('encoded-output');
+  const maxBits = Math.min(bitstream.length, 800);
+  let html = '';
+  for (let i = 0; i < maxBits; i++) {
+    const bit = bitstream[i];
+    html += `<span class="b${bit}">${bit}</span>`;
+  }
+  if (bitstream.length > maxBits) {
+    html += `<span style="color:#223"> …+${bitstream.length - maxBits} more bits</span>`;
+  }
+  outEl.innerHTML = html;
+}
+
+document.getElementById('input-text').addEventListener('input', () => {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(process, 120);
+});
+
+// Seed with example
+document.getElementById('input-text').value = 'the quick brown fox jumps over the lazy dog';
+process();
+</script>
+</body>
+</html>
