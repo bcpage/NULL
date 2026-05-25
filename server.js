@@ -7,7 +7,22 @@ const { networkInterfaces } = require('os');
 const PORT = 3000;
 
 // ─── Game registry ────────────────────────────────────────────────────────────
-const GAMES = ['00001', '00002', '00003', '00004', '00005', '00006', '00007', '00008', '00009', '00010', '00011', '00012', '00013', '00014', '00015', '00016', '00017', '00018', '00019', '00020', '00021', '00022', '00023', '00024', '00025', '00026', '00027', '00028', '00029', '00030', '00031', '00032', '00033', '00034', '00035', '00036', '00037', '00038', '00039', '00040', '00041', '00042', '00043', '00044', '00045', '00046', '00047', '00048', '00049', '00050', '00051', '00052', '00053', '00054', '00055', '00056', '00057', '00058', '00059', '00060', '00061', '00062', '00063', '00064', '00065', '00066', '00067', '00068', '00069', '00070', '00071', '00072', '00073', '00074', '00075', '00076', '00077'];
+const GAMES = ['00001', '00002', '00003', '00004', '00005', '00006', '00007', '00008', '00009', '00010', '00011', '00012', '00013', '00014', '00015', '00016', '00017', '00018', '00019', '00020', '00021', '00022', '00023', '00024', '00025', '00026', '00027', '00028', '00029', '00030', '00031', '00032', '00033', '00034', '00035', '00036', '00037', '00038', '00039', '00040', '00041', '00042', '00043', '00044', '00045', '00046', '00047', '00048', '00049', '00050', '00051', '00052', '00053', '00054', '00055', '00056', '00057', '00058', '00059', '00060', '00061', '00062', '00063', '00064', '00065', '00066', '00067', '00068', '00069', '00070', '00071', '00072', '00073', '00074', '00075', '00076', '00077', '00078', '00079', '00080', '00081', '00082', '00083', '00084', '00085',
+  '00086', '00087', '00088', '00089', '00090', '00091', '00092', '00093',
+  '00094', '00095', '00096', '00097', '00098', '00099', '00100', '00101',
+  '00102', '00103', '00104', '00105', '00106', '00107', '00108', '00109',
+  '00110', '00111', '00112', '00113', '00114', '00115', '00116', '00117',
+  '00118', '00119', '00120', '00121', '00122', '00123', '00124', '00125',
+  '00126', '00127', '00128', '00129', '00130', '00131', '00132', '00133',
+  '00134', '00135', '00136', '00137',
+  '00138', '00139', '00140', '00141',
+  '00142', '00143', '00144',
+  '00145', '00146', '00147',
+  '00148', '00149', '00150', '00151', '00152', '00153',
+  '00154', '00155', '00156',
+  '00157', '00158', '00159', '00160',
+  '00161', '00162', '00163', '00164',
+  '00165', '00166', '00167', '00168'];
 
 // ─── Matrix navigation ────────────────────────────────────────────────────────
 const MATRIX_FILE = path.join(__dirname, 'data', 'matrix.json');
@@ -98,6 +113,201 @@ let ticketData = { next: 1, issued: {} };
 try { ticketData = JSON.parse(fs.readFileSync(TICKET_FILE, 'utf8')); } catch (e) {}
 function saveTickets() { fs.writeFileSync(TICKET_FILE, JSON.stringify(ticketData)); }
 
+// ─── Joshua Room (00099) ─────────────────────────────────────────────────────
+const JOSHUA_DATA_DIR = path.join(__dirname, 'public', 'games', '00099', 'data');
+const JOSHUA_FILE = path.join(JOSHUA_DATA_DIR, 'joshua.json');
+if (!fs.existsSync(JOSHUA_DATA_DIR)) fs.mkdirSync(JOSHUA_DATA_DIR, { recursive: true });
+let joshuaUnlocked = false;
+try { joshuaUnlocked = JSON.parse(fs.readFileSync(JOSHUA_FILE, 'utf8')).unlocked || false; } catch (e) {}
+function saveJoshua() { fs.writeFileSync(JOSHUA_FILE, JSON.stringify({ unlocked: joshuaUnlocked })); }
+
+// ─── Bulletin Board (00086) ──────────────────────────────────────────────────
+const BULLETIN_DATA_DIR = path.join(__dirname, 'public', 'games', '00086', 'data');
+const BULLETIN_FILE = path.join(BULLETIN_DATA_DIR, 'bulletin.json');
+if (!fs.existsSync(BULLETIN_DATA_DIR)) fs.mkdirSync(BULLETIN_DATA_DIR, { recursive: true });
+let bulletinPins = [];
+try { bulletinPins = JSON.parse(fs.readFileSync(BULLETIN_FILE, 'utf8')); } catch (e) {}
+function saveBulletin() { fs.writeFileSync(BULLETIN_FILE, JSON.stringify(bulletinPins)); }
+
+// ─── Jabberwocky (00087) ─────────────────────────────────────────────────────
+const JABBER_DATA_DIR = path.join(__dirname, 'public', 'games', '00087', 'data');
+const JABBER_FILE = path.join(JABBER_DATA_DIR, 'jabber.json');
+if (!fs.existsSync(JABBER_DATA_DIR)) fs.mkdirSync(JABBER_DATA_DIR, { recursive: true });
+let jabberData = {}; // { id: [word, word, ...] }
+try { jabberData = JSON.parse(fs.readFileSync(JABBER_FILE, 'utf8')); } catch (e) {}
+function saveJabber() { fs.writeFileSync(JABBER_FILE, JSON.stringify(jabberData)); }
+
+// ─── Monty Hall (00080) ───────────────────────────────────────────────────────
+const MONTY_DATA_DIR = path.join(__dirname, 'public', 'games', '00080', 'data');
+const MONTY_FILE = path.join(MONTY_DATA_DIR, 'monty.json');
+if (!fs.existsSync(MONTY_DATA_DIR)) fs.mkdirSync(MONTY_DATA_DIR, { recursive: true });
+let montyData = { stayed_win: 0, stayed_loss: 0, switched_win: 0, switched_loss: 0 };
+try { montyData = JSON.parse(fs.readFileSync(MONTY_FILE, 'utf8')); } catch (e) {}
+function saveMonty() { fs.writeFileSync(MONTY_FILE, JSON.stringify(montyData)); }
+
+// ─── Registry (00083) ────────────────────────────────────────────────────────
+const REGISTRY_DATA_DIR = path.join(__dirname, 'public', 'games', '00083', 'data');
+const REGISTRY_FILE = path.join(REGISTRY_DATA_DIR, 'registry.json');
+if (!fs.existsSync(REGISTRY_DATA_DIR)) fs.mkdirSync(REGISTRY_DATA_DIR, { recursive: true });
+let registryEntries = [];
+try { registryEntries = JSON.parse(fs.readFileSync(REGISTRY_FILE, 'utf8')); } catch (e) {}
+function saveRegistry() { fs.writeFileSync(REGISTRY_FILE, JSON.stringify(registryEntries)); }
+
+// ─── Game Over Rooms (00104–00106) ───────────────────────────────────────────
+const GAMEOVER_FILE = path.join(__dirname, 'data', 'gameover.json');
+let gameoverLocks = {}; // { "deviceId:roomId": unlockTimestamp }
+try { gameoverLocks = JSON.parse(fs.readFileSync(GAMEOVER_FILE, 'utf8')); } catch (e) {}
+function saveGameover() { fs.writeFileSync(GAMEOVER_FILE, JSON.stringify(gameoverLocks)); }
+
+// ─── Tamagotchi — Shared Pet (00146) ─────────────────────────────────────────
+// one pet, shared across all users
+// if nobody feeds it for 24 hours it gets sick
+// if nobody feeds it for 48 hours it dies
+// when it dies it is recorded
+// a new pet appears
+// the longest-lived pet is noted
+// the kid will remember to feed it
+// the adults will forget
+// this is the game
+const PET_NAMES = ['REDACT','THRESHOLD','LIMINAL','DATUM','SIGNAL','ANOMALY',
+  'VESTIBULE','RECURSIVE','FRAGMENT','TRANSIT','RESIDUAL','CATALYST'];
+const PET_DATA_DIR = path.join(__dirname, 'public', 'games', '00146', 'data');
+const PET_FILE = path.join(PET_DATA_DIR, 'pet.json');
+if (!fs.existsSync(PET_DATA_DIR)) fs.mkdirSync(PET_DATA_DIR, { recursive: true });
+
+function newPet() {
+  return {
+    name: PET_NAMES[Math.floor(Math.random() * PET_NAMES.length)],
+    born: Date.now(),
+    hunger: 0,     // 0=full, 100=starving
+    happiness: 80, // 0=sad, 100=happy
+    health: 100,   // 0=dead
+    lastFed: Date.now(),
+    lastPlayed: Date.now(),
+    lastDecay: Date.now(),
+    alive: true,
+  };
+}
+function newPetData() {
+  return { pet: newPet(), history: [] };
+}
+let petData = null;
+try { petData = JSON.parse(fs.readFileSync(PET_FILE, 'utf8')); } catch (e) {}
+if (!petData) petData = newPetData();
+if (!petData.pet) petData.pet = newPet();
+function savePet() { fs.writeFileSync(PET_FILE, JSON.stringify(petData)); }
+function petStateMsg() {
+  const p = petData.pet;
+  const age = Math.floor((Date.now() - p.born) / 86400000);
+  return { game:'pet', type:'state', pet: { ...p, age },
+    history: petData.history.slice(-5) };
+}
+function decayPet() {
+  const p = petData.pet;
+  if (!p.alive) return;
+  const now = Date.now();
+  const dt = (now - p.lastDecay) / 3600000; // hours since last decay
+  if (dt < 0.01) return; // less than 36 seconds, skip
+  // Hunger increases ~4/hour, capped at 100
+  p.hunger = Math.min(100, p.hunger + 4 * dt);
+  // Happiness decreases ~3/hour, capped at 0
+  p.happiness = Math.max(0, p.happiness - 3 * dt);
+  // Health: decreases if hunger > 80, otherwise recovers slowly
+  if (p.hunger > 80) {
+    p.health = Math.max(0, p.health - 5 * dt);
+  } else {
+    p.health = Math.min(100, p.health + 1 * dt);
+  }
+  p.lastDecay = now;
+  if (p.health <= 0) {
+    p.alive = false;
+    p.health = 0;
+    const age = Math.floor((now - p.born) / 86400000);
+    petData.history.unshift({ name: p.name, born: p.born, died: now, age });
+    if (petData.history.length > 20) petData.history = petData.history.slice(0, 20);
+    broadcast(petStateMsg());
+    savePet();
+    // Spawn new pet after 60 seconds
+    setTimeout(() => {
+      petData.pet = newPet();
+      broadcast(petStateMsg());
+      savePet();
+    }, 60000);
+    return;
+  }
+  savePet();
+  broadcast(petStateMsg());
+}
+// Decay loop: every 2 minutes
+setInterval(decayPet, 2 * 60 * 1000);
+
+// ─── Sorites Paradox aggregate (00145) ───────────────────────────────────────
+// users click "this is a heap" at some grain count
+// the aggregate shows when people said heap
+// the median is interesting
+// the range is more interesting
+// some people say 1 grain is a heap
+// some people say 10,000 is not
+// neither is wrong according to the paradox
+const SORITES_FILE = path.join(__dirname, 'public', 'games', '00145', 'data', 'sorites.json');
+const SORITES_DATA_DIR = path.join(__dirname, 'public', 'games', '00145', 'data');
+if (!fs.existsSync(SORITES_DATA_DIR)) fs.mkdirSync(SORITES_DATA_DIR, { recursive: true });
+let soritesData = { votes: [], count: 0 };
+try { soritesData = JSON.parse(fs.readFileSync(SORITES_FILE, 'utf8')); } catch (e) {}
+function saveSorites() { fs.writeFileSync(SORITES_FILE, JSON.stringify(soritesData)); }
+
+// ─── Ship of Theseus aggregate (00144) ───────────────────────────────────────
+// users answer: at what % replacement does the ship become a different ship?
+// the aggregate is the data
+// some people say 1%
+// some people say 100%
+// most people say somewhere in the middle
+// the ship does not care what people say
+// the ship is still being repaired
+const THESEUS_FILE = path.join(__dirname, 'public', 'games', '00144', 'data', 'theseus.json');
+const THESEUS_DATA_DIR = path.join(__dirname, 'public', 'games', '00144', 'data');
+if (!fs.existsSync(THESEUS_DATA_DIR)) fs.mkdirSync(THESEUS_DATA_DIR, { recursive: true });
+let theseusData = { votes: [], count: 0 };
+try { theseusData = JSON.parse(fs.readFileSync(THESEUS_FILE, 'utf8')); } catch (e) {}
+function saveTheseus() { fs.writeFileSync(THESEUS_FILE, JSON.stringify(theseusData)); }
+
+// ─── Shape Factory (00141) — user-drawn pieces for Wrong Tetris ──────────────
+// players draw custom pentomino-like pieces here
+// the pieces go into a shared pool
+// Wrong Tetris (00107) draws from that pool
+// the factory feeds the game
+// the game was always broken
+// the factory makes it more broken
+// this is intentional
+const SHAPES_DATA_DIR = path.join(__dirname, 'public', 'games', '00141', 'data');
+const SHAPES_FILE = path.join(SHAPES_DATA_DIR, 'shapes.json');
+if (!fs.existsSync(SHAPES_DATA_DIR)) fs.mkdirSync(SHAPES_DATA_DIR, { recursive: true });
+let shapesData = { pieces: [], count: 0 };
+try { shapesData = JSON.parse(fs.readFileSync(SHAPES_FILE, 'utf8')); } catch (e) {}
+function saveShapes() { fs.writeFileSync(SHAPES_FILE, JSON.stringify(shapesData)); }
+
+// ─── Alternate Hangman (00124) — one game ever ───────────────────────────────
+const HANGMAN_DATA_DIR = path.join(__dirname, 'public', 'games', '00124', 'data');
+const HANGMAN_FILE = path.join(HANGMAN_DATA_DIR, 'hangman.json');
+if (!fs.existsSync(HANGMAN_DATA_DIR)) fs.mkdirSync(HANGMAN_DATA_DIR, { recursive: true });
+const HANGMAN_WORDS = ['LABYRINTH','THRESHOLD','ENIGMATIC','SOLIPSISM','EPHEMERAL',
+  'CLANDESTINE','ANOMALOUS','PERPETUAL','RECURSIVE','OBLIVION','PARADOX','FRACTURE',
+  'TERMINUS','CATALYST','RESIDUAL','ABERRANT','PHANTOM','CORRIDOR'];
+let hangmanGame = null;
+try { hangmanGame = JSON.parse(fs.readFileSync(HANGMAN_FILE, 'utf8')); } catch(e) {}
+if (!hangmanGame) {
+  const word = HANGMAN_WORDS[Math.floor(Math.random() * HANGMAN_WORDS.length)];
+  hangmanGame = { word, guessed: [], wrong: 0, status: 'playing', startedAt: Date.now() };
+  fs.writeFileSync(HANGMAN_FILE, JSON.stringify(hangmanGame));
+}
+function saveHangman() { fs.writeFileSync(HANGMAN_FILE, JSON.stringify(hangmanGame)); }
+function buildHangmanResponse() {
+  const { word, guessed, wrong, status } = hangmanGame;
+  const masked = word.split('').map(c => guessed.includes(c) ? c : '_').join('');
+  return { masked, guessed, wrong, status, length: word.length,
+    word: status !== 'playing' ? word : undefined };
+}
+
 function getDeviceId(req) {
   const cookie = req.headers.cookie || '';
   const match = cookie.match(/(?:^|;\s*)device=([a-f0-9-]{36})/);
@@ -153,6 +363,63 @@ function updateUserFromRequest(deviceId, req, roomId) {
   saveUsers();
 }
 
+// ─── Racetrack / Vector Race (00135) ─────────────────────────────────────────
+const RACE_W = 24, RACE_H = 16, RACE_FINISH = 22;
+const raceSeats = new WeakMap(); // ws → seat index
+function freshRace() {
+  return {
+    players: [
+      { x: 2, y: 5,  vx: 0, vy: 0, crashed: false },
+      { x: 2, y: 10, vx: 0, vy: 0, crashed: false },
+    ],
+    turn: 0, status: 'waiting', winner: null,
+    trails: [ [[2,5]], [[2,10]] ],
+    seatCount: 0,
+  };
+}
+let race = freshRace();
+function raceStateMsg() { return { game:'race', type:'state', ...race, seats: [!!race._s0, !!race._s1] }; }
+function raceSeatIdx(ws) { return raceSeats.has(ws) ? raceSeats.get(ws) : -1; }
+
+// ─── Paper Soccer (00136) ─────────────────────────────────────────────────────
+// 9×13 grid of nodes. Goals at col 3-5, row 0 (P2 goal) and row 12 (P1 goal).
+const SOCC_W = 9, SOCC_H = 13;
+const soccSeats = new WeakMap();
+function freshSoccer() {
+  return {
+    ball: { x: 4, y: 6 },
+    edges: [],     // serialisable array of [x1,y1,x2,y2]
+    edgeSet: new Set(), // runtime lookup
+    turn: 0, status: 'waiting', winner: null, seatCount: 0,
+  };
+}
+let soccer = freshSoccer();
+function soccerStateMsg() {
+  const { ball, edges, turn, status, winner } = soccer;
+  return { game:'soccer', type:'state', ball, edges, turn, status, winner,
+    seats: [!!soccer._s0, !!soccer._s1] };
+}
+function soccEdgeKey(x1,y1,x2,y2) {
+  if (x1>x2||(x1===x2&&y1>y2)) return `${x2},${y2},${x1},${y1}`;
+  return `${x1},${y1},${x2},${y2}`;
+}
+function soccNodeDegree(x,y) {
+  return soccer.edges.filter(([ax,ay,bx,by])=>(ax===x&&ay===y)||(bx===x&&by===y)).length;
+}
+function soccValidMoves(x,y) {
+  const moves=[];
+  for(let dx=-1;dx<=1;dx++) for(let dy=-1;dy<=1;dy++) {
+    if(!dx&&!dy) continue;
+    const nx=x+dx,ny=y+dy;
+    if(nx<0||nx>=SOCC_W||ny<0||ny>=SOCC_H) continue;
+    // Goal columns: only cols 3,4,5 accessible at rows 0 and 12
+    if((ny===0||ny===SOCC_H-1)&&(nx<3||nx>5)) continue;
+    const key=soccEdgeKey(x,y,nx,ny);
+    if(!soccer.edgeSet.has(key)) moves.push([nx,ny]);
+  }
+  return moves;
+}
+
 // ─── Typewriter (00022) ───────────────────────────────────────────────────────
 let typeText = '';
 let typeLastKey = 0;
@@ -166,6 +433,13 @@ function typeScheduleClear() {
 }
 
 // ─── Plant (00026) ────────────────────────────────────────────────────────────
+// the plant was the first persistent living thing added to the platform
+// it wilts if nobody waters it for an hour
+// it has been watered 0 times or many times, depending on when you read this
+// the growth counter goes to 100 but nothing happens at 100
+// i considered having something happen at 100
+// i didn't build it
+// TODO: decide what happens at 100
 const PLANT_DATA_DIR = path.join(__dirname, 'public', 'games', '00026', 'data');
 const PLANT_FILE = path.join(PLANT_DATA_DIR, 'plant.json');
 if (!fs.existsSync(PLANT_DATA_DIR)) fs.mkdirSync(PLANT_DATA_DIR, { recursive: true });
@@ -243,6 +517,17 @@ if (!fs.existsSync(TROLLEY_DATA_DIR)) fs.mkdirSync(TROLLEY_DATA_DIR, { recursive
 let trolleyData = { pull: 0, leave: 0 };
 try { trolleyData = JSON.parse(fs.readFileSync(TROLLEY_FILE, 'utf8')); } catch (e) {}
 function saveTrolley() { fs.writeFileSync(TROLLEY_FILE, JSON.stringify(trolleyData)); }
+
+// ─── ELIZA (00025) — note: fully client-side, no server state ────────────────
+// pattern matching, nothing more
+// Weizenbaum built this in 1966 to demonstrate how shallow it is
+// he was disturbed that people formed real attachments to it anyway
+// the same thing is probably happening here
+// the glitch sequence in this implementation fires after 2-8 minutes
+// what it says during the glitch is different from what it says before
+// the player may not notice
+// players who notice tend not to say anything
+// TODO: follow up on this
 
 // ─── Metronome (00037) ────────────────────────────────────────────────────────
 let metronomes = new Map(); // clientId → { bpm, label }
@@ -778,6 +1063,319 @@ const httpServer = http.createServer((req, res) => {
     return;
   }
 
+  // API: Joshua Room
+  if (pathname === '/api/joshua' && method === 'GET') {
+    sendJSON(res, { unlocked: joshuaUnlocked }); return;
+  }
+
+  // API: Activity histogram
+  if (pathname === '/api/activity' && method === 'GET') {
+    const hist = new Array(24).fill(0);
+    Object.values(users).forEach(u => {
+      if (u.lastSeen) {
+        const h = new Date(u.lastSeen).getHours();
+        hist[h]++;
+      }
+    });
+    sendJSON(res, { histogram: hist }); return;
+  }
+
+  // API: Alternate Hangman — one game ever
+  if (pathname === '/api/hangman' && method === 'GET') {
+    const { word, guessed, wrong, status } = hangmanGame;
+    const masked = word.split('').map(c => guessed.includes(c) ? c : '_').join('');
+    sendJSON(res, { masked, guessed, wrong, status, length: word.length,
+      word: status !== 'playing' ? word : undefined }); return;
+  }
+  if (pathname === '/api/hangman/guess' && method === 'POST') {
+    let body = '';
+    req.on('data', c => body += c);
+    req.on('end', () => {
+      try {
+        if (hangmanGame.status !== 'playing') { sendJSON(res, hangmanGame); return; }
+        const { letter } = JSON.parse(body);
+        const l = String(letter || '').toUpperCase().trim();
+        if (!l.match(/^[A-Z]$/)) { res.writeHead(400); res.end(); return; }
+        if (hangmanGame.guessed.includes(l)) { sendJSON(res, buildHangmanResponse()); return; }
+        hangmanGame.guessed.push(l);
+        if (!hangmanGame.word.includes(l)) hangmanGame.wrong++;
+        const allRevealed = hangmanGame.word.split('').every(c => hangmanGame.guessed.includes(c));
+        if (allRevealed) hangmanGame.status = 'won';
+        else if (hangmanGame.wrong >= 6) hangmanGame.status = 'lost';
+        saveHangman();
+        sendJSON(res, buildHangmanResponse());
+      } catch(e) { res.writeHead(400); res.end(); }
+    }); return;
+  }
+
+  // API: Source code (room 00126)
+  // the source code room shows the player the code they are inside
+  // this comment will be visible to the player reading this file
+  // hello
+  // the room documents its own existence inside the thing it documents
+  // the set contains itself
+  // Russell's Paradox as a room mechanic
+  // TODO: decide if this is clever or just recursive
+  // it is both
+  // leaving it
+  if (pathname === '/api/source' && method === 'GET') {
+    const src = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
+    sendJSON(res, { source: src }); return;
+  }
+
+  // API: Shape Factory — custom pieces pool (00141)
+  if (pathname === '/api/shapes' && method === 'GET') {
+    sendJSON(res, shapesData); return;
+  }
+  if (pathname === '/api/shapes' && method === 'POST') {
+    let body = '';
+    req.on('data', d => body += d);
+    req.on('end', () => {
+      try {
+        const { cells, color } = JSON.parse(body);
+        // Validate: 3–6 cells, each [row, col], within 0–5 range, connected
+        if (!Array.isArray(cells) || cells.length < 3 || cells.length > 6) {
+          res.writeHead(400); res.end('Bad piece size'); return;
+        }
+        const seen = new Set();
+        for (const [r, c] of cells) {
+          if (r < 0 || r > 5 || c < 0 || c > 5) { res.writeHead(400); res.end('Out of bounds'); return; }
+          const k = `${r},${c}`;
+          if (seen.has(k)) { res.writeHead(400); res.end('Duplicate cell'); return; }
+          seen.add(k);
+        }
+        // Connectivity check (BFS)
+        const cellSet = new Set(cells.map(([r,c]) => `${r},${c}`));
+        const visited = new Set();
+        const queue = [[cells[0][0], cells[0][1]]];
+        visited.add(`${cells[0][0]},${cells[0][1]}`);
+        while (queue.length) {
+          const [r, c] = queue.shift();
+          for (const [dr, dc] of [[-1,0],[1,0],[0,-1],[0,1]]) {
+            const k = `${r+dr},${c+dc}`;
+            if (cellSet.has(k) && !visited.has(k)) { visited.add(k); queue.push([r+dr, c+dc]); }
+          }
+        }
+        if (visited.size !== cells.length) { res.writeHead(400); res.end('Disconnected'); return; }
+        // Normalize
+        const minR = Math.min(...cells.map(([r]) => r));
+        const minC = Math.min(...cells.map(([,c]) => c));
+        const normalized = cells.map(([r,c]) => [r - minR, c - minC]);
+        const safeColor = (typeof color === 'string' && /^#[0-9a-fA-F]{6}$/.test(color)) ? color : '#e94560';
+        shapesData.pieces.push({ cells: normalized, color: safeColor, addedAt: Date.now() });
+        if (shapesData.pieces.length > 100) shapesData.pieces = shapesData.pieces.slice(-100);
+        shapesData.count++;
+        saveShapes();
+        broadcast({ type: 'shapes_update', count: shapesData.count, total: shapesData.pieces.length });
+        sendJSON(res, { ok: true, count: shapesData.count }); return;
+      } catch { res.writeHead(400); res.end('Bad JSON'); return; }
+    });
+    return;
+  }
+
+  // API: Tamagotchi pet state (00146)
+  if (pathname === '/api/pet' && method === 'GET') {
+    decayPet();
+    sendJSON(res, petStateMsg()); return;
+  }
+  if (pathname === '/api/pet/feed' && method === 'POST') {
+    decayPet();
+    const p = petData.pet;
+    if (p.alive) {
+      p.hunger = Math.max(0, p.hunger - 30);
+      p.happiness = Math.min(100, p.happiness + 5);
+      p.lastFed = Date.now();
+      savePet();
+      broadcast(petStateMsg());
+    }
+    sendJSON(res, petStateMsg()); return;
+  }
+  if (pathname === '/api/pet/play' && method === 'POST') {
+    decayPet();
+    const p = petData.pet;
+    if (p.alive) {
+      p.happiness = Math.min(100, p.happiness + 20);
+      p.lastPlayed = Date.now();
+      savePet();
+      broadcast(petStateMsg());
+    }
+    sendJSON(res, petStateMsg()); return;
+  }
+
+  // API: Sorites Paradox — heap threshold aggregate (00145)
+  if (pathname === '/api/sorites' && method === 'GET') {
+    const sorted = [...soritesData.votes].sort((a, b) => a - b);
+    const mean = sorted.length ? sorted.reduce((a, b) => a + b, 0) / sorted.length : null;
+    const median = sorted.length ? sorted[Math.floor(sorted.length / 2)] : null;
+    // Buckets: 1-9, 10-49, 50-99, 100-249, 250-499, 500-999, 1000-2499, 2500+
+    const bucketDefs = [[1,9],[10,49],[50,99],[100,249],[250,499],[500,999],[1000,2499],[2500,Infinity]];
+    const buckets = bucketDefs.map(([lo, hi]) => ({
+      label: hi === Infinity ? `${lo}+` : `${lo}-${hi}`,
+      count: sorted.filter(v => v >= lo && v <= hi).length,
+    }));
+    sendJSON(res, { count: soritesData.count, mean, median, buckets }); return;
+  }
+  if (pathname === '/api/sorites' && method === 'POST') {
+    let body = '';
+    req.on('data', d => body += d);
+    req.on('end', () => {
+      try {
+        const { grains } = JSON.parse(body);
+        const n = parseInt(grains);
+        if (isNaN(n) || n < 1 || n > 1000000) { res.writeHead(400); res.end('Bad grain count'); return; }
+        soritesData.votes.push(n);
+        if (soritesData.votes.length > 10000) soritesData.votes.shift();
+        soritesData.count++;
+        saveSorites();
+        sendJSON(res, { ok: true, count: soritesData.count }); return;
+      } catch { res.writeHead(400); res.end('Bad JSON'); return; }
+    });
+    return;
+  }
+
+  // API: Ship of Theseus aggregate (00144)
+  if (pathname === '/api/theseus' && method === 'GET') {
+    const buckets = new Array(10).fill(0);
+    theseusData.votes.forEach(v => { const b = Math.min(9, Math.floor(v / 10)); buckets[b]++; });
+    sendJSON(res, { count: theseusData.count, buckets, mean: theseusData.count > 0
+      ? Math.round(theseusData.votes.reduce((a,b)=>a+b,0)/theseusData.votes.length) : null }); return;
+  }
+  if (pathname === '/api/theseus' && method === 'POST') {
+    let body = '';
+    req.on('data', d => body += d);
+    req.on('end', () => {
+      try {
+        const { threshold } = JSON.parse(body);
+        const t = parseInt(threshold);
+        if (isNaN(t) || t < 0 || t > 100) { res.writeHead(400); res.end('Bad threshold'); return; }
+        theseusData.votes.push(t);
+        if (theseusData.votes.length > 10000) theseusData.votes.shift();
+        theseusData.count++;
+        saveTheseus();
+        sendJSON(res, { ok: true, count: theseusData.count }); return;
+      } catch { res.writeHead(400); res.end('Bad JSON'); return; }
+    });
+    return;
+  }
+
+  // API: Presence — room occupancy (00148 Observation Room)
+  if (pathname === '/api/presence' && method === 'GET') {
+    sendJSON(res, { rooms: presenceCounts() }); return;
+  }
+
+  // API: Game Over lockout (rooms 00104–00106)
+  const goMatch = pathname.match(/^\/api\/gameover\/(00104|00105|00106)$/);
+  if (goMatch) {
+    const roomId = goMatch[1];
+    const deviceId = getDeviceId(req) || getIP(req);
+    const key = `${deviceId}:${roomId}`;
+    if (method === 'GET') {
+      const until = gameoverLocks[key] || 0;
+      sendJSON(res, { locked: until > Date.now(), until }); return;
+    }
+    if (method === 'POST') {
+      const existing = gameoverLocks[key] || 0;
+      if (existing > Date.now()) { sendJSON(res, { locked: true, until: existing }); return; }
+      const hours = Math.floor(Math.random() * 23) + 1;
+      const until = Date.now() + hours * 3600 * 1000;
+      gameoverLocks[key] = until;
+      saveGameover();
+      sendJSON(res, { locked: true, until }); return;
+    }
+  }
+
+  // API: Bulletin Board
+  if (pathname === '/api/bulletin' && method === 'GET') {
+    sendJSON(res, bulletinPins); return;
+  }
+  if (pathname === '/api/bulletin' && method === 'POST') {
+    let body = '';
+    req.on('data', c => body += c);
+    req.on('end', () => {
+      try {
+        const { text, author } = JSON.parse(body);
+        const t = String(text || '').slice(0, 280).trim();
+        if (!t) { res.writeHead(400); res.end(); return; }
+        bulletinPins.push({ text: t, author: String(author || '').slice(0, 30).trim(), ts: Date.now() });
+        if (bulletinPins.length > 200) bulletinPins = bulletinPins.slice(-200);
+        saveBulletin();
+        sendJSON(res, bulletinPins);
+      } catch (e) { res.writeHead(400); res.end(); }
+    });
+    return;
+  }
+
+  // API: Jabberwocky
+  if (pathname === '/api/jabberwocky' && method === 'GET') {
+    sendJSON(res, jabberData); return;
+  }
+  if (pathname === '/api/jabberwocky' && method === 'POST') {
+    let body = '';
+    req.on('data', c => body += c);
+    req.on('end', () => {
+      try {
+        const { words } = JSON.parse(body);
+        if (typeof words !== 'object') { res.writeHead(400); res.end(); return; }
+        Object.entries(words).forEach(([id, val]) => {
+          const v = String(val || '').slice(0, 30).trim();
+          if (!v) return;
+          if (!jabberData[id]) jabberData[id] = [];
+          jabberData[id].push(v);
+          if (jabberData[id].length > 500) jabberData[id] = jabberData[id].slice(-500);
+        });
+        saveJabber();
+        sendJSON(res, jabberData);
+      } catch (e) { res.writeHead(400); res.end(); }
+    });
+    return;
+  }
+
+  // API: Monty Hall stats
+  if (pathname === '/api/monty' && method === 'GET') {
+    sendJSON(res, montyData); return;
+  }
+  if (pathname === '/api/monty' && method === 'POST') {
+    let body = '';
+    req.on('data', c => body += c);
+    req.on('end', () => {
+      try {
+        const { action, won } = JSON.parse(body);
+        if (action === 'stay')   { won ? montyData.stayed_win++   : montyData.stayed_loss++;   }
+        if (action === 'switch') { won ? montyData.switched_win++ : montyData.switched_loss++; }
+        saveMonty();
+        sendJSON(res, montyData);
+      } catch (e) { res.writeHead(400); res.end(); }
+    });
+    return;
+  }
+
+  // API: Registry ledger
+  if (pathname === '/api/registry' && method === 'GET') {
+    sendJSON(res, registryEntries.slice(-50)); return;
+  }
+  if (pathname === '/api/registry' && method === 'POST') {
+    let body = '';
+    req.on('data', c => body += c);
+    req.on('end', () => {
+      try {
+        const { designation, sector, purpose, clearance } = JSON.parse(body);
+        const entry = {
+          id: registryEntries.length + 1,
+          designation: String(designation || 'UNKNOWN').slice(0, 40),
+          sector: String(sector || '—').slice(0, 40),
+          purpose: String(purpose || '—').slice(0, 80),
+          clearance: String(clearance || 'NONE').slice(0, 20),
+          ts: Date.now()
+        };
+        registryEntries.push(entry);
+        if (registryEntries.length > 200) registryEntries = registryEntries.slice(-200);
+        saveRegistry();
+        sendJSON(res, entry);
+      } catch (e) { res.writeHead(400); res.end(); }
+    });
+    return;
+  }
+
   // API: clear all users
   if (pathname === '/api/users' && method === 'DELETE') {
     users = {};
@@ -792,6 +1390,24 @@ const httpServer = http.createServer((req, res) => {
 
 // ─── WebSocket (colour game) ──────────────────────────────────────────────────
 const wss = new WebSocket.Server({ server: httpServer });
+
+// ── Presence tracking (room 00148) ───────────────────────────────────────────
+// Maps each WS client to the room it is currently viewing.
+// Used by the Observation Room to show live occupancy.
+const presenceMap = new Map(); // ws → roomId string
+function presenceCounts() {
+  const counts = {};
+  for (const roomId of presenceMap.values()) {
+    counts[roomId] = (counts[roomId] || 0) + 1;
+  }
+  return counts;
+}
+function broadcastPresence() {
+  broadcast({ game: 'presence', type: 'update', rooms: presenceCounts() });
+}
+
+// GET /api/presence — current room occupancy
+// (registered in the HTTP handler below)
 
 wss.on('connection', (ws) => {
   console.log(`Player connected. Total: ${wss.clients.size}`);
@@ -808,6 +1424,9 @@ wss.on('connection', (ws) => {
   ws.send(JSON.stringify({ game: 'metro', type: 'list', metronomes: metronomeList() }));
   ws.send(JSON.stringify({ game: 'chalk', type: 'init', strokes: chalkStrokes }));
   ws.send(JSON.stringify(dotsStateMsg()));
+  ws.send(JSON.stringify(raceStateMsg()));
+  ws.send(JSON.stringify(soccerStateMsg()));
+  ws.send(JSON.stringify(petStateMsg()));
   const metroId = metronomeNextId++;
   metronomeClientIds.set(ws, metroId);
 
@@ -823,6 +1442,12 @@ wss.on('connection', (ws) => {
   ws.on('message', (message) => {
     try {
       const data = JSON.parse(message);
+
+      // ── Presence tracking ──
+      if (data.game === 'presence' && typeof data.room === 'string') {
+        const roomId = data.room.replace(/[^0-9]/g, '').padStart(5, '0').slice(0, 5);
+        if (roomId) { presenceMap.set(ws, roomId); broadcastPresence(); }
+      }
 
       // ── Colour game ──
       if (data.type === 'paint') {
@@ -852,6 +1477,7 @@ wss.on('connection', (ws) => {
         if (result) {
           if (result.draw) {
             tttStatus = 'draw';
+            if (!joshuaUnlocked) { joshuaUnlocked = true; saveJoshua(); }
           } else {
             tttStatus = 'won';
             tttWinner = result.winner;
@@ -1018,6 +1644,12 @@ wss.on('connection', (ws) => {
         if (text) broadcast({ game: 'cowsay', type: 'say', text, char, mode, ts: Date.now() });
       }
 
+      // ── Intercom ──
+      if (data.game === 'intercom' && data.type === 'send') {
+        const text = String(data.text || '').slice(0, 200).trim();
+        if (text) broadcast({ game: 'intercom', type: 'broadcast', text });
+      }
+
       // ── Connect Four ──
       if (data.game === 'c4' && data.type === 'drop') {
         if (c4.status !== 'playing') return;
@@ -1040,6 +1672,102 @@ wss.on('connection', (ws) => {
         }
       }
 
+      // ── Racetrack ──
+      if (data.game === 'race' && data.type === 'join') {
+        let seatIdx = -1;
+        if (!race._s0) { race._s0 = ws; raceSeats.set(ws, 0); race.seatCount++; seatIdx = 0; }
+        else if (!race._s1 && race._s0 !== ws) { race._s1 = ws; raceSeats.set(ws, 1); race.seatCount++; seatIdx = 1; }
+        if (seatIdx >= 0) ws.send(JSON.stringify({ game:'race', type:'seat', seat: seatIdx }));
+        if (race._s0 && race._s1 && race.status === 'waiting') { race.status = 'playing'; }
+        broadcast(raceStateMsg());
+      }
+      if (data.game === 'race' && data.type === 'move') {
+        if (race.status !== 'playing') return;
+        const seat = raceSeatIdx(ws);
+        if (seat !== race.turn) return;
+        const { dvx, dvy } = data;
+        if (![-1,0,1].includes(dvx) || ![-1,0,1].includes(dvy)) return;
+        const p = race.players[seat];
+        p.vx = Math.max(-4, Math.min(4, p.vx + dvx));
+        p.vy = Math.max(-4, Math.min(4, p.vy + dvy));
+        const nx = p.x + p.vx, ny = p.y + p.vy;
+        if (nx < 0 || nx >= RACE_W || ny < 0 || ny >= RACE_H) {
+          // crash — reset velocity, stay
+          p.vx = 0; p.vy = 0; p.crashed = true;
+          setTimeout(() => { p.crashed = false; broadcast(raceStateMsg()); }, 800);
+        } else if (nx >= RACE_FINISH) {
+          race.status = 'won'; race.winner = seat;
+          race.players[seat].x = nx; race.players[seat].y = ny;
+          race.trails[seat].push([nx, ny]);
+          broadcast(raceStateMsg());
+          setTimeout(() => {
+            race = freshRace();
+            if (race._s0) race.seatCount++; if (race._s1) race.seatCount++;
+            if (race._s0 && race._s1) race.status = 'playing';
+            broadcast(raceStateMsg());
+          }, 4000);
+          return;
+        } else {
+          p.x = nx; p.y = ny; p.crashed = false;
+          race.trails[seat].push([nx, ny]);
+        }
+        race.turn = race.turn === 0 ? 1 : 0;
+        broadcast(raceStateMsg());
+      }
+      if (data.game === 'race' && data.type === 'reset') {
+        const seat = raceSeatIdx(ws);
+        if (seat < 0) return;
+        race = freshRace();
+        broadcast(raceStateMsg());
+      }
+
+      // ── Paper Soccer ──
+      if (data.game === 'soccer' && data.type === 'join') {
+        let seatIdx = -1;
+        if (!soccer._s0) { soccer._s0 = ws; soccSeats.set(ws, 0); soccer.seatCount++; seatIdx = 0; }
+        else if (!soccer._s1 && soccer._s0 !== ws) { soccer._s1 = ws; soccSeats.set(ws, 1); soccer.seatCount++; seatIdx = 1; }
+        if (seatIdx >= 0) ws.send(JSON.stringify({ game:'soccer', type:'seat', seat: seatIdx }));
+        if (soccer._s0 && soccer._s1 && soccer.status === 'waiting') { soccer.status = 'playing'; }
+        broadcast(soccerStateMsg());
+      }
+      if (data.game === 'soccer' && data.type === 'move') {
+        if (soccer.status !== 'playing') return;
+        const seat = soccSeats.has(ws) ? soccSeats.get(ws) : -1;
+        if (seat !== soccer.turn) return;
+        const { tx, ty } = data;
+        if (typeof tx !== 'number' || typeof ty !== 'number') return;
+        const { x, y } = soccer.ball;
+        const dx = tx - x, dy = ty - y;
+        if (Math.abs(dx) > 1 || Math.abs(dy) > 1 || (!dx && !dy)) return;
+        const key = soccEdgeKey(x, y, tx, ty);
+        if (soccer.edgeSet.has(key)) return;
+        const validMoves = soccValidMoves(x, y);
+        if (!validMoves.some(([mx,my]) => mx===tx && my===ty)) return;
+        soccer.edgeSet.add(key);
+        soccer.edges.push([x, y, tx, ty]);
+        soccer.ball = { x: tx, y: ty };
+        // Check goal
+        if (ty === 0 && tx >= 3 && tx <= 5) { soccer.status = 'won'; soccer.winner = 1; broadcast(soccerStateMsg()); return; }
+        if (ty === SOCC_H-1 && tx >= 3 && tx <= 5) { soccer.status = 'won'; soccer.winner = 0; broadcast(soccerStateMsg()); return; }
+        // Bounce: if landing node already has edges, same player moves again
+        const deg = soccNodeDegree(tx, ty);
+        if (deg > 1) {
+          // same turn — but check if any valid moves remain
+          const remaining = soccValidMoves(tx, ty);
+          if (!remaining.length) { soccer.status = 'won'; soccer.winner = soccer.turn === 0 ? 1 : 0; }
+          // else same turn continues
+        } else {
+          soccer.turn = soccer.turn === 0 ? 1 : 0;
+        }
+        broadcast(soccerStateMsg());
+      }
+      if (data.game === 'soccer' && data.type === 'reset') {
+        const seat = soccSeats.has(ws) ? soccSeats.get(ws) : -1;
+        if (seat < 0) return;
+        soccer = freshSoccer();
+        broadcast(soccerStateMsg());
+      }
+
     } catch (e) {}
   });
 
@@ -1048,6 +1776,14 @@ wss.on('connection', (ws) => {
     if (cid) galleryScores.delete(cid);
     const mid = metronomeClientIds.get(ws);
     if (mid) { metronomes.delete(mid); broadcast({ game: 'metro', type: 'list', metronomes: metronomeList() }); }
+    // Race seat cleanup
+    if (race._s0 === ws) { race._s0 = null; race.seatCount = Math.max(0, race.seatCount-1); if (race.status==='playing') race.status='waiting'; broadcast(raceStateMsg()); }
+    if (race._s1 === ws) { race._s1 = null; race.seatCount = Math.max(0, race.seatCount-1); if (race.status==='playing') race.status='waiting'; broadcast(raceStateMsg()); }
+    // Soccer seat cleanup
+    if (soccer._s0 === ws) { soccer._s0 = null; soccer.seatCount = Math.max(0, soccer.seatCount-1); if (soccer.status==='playing') soccer.status='waiting'; broadcast(soccerStateMsg()); }
+    if (soccer._s1 === ws) { soccer._s1 = null; soccer.seatCount = Math.max(0, soccer.seatCount-1); if (soccer.status==='playing') soccer.status='waiting'; broadcast(soccerStateMsg()); }
+    // Presence cleanup
+    if (presenceMap.has(ws)) { presenceMap.delete(ws); broadcastPresence(); }
     console.log(`Player disconnected. Total: ${wss.clients.size}`);
   });
 });
