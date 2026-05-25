@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>00157 — Fibonacci</title>
+<link rel="icon" href="data:,">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #050508; color: #8a9aaa;
+    font-family: 'Courier New', monospace;
+    min-height: 100vh; display: flex; flex-direction: column;
+    align-items: center; gap: 14px;
+    padding: 30px 20px 50px;
+  }
+  .room-id { font-size: 10px; letter-spacing: 5px; color: #223; }
+  .title { font-size: 11px; letter-spacing: 5px; color: #445; text-transform: uppercase; }
+  #fib-canvas { display: block; border: 1px solid #0f0f1e; }
+  .tabs { display: flex; gap: 0; }
+  .tab {
+    background: #040408; border: 1px solid #0f0f18; color: #334;
+    font-family: 'Courier New', monospace; font-size: 9px;
+    letter-spacing: 2px; padding: 7px 16px; cursor: pointer;
+  }
+  .tab:first-child { border-right: none; }
+  .tab.active { background: #060610; border-color: #1a1a28; color: #6a8a9a; }
+  #sequence-list {
+    max-height: 200px; overflow-y: auto; width: 100%; max-width: 520px;
+    background: #030306; border: 1px solid #0f0f18;
+    padding: 10px 14px; display: flex; flex-wrap: wrap; gap: 4px;
+  }
+  .fib-num {
+    font-size: 10px; letter-spacing: 1px; color: #2a3a4a;
+    padding: 2px 6px; border: 1px solid #0a0a14;
+    transition: color 0.3s;
+  }
+  .fib-num.current { color: #e94560; border-color: #3a0a14; }
+  .fib-num.recent { color: #4a6a8a; border-color: #1a2a3a; }
+  .ratio-display { font-size: 11px; letter-spacing: 2px; color: #334; text-align: center; }
+  .ratio-display span { color: #7a9acc; }
+  .note { font-size: 10px; letter-spacing: 1px; color: #223; text-align: center; line-height: 2.2; max-width: 360px; border-top: 1px solid #111120; padding-top: 12px; }
+</style>
+</head>
+<body data-game="00157" data-nav="matrix">
+<div class="room-id">ROOM 00157</div>
+<div class="title">Fibonacci</div>
+
+<div class="tabs">
+  <button class="tab active" data-view="spiral">SPIRAL</button>
+  <button class="tab" data-view="bars">SEQUENCE</button>
+  <button class="tab" data-view="ratio">RATIO</button>
+</div>
+
+<canvas id="fib-canvas" width="520" height="340"></canvas>
+
+<div class="ratio-display">F(n+1)/F(n) → <span id="phi-display">—</span> &nbsp; φ = 1.6180339887…</div>
+
+<div id="sequence-list"></div>
+
+<div class="note">
+  Each number is the sum of the two before it.<br>
+  The ratio of consecutive terms converges to φ.<br>
+  φ = (1 + √5) / 2<br>
+  The spiral appears in shells, galaxies, and broccoli.
+</div>
+
+<script src="/shared/matrix-nav.js"></script>
+<script>
+const canvas = document.getElementById('fib-canvas');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+
+// Generate Fibonacci numbers
+const FIB = [0n, 1n];
+while (FIB[FIB.length - 1] < 10n ** 60n) {
+  FIB.push(FIB[FIB.length - 1] + FIB[FIB.length - 2]);
+}
+
+let currentView = 'spiral';
+let frame = 0;
+let animIdx = 2; // index in FIB being animated
+let animTimer = null;
+
+// ── Views ─────────────────────────────────────────────────────────────────────
+
+function drawSpiral() {
+  ctx.fillStyle = '#020205';
+  ctx.fillRect(0, 0, W, H);
+
+  // Draw Fibonacci rectangles spiraling out from center
+  // We'll show the first ~12 squares arranged in the classic tiling
+  const seqNums = [1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144];
+  const SCALE = 2.0;
+
+  // Layout: start center, spiral outward
+  // Classic layout positions for Fibonacci tiling
+  const cx = W / 2 - 10, cy = H / 2 + 10;
+
+  const colors = [
+    'rgba(233,69,96,0.12)', 'rgba(100,150,220,0.1)', 'rgba(80,180,120,0.08)',
+    'rgba(220,180,60,0.1)', 'rgba(180,80,180,0.08)', 'rgba(60,180,200,0.1)',
+    'rgba(233,69,96,0.08)', 'rgba(100,150,220,0.07)', 'rgba(80,180,120,0.06)',
+    'rgba(220,180,60,0.07)', 'rgba(180,80,180,0.06)', 'rgba(60,180,200,0.05)',
+  ];
+
+  // Compute bounding box for spiral tiles using the standard Fibonacci rectangle layout
+  // Directions: right, up, left, down cycling
+  let x = cx, y = cy;
+  const dirs = [[1,0],[0,-1],[-1,0],[0,1]]; // right, up, left, down
+  const rects = [];
+
+  let cur = { x: cx, y: cy, w: SCALE, h: SCALE };
+  rects.push({ ...cur });
+
+  for (let i = 1; i < seqNums.length; i++) {
+    const prev = rects[i - 1];
+    const size = seqNums[i] * SCALE;
+    const dir = dirs[i % 4];
+    let nx = prev.x, ny = prev.y, nw = size, nh = size;
+
+    if (dir[0] === 1) { // right
+      nx = prev.x + prev.w;
+      ny = prev.y + prev.h - size;
+    } else if (dir[1] === -1) { // up
+      ny = prev.y - size;
+      nx = prev.x + prev.w - size;
+    } else if (dir[0] === -1) { // left
+      nx = prev.x - size;
+      ny = prev.y;
+    } else { // down
+      ny = prev.y + prev.h;
+      nx = prev.x;
+    }
+    rects.push({ x: nx, y: ny, w: nw, h: nh });
+    cur = { x: nx, y: ny, w: size, h: size };
+  }
+
+  // Center the whole thing
+  const minX = Math.min(...rects.map(r => r.x));
+  const maxX = Math.max(...rects.map(r => r.x + r.w));
+  const minY = Math.min(...rects.map(r => r.y));
+  const maxY = Math.max(...rects.map(r => r.y + r.h));
+  const offX = (W - (maxX - minX)) / 2 - minX;
+  const offY = (H - (maxY - minY)) / 2 - minY;
+
+  // Draw rectangles and the golden spiral arc inside each
+  rects.forEach((r, i) => {
+    const rx = r.x + offX, ry = r.y + offY;
+    const sz = r.w;
+
+    // Fill
+    ctx.fillStyle = colors[i % colors.length];
+    ctx.fillRect(rx, ry, sz, sz);
+
+    // Border
+    ctx.strokeStyle = `rgba(40,60,100,${0.3 + i * 0.02})`;
+    ctx.lineWidth = 0.8;
+    ctx.strokeRect(rx, ry, sz, sz);
+
+    // Fibonacci number label
+    if (sz > 14) {
+      ctx.fillStyle = `rgba(100,140,180,${Math.min(1, sz / 60)})`;
+      ctx.font = `${Math.min(10, sz * 0.2)}px monospace`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(seqNums[i], rx + sz / 2, ry + sz / 2);
+    }
+
+    // Spiral arc
+    const dirs2 = [[0,1],[1,0],[0,-1],[-1,0]]; // arc rotation
+    const d = dirs2[i % 4];
+    const arcX = d[0] >= 0 ? rx : rx + sz;
+    const arcY = d[1] >= 0 ? ry : ry + sz;
+    const startAngle = [-Math.PI/2, Math.PI, Math.PI/2, 0][i % 4];
+    ctx.beginPath();
+    ctx.arc(arcX, arcY, sz, startAngle, startAngle + Math.PI / 2);
+    ctx.strokeStyle = `rgba(233,120,80,${0.4 + i * 0.01})`;
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+  });
+}
+
+function drawBars() {
+  ctx.fillStyle = '#020205';
+  ctx.fillRect(0, 0, W, H);
+
+  const display = FIB.slice(1, 18); // F(1)..F(17)
+  const maxVal = Number(display[display.length - 1]);
+  const barW = Math.floor((W - 40) / display.length);
+  const maxH = H - 60;
+
+  display.forEach((n, i) => {
+    const h = Math.max(2, (Number(n) / maxVal) * maxH);
+    const x = 20 + i * barW;
+    const y = H - 30 - h;
+
+    const alpha = 0.2 + (i / display.length) * 0.6;
+    ctx.fillStyle = i === display.length - 1 && frame % 60 < 30
+      ? `rgba(233,69,96,${alpha})`
+      : `rgba(80,120,180,${alpha})`;
+    ctx.fillRect(x + 2, y, barW - 4, h);
+
+    // Label
+    if (barW > 20) {
+      ctx.fillStyle = 'rgba(60,90,120,0.8)';
+      ctx.font = '7px monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'alphabetic';
+      ctx.fillText(i + 1, x + barW / 2, H - 14);
+    }
+  });
+
+  ctx.fillStyle = '#1a2a3a';
+  ctx.font = '8px monospace';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillText('F(n)', 4, 14);
+}
+
+function drawRatioConvergence() {
+  ctx.fillStyle = '#020205';
+  ctx.fillRect(0, 0, W, H);
+
+  const PHI = (1 + Math.sqrt(5)) / 2;
+  const ratios = [];
+  for (let i = 2; i < Math.min(25, FIB.length); i++) {
+    ratios.push(Number(FIB[i]) / Number(FIB[i - 1]));
+  }
+
+  const px = 40, py = 20, pw = W - 60, ph = H - 60;
+  const minR = 1.0, maxR = 2.0;
+
+  // Axes
+  ctx.strokeStyle = '#1a2030';
+  ctx.lineWidth = 0.5;
+  ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px, py + ph); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(px, py + ph); ctx.lineTo(px + pw, py + ph); ctx.stroke();
+
+  // φ reference line
+  const phiY = py + ph - ((PHI - minR) / (maxR - minR)) * ph;
+  ctx.setLineDash([4, 4]);
+  ctx.strokeStyle = 'rgba(233,69,96,0.4)';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(px, phiY); ctx.lineTo(px + pw, phiY); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // φ label
+  ctx.fillStyle = 'rgba(233,69,96,0.6)';
+  ctx.font = '8px monospace';
+  ctx.textAlign = 'left';
+  ctx.fillText('φ = 1.618…', px + 4, phiY - 4);
+
+  // Plot ratio line
+  ctx.beginPath();
+  ratios.forEach((r, i) => {
+    const x = px + (i / (ratios.length - 1)) * pw;
+    const y = py + ph - ((r - minR) / (maxR - minR)) * ph;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.strokeStyle = 'rgba(80,130,200,0.7)';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // Points
+  ratios.forEach((r, i) => {
+    const x = px + (i / (ratios.length - 1)) * pw;
+    const y = py + ph - ((r - minR) / (maxR - minR)) * ph;
+    ctx.beginPath();
+    ctx.arc(x, y, 2.5, 0, Math.PI * 2);
+    ctx.fillStyle = i === ratios.length - 1 ? 'rgba(233,69,96,0.8)' : 'rgba(80,130,200,0.6)';
+    ctx.fill();
+  });
+
+  // Axis labels
+  ctx.fillStyle = '#1a2a3a';
+  ctx.font = '8px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('n (term index)', px + pw / 2, py + ph + 16);
+  ctx.textAlign = 'left';
+  ctx.fillText('2.0', 4, py + 4);
+  ctx.fillText('1.0', 4, py + ph + 4);
+
+  // Current ratio display
+  const lastRatio = ratios[ratios.length - 1];
+  document.getElementById('phi-display').textContent = lastRatio.toFixed(10);
+}
+
+// ── Sequence list ─────────────────────────────────────────────────────────────
+function updateSequenceList() {
+  const el = document.getElementById('sequence-list');
+  const SHOW = Math.min(40, FIB.length);
+  el.innerHTML = FIB.slice(0, SHOW).map((n, i) => {
+    const cls = i === animIdx - 1 ? 'fib-num current' : i >= animIdx - 3 ? 'fib-num recent' : 'fib-num';
+    const label = n > 10n ** 15n ? n.toString().slice(0, 8) + '…' : n.toString();
+    return `<span class="${cls}" title="F(${i}) = ${n}">${label}</span>`;
+  }).join('');
+}
+
+function animate() {
+  if (animIdx < 30) animIdx++;
+  updateSequenceList();
+  const r1 = Number(FIB[animIdx]) / Number(FIB[animIdx - 1]);
+  document.getElementById('phi-display').textContent = r1.toFixed(10);
+}
+
+// ── Tab switching ─────────────────────────────────────────────────────────────
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    currentView = tab.dataset.view;
+  });
+});
+
+// ── Main loop ─────────────────────────────────────────────────────────────────
+function render() {
+  if (currentView === 'spiral') drawSpiral();
+  else if (currentView === 'bars') drawBars();
+  else drawRatioConvergence();
+  frame++;
+}
+
+updateSequenceList();
+setInterval(render, 50);
+setInterval(animate, 600);
+</script>
+</body>
+</html>

@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>00160 — The Audit</title>
+<link rel="icon" href="data:,">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #050508; color: #8a9aaa;
+    font-family: 'Courier New', monospace;
+    min-height: 100vh; display: flex; flex-direction: column;
+    align-items: center; gap: 14px;
+    padding: 30px 20px 50px;
+  }
+  .room-id { font-size: 10px; letter-spacing: 5px; color: #223; }
+  .title { font-size: 11px; letter-spacing: 5px; color: #445; text-transform: uppercase; }
+  .subtitle { font-size: 9px; letter-spacing: 3px; color: #223; }
+
+  .summary-row { display: flex; gap: 24px; flex-wrap: wrap; justify-content: center; }
+  .sum-item { font-size: 9px; letter-spacing: 2px; color: #223; text-align: center; }
+  .sum-item span { display: block; font-size: 18px; letter-spacing: 2px; color: #3a5a7a; margin-top: 4px; }
+
+  #audit-table-wrap {
+    width: 100%; max-width: 560px; max-height: 380px; overflow-y: auto;
+    border: 1px solid #0f0f1e; background: #030306;
+  }
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    position: sticky; top: 0;
+    background: #040408; font-size: 8px; letter-spacing: 3px; color: #1a2030;
+    padding: 8px 10px; text-align: left; border-bottom: 1px solid #0f0f1a;
+    cursor: pointer; user-select: none;
+  }
+  th:hover { color: #2a3a4a; }
+  th.sorted { color: #3a5a7a; }
+  td {
+    font-size: 9px; letter-spacing: 1px; color: #2a3a4a;
+    padding: 5px 10px; border-bottom: 1px solid #06060e;
+  }
+  tr:hover td { background: #050510; }
+  tr.you td { color: #3a6a4a; }
+  tr.you td:first-child::after { content: ' ◄'; color: #2a5a2a; }
+  .bar-cell { padding: 5px 10px; }
+  .bar { height: 6px; background: #1a2a3a; border-radius: 1px; min-width: 2px; }
+  .live-dot {
+    width: 6px; height: 6px; border-radius: 50%; background: #e94560;
+    display: inline-block; animation: blink 1s step-end infinite;
+  }
+  @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.2; } }
+
+  #search {
+    background: #030306; border: 1px solid #0f0f18; color: #4a6a7a;
+    font-family: 'Courier New', monospace; font-size: 9px;
+    letter-spacing: 2px; padding: 7px 12px; outline: none;
+    width: 100%; max-width: 560px;
+  }
+  #search::placeholder { color: #1a1a28; }
+
+  .note { font-size: 10px; letter-spacing: 1px; color: #223; text-align: center; line-height: 2.2; max-width: 380px; border-top: 1px solid #111120; padding-top: 12px; }
+</style>
+</head>
+<body data-game="00160" data-nav="matrix">
+<div class="room-id">ROOM 00160</div>
+<div class="title">The Audit</div>
+<div class="subtitle">facility room registry — live occupancy</div>
+
+<div class="summary-row">
+  <div class="sum-item">TOTAL ROOMS<span id="total-rooms">—</span></div>
+  <div class="sum-item">ACTIVE NOW<span id="active-now">—</span></div>
+  <div class="sum-item">MOST OCCUPIED<span id="most-occ">—</span></div>
+</div>
+
+<input type="text" id="search" placeholder="search room number..." />
+
+<div id="audit-table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th data-col="id">ROOM</th>
+        <th data-col="occ">OCCUPANCY</th>
+        <th data-col="bar" style="width:120px">RELATIVE</th>
+        <th data-col="id2">STATUS</th>
+      </tr>
+    </thead>
+    <tbody id="table-body">
+      <tr><td colspan="4" style="color:#1a1a28;padding:20px;text-align:center">Loading...</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="note">
+  Every room.<br>
+  Current occupancy shown live.<br>
+  Data refreshes automatically.<br>
+  This room is also in the table.
+</div>
+
+<script src="/shared/matrix-nav.js"></script>
+<script>
+let rooms = [];
+let presence = {};
+let searchTerm = '';
+
+function buildTable() {
+  const tbody = document.getElementById('table-body');
+  const maxOcc = Math.max(1, ...Object.values(presence));
+  document.getElementById('total-rooms').textContent = rooms.length;
+  const active = Object.values(presence).reduce((a, b) => a + b, 0);
+  document.getElementById('active-now').textContent = active || '0';
+  const topRoom = Object.entries(presence).sort((a,b) => b[1]-a[1])[0];
+  document.getElementById('most-occ').textContent = topRoom ? `${topRoom[0]} (${topRoom[1]})` : '—';
+
+  const filtered = rooms.filter(r =>
+    !searchTerm || r.includes(searchTerm.replace(/\D/g, '').padStart(5, '0')) ||
+    r.startsWith(searchTerm.replace(/\D/g, '').slice(0, 5))
+  );
+
+  tbody.innerHTML = filtered.map(id => {
+    const occ = presence[id] || 0;
+    const isHere = id === '00160';
+    const barW = Math.max(2, Math.round((occ / maxOcc) * 100));
+    const status = occ > 0
+      ? `<span class="live-dot"></span> ${occ}`
+      : '<span style="color:#0f0f18">—</span>';
+    return `<tr class="${isHere ? 'you' : ''}">
+      <td>${id}</td>
+      <td>${occ > 0 ? occ : '0'}</td>
+      <td class="bar-cell"><div class="bar" style="width:${barW}px;${occ>0?'background:#1a3a5a':''}"></div></td>
+      <td>${status}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="4" style="color:#1a1a28;padding:14px;text-align:center">No rooms match.</td></tr>';
+}
+
+document.getElementById('search').addEventListener('input', e => {
+  searchTerm = e.target.value.trim();
+  buildTable();
+});
+
+fetch('/api/games')
+  .then(r => r.json())
+  .then(gs => { rooms = gs; buildTable(); })
+  .catch(() => {});
+
+fetch('/api/presence')
+  .then(r => r.json())
+  .then(d => { presence = d.rooms || {}; buildTable(); })
+  .catch(() => {});
+
+function connect() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  const ws = new WebSocket(`${proto}://${location.host}`);
+  ws.onmessage = e => {
+    try {
+      const msg = JSON.parse(e.data);
+      if (msg.game === 'presence' && msg.type === 'update') {
+        presence = msg.rooms || {};
+        buildTable();
+      }
+    } catch {}
+  };
+  ws.onclose = () => setTimeout(connect, 3000);
+}
+connect();
+</script>
+</body>
+</html>
