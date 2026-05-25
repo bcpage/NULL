@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>00122 — MS-DOS Help</title>
+<link rel="icon" href="data:,">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #000080;
+    color: #ffffff;
+    font-family: 'Courier New', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    font-size: 14px;
+    line-height: 1.4;
+  }
+  #topbar {
+    background: #c0c0c0;
+    color: #000000;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 2px 8px;
+    font-size: 13px;
+    border-bottom: 2px solid #808080;
+  }
+  #topbar .menu-items {
+    display: flex;
+    gap: 20px;
+  }
+  #topbar .menu-item {
+    cursor: pointer;
+    padding: 1px 4px;
+  }
+  #topbar .menu-item:hover, #topbar .menu-item.active {
+    background: #000080;
+    color: #ffffff;
+  }
+  #topbar .menu-item span.hotkey {
+    text-decoration: underline;
+  }
+  #statusbar {
+    background: #c0c0c0;
+    color: #000000;
+    padding: 2px 8px;
+    font-size: 12px;
+    display: flex;
+    justify-content: space-between;
+    border-top: 2px solid #808080;
+  }
+  #main {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+  }
+  #sidebar {
+    width: 200px;
+    background: #00a;
+    border-right: 1px solid #336;
+    overflow-y: auto;
+    padding: 4px 0;
+  }
+  #sidebar .topic {
+    padding: 3px 12px;
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 13px;
+  }
+  #sidebar .topic:hover { background: #00c; }
+  #sidebar .topic.selected { background: #ffffff; color: #000080; }
+  #sidebar .section-head {
+    padding: 6px 8px 2px;
+    color: #88aaff;
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    border-top: 1px solid #224;
+    margin-top: 4px;
+  }
+  #sidebar .section-head:first-child { border-top: none; margin-top: 0; }
+  #content {
+    flex: 1;
+    padding: 16px 24px;
+    overflow-y: auto;
+    background: #0000aa;
+  }
+  #content h1 {
+    color: #ffff00;
+    font-size: 14px;
+    letter-spacing: 2px;
+    margin-bottom: 12px;
+    border-bottom: 1px solid #446;
+    padding-bottom: 4px;
+  }
+  #content h2 {
+    color: #ffffff;
+    font-size: 13px;
+    margin: 16px 0 6px;
+  }
+  #content p {
+    color: #aaccff;
+    margin-bottom: 8px;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  #content .syntax {
+    background: #000066;
+    border: 1px solid #336;
+    padding: 8px 12px;
+    margin: 8px 0;
+    color: #ffffff;
+    font-size: 13px;
+  }
+  #content .syntax .cmd { color: #ffff00; }
+  #content .syntax .param { color: #aaffaa; }
+  #content .note {
+    color: #ffaa00;
+    font-size: 12px;
+    border-left: 2px solid #664400;
+    padding-left: 8px;
+    margin: 8px 0;
+  }
+  #content .see-also {
+    margin-top: 20px;
+    padding-top: 8px;
+    border-top: 1px solid #336;
+    color: #8888cc;
+    font-size: 12px;
+  }
+  #content .see-also a {
+    color: #aaaaff;
+    cursor: pointer;
+    text-decoration: none;
+  }
+  #content .see-also a:hover { text-decoration: underline; }
+  #content .error-msg {
+    color: #ff6666;
+    font-size: 13px;
+  }
+  #content .dimmed { color: #556; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 12px; background: #000055; }
+  ::-webkit-scrollbar-thumb { background: #aaaaaa; border: 2px solid #000055; }
+</style>
+</head>
+<body data-game="00122" data-nav="matrix">
+
+<div id="topbar">
+  <div class="menu-items">
+    <div class="menu-item active"><span class="hotkey">F</span>ile</div>
+    <div class="menu-item"><span class="hotkey">S</span>earch</div>
+    <div class="menu-item"><span class="hotkey">H</span>elp</div>
+  </div>
+  <div>MS-DOS Help — Version 6.22</div>
+  <div>F1=Help  F3=Quit</div>
+</div>
+
+<div id="main">
+  <div id="sidebar">
+    <div class="section-head">Contents</div>
+    <div class="topic selected" data-topic="index">Help Index</div>
+    <div class="section-head">Commands</div>
+    <div class="topic" data-topic="dir">DIR</div>
+    <div class="topic" data-topic="cd">CD / CHDIR</div>
+    <div class="topic" data-topic="copy">COPY</div>
+    <div class="topic" data-topic="del">DEL / ERASE</div>
+    <div class="topic" data-topic="format">FORMAT</div>
+    <div class="topic" data-topic="mem">MEM</div>
+    <div class="topic" data-topic="path">PATH</div>
+    <div class="topic" data-topic="null">NULL</div>
+    <div class="section-head">System</div>
+    <div class="topic" data-topic="config">CONFIG.SYS</div>
+    <div class="topic" data-topic="autoexec">AUTOEXEC.BAT</div>
+    <div class="topic" data-topic="himem">HIMEM.SYS</div>
+    <div class="section-head">Troubleshooting</div>
+    <div class="topic" data-topic="badcommand">Bad Command</div>
+    <div class="topic" data-topic="insufficient">Insuff. Memory</div>
+    <div class="topic" data-topic="notfound">File Not Found</div>
+    <div class="topic" data-topic="lost">Lost Sectors</div>
+  </div>
+
+  <div id="content">
+    <!-- Content injected by JS -->
+  </div>
+</div>
+
+<div id="statusbar">
+  <span id="status-left">Use arrow keys or click to navigate</span>
+  <span id="status-right">00122</span>
+</div>
+
+<script>
+const topics = {
+  index: {
+    title: 'MS-DOS HELP INDEX',
+    html: `
+      <p>Welcome to MS-DOS Help. This program provides information about MS-DOS commands and concepts.</p>
+      <p>Select a topic from the left panel, or type a command name.</p>
+      <h2>About This Version</h2>
+      <p>MS-DOS Version: <strong style="color:#fff">6.22</strong><br>
+      Help System: <strong style="color:#fff">2.04</strong><br>
+      Memory: <strong style="color:#ff6666">Insufficient</strong></p>
+      <div class="note">NOTE: Some help pages in this facility have been corrupted or are no longer accurate. Verify all information before use.</div>
+      <h2>Quick Reference</h2>
+      <p>Common operations and their commands:</p>
+      <div class="syntax">
+        <span class="cmd">DIR</span>           List files in a directory<br>
+        <span class="cmd">CD</span>            Change current directory<br>
+        <span class="cmd">COPY</span>          Copy files<br>
+        <span class="cmd">FORMAT</span>        Format a disk<br>
+        <span class="cmd">MEM</span>           Display memory usage<br>
+        <span class="cmd">NULL</span>          Reserved device name
+      </div>
+      <div class="see-also">See also: <a data-topic="null">NULL</a> &nbsp;|&nbsp; <a data-topic="lost">Lost Sectors</a></div>
+    `
+  },
+  dir: {
+    title: 'DIR',
+    html: `
+      <p>Displays a list of files and subdirectories in a directory.</p>
+      <h2>Syntax</h2>
+      <div class="syntax">
+        <span class="cmd">DIR</span> <span class="param">[drive:][path][filename] [/P] [/W] [/A[:attribs]] [/O[:sortorder]] [/S] [/B] [/L]</span>
+      </div>
+      <h2>Parameters</h2>
+      <p><strong style="color:#fff">/P</strong> &nbsp; Pauses after each full screen of information.</p>
+      <p><strong style="color:#fff">/W</strong> &nbsp; Uses wide list format.</p>
+      <p><strong style="color:#fff">/S</strong> &nbsp; Displays files in the current directory and all subdirectories.</p>
+      <p><strong style="color:#fff">/B</strong> &nbsp; Uses bare format (no heading information or summary).</p>
+      <h2>Example</h2>
+      <div class="syntax">C:\NULL&gt; <span class="cmd">DIR</span> /W<br><br>
+ Volume in drive C is NULL<br>
+ Volume Serial Number is 0000-0000<br><br>
+ Directory of C:\NULL<br><br>
+[.]        [..]       SYSTEM     GAMES      DATA<br>
+AUTOEXEC   CONFIG     HIMEM      <span class="dimmed">????????</span><br>
+        8 file(s)         0 bytes<br>
+        <span class="error-msg">??? Dir(s)  UNKNOWN bytes free</span></div>
+      <div class="note">NOTE: The NULL volume reports inconsistent free space. This is expected behavior.</div>
+      <div class="see-also">See also: <a data-topic="cd">CD</a> &nbsp;|&nbsp; <a data-topic="path">PATH</a></div>
+    `
+  },
+  cd: {
+    title: 'CD / CHDIR',
+    html: `
+      <p>Displays the name of or changes the current directory.</p>
+      <h2>Syntax</h2>
+      <div class="syntax">
+        <span class="cmd">CHDIR</span> <span class="param">[drive:][path]</span><br>
+        <span class="cmd">CHDIR</span> <span class="param">[..]</span><br>
+        <span class="cmd">CD</span> <span class="param">[drive:][path]</span><br>
+        <span class="cmd">CD</span> <span class="param">[..]</span>
+      </div>
+      <h2>Notes</h2>
+      <p>Type <span class="cmd">CD</span> alone to display the current drive and directory.</p>
+      <p>Use <span class="cmd">CD ..</span> to move to the parent directory.</p>
+      <h2>Example</h2>
+      <div class="syntax">C:\&gt; <span class="cmd">CD</span> NULL<br>
+C:\NULL&gt; <span class="cmd">CD</span> ..<br>
+C:\&gt; <span class="cmd">CD</span> NULL\GAMES<br>
+C:\NULL\GAMES&gt; <span class="cmd">CD</span> ..<br>
+C:\NULL&gt; <span class="cmd">CD</span> ..<br>
+C:\&gt; <span class="cmd">CD</span> ..<br>
+C:\&gt; <span class="error-msg">Already at root. Cannot go further.</span></div>
+      <div class="note">WARNING: Some directories in this system have no parent. Attempting to navigate above root may cause unexpected behavior.</div>
+      <div class="see-also">See also: <a data-topic="dir">DIR</a> &nbsp;|&nbsp; <a data-topic="path">PATH</a></div>
+    `
+  },
+  copy: {
+    title: 'COPY',
+    html: `
+      <p>Copies one or more files to another location.</p>
+      <h2>Syntax</h2>
+      <div class="syntax">
+        <span class="cmd">COPY</span> <span class="param">[/A|/B] source [/A|/B] [+source [/A|/B] [...]] [destination [/A|/B]] [/V] [/Y|/-Y]</span>
+      </div>
+      <h2>Parameters</h2>
+      <p><strong style="color:#fff">/V</strong> &nbsp; Verifies that the new files are written correctly.</p>
+      <p><strong style="color:#fff">/Y</strong> &nbsp; Suppresses prompting when overwriting destination files.</p>
+      <p><strong style="color:#fff">/A</strong> &nbsp; Indicates an ASCII text file.</p>
+      <p><strong style="color:#fff">/B</strong> &nbsp; Indicates a binary file.</p>
+      <h2>Example</h2>
+      <div class="syntax">C:\NULL&gt; <span class="cmd">COPY</span> REPORT.TXT A:\BACKUP.TXT<br>
+        1 file(s) copied.<br><br>
+C:\NULL&gt; <span class="cmd">COPY</span> *.* NUL<br>
+<span class="error-msg">        0 file(s) copied.</span><br>
+<span class="dimmed">All data directed to NUL device. Nothing was retained.</span></div>
+      <div class="note">NOTE: Copying to NUL discards all data silently. There is no confirmation.</div>
+      <div class="see-also">See also: <a data-topic="del">DEL</a> &nbsp;|&nbsp; <a data-topic="null">NULL</a></div>
+    `
+  },
+  del: {
+    title: 'DEL / ERASE',
+    html: `
+      <p>Deletes one or more files.</p>
+      <h2>Syntax</h2>
+      <div class="syntax">
+        <span class="cmd">DEL</span> <span class="param">[drive:][path]filename [...] [/P]</span><br>
+        <span class="cmd">ERASE</span> <span class="param">[drive:][path]filename [...] [/P]</span>
+      </div>
+      <h2>Parameters</h2>
+      <p><strong style="color:#fff">/P</strong> &nbsp; Prompts you for confirmation before deleting each file.</p>
+      <h2>Notes</h2>
+      <p>DEL and ERASE are identical commands.</p>
+      <p>Use wildcards carefully. <span class="cmd">DEL *.*</span> deletes all files in the current directory.</p>
+      <h2>Example</h2>
+      <div class="syntax">C:\NULL&gt; <span class="cmd">DEL</span> /P *.TMP<br>
+C:\NULL\SESSION.TMP, Delete (Y/N)? Y<br>
+C:\NULL\MEMORY.TMP, Delete (Y/N)? Y<br>
+C:\NULL\IDENTITY.TMP, Delete (Y/N)? <span class="error-msg">File in use by system.</span><br><br>
+<span class="dimmed">2 file(s) deleted. 1 file(s) could not be deleted.</span></div>
+      <div class="note">WARNING: Some files marked as system files cannot be deleted. This is by design.</div>
+      <div class="see-also">See also: <a data-topic="copy">COPY</a> &nbsp;|&nbsp; <a data-topic="format">FORMAT</a></div>
+    `
+  },
+  format: {
+    title: 'FORMAT',
+    html: `
+      <p>Formats a disk for use with MS-DOS.</p>
+      <h2>Syntax</h2>
+      <div class="syntax">
+        <span class="cmd">FORMAT</span> <span class="param">drive: [/V[:label]] [/Q] [/U] [/F:size] [/S]</span>
+      </div>
+      <h2>Parameters</h2>
+      <p><strong style="color:#fff">/Q</strong> &nbsp; Performs a quick format (does not scan for bad sectors).</p>
+      <p><strong style="color:#fff">/U</strong> &nbsp; Specifies an unconditional format.</p>
+      <p><strong style="color:#fff">/S</strong> &nbsp; Copies system files after formatting.</p>
+      <h2>Example</h2>
+      <div class="syntax">C:\&gt; <span class="cmd">FORMAT</span> C:<br><br>
+WARNING, ALL DATA ON NON-REMOVABLE DISK<br>
+DRIVE C: WILL BE LOST!<br>
+Proceed with Format (Y/N)? Y<br><br>
+<span class="dimmed">Formatting 2,147,483,647K</span><br>
+<span class="dimmed">...please wait...</span><br><br>
+<span class="error-msg">Format incomplete. Volume cannot be formatted.</span><br>
+<span class="error-msg">This drive is not a drive.</span></div>
+      <div class="note">NOTE: Drive C: in this facility refers to a volume of indeterminate size. Format operations on this volume have never completed successfully.</div>
+      <div class="see-also">See also: <a data-topic="lost">Lost Sectors</a> &nbsp;|&nbsp; <a data-topic="null">NULL</a></div>
+    `
+  },
+  mem: {
+    title: 'MEM',
+    html: `
+      <p>Displays the amount of used and free memory in your system.</p>
+      <h2>Syntax</h2>
+      <div class="syntax">
+        <span class="cmd">MEM</span> <span class="param">[/C | /F | /M modulename] [/P]</span>
+      </div>
+      <h2>Example</h2>
+      <div class="syntax">C:\NULL&gt; <span class="cmd">MEM</span><br><br>
+Memory Type          Total      Used      Free<br>
+────────────────────────────────────────────<br>
+Conventional         640K       <span class="error-msg">????K</span>     <span class="error-msg">????K</span><br>
+Upper                155K       155K      0K<br>
+Reserved             <span class="dimmed">[REDACTED]</span><br>
+Extended (XMS)       <span class="error-msg">OVERFLOW</span><br>
+────────────────────────────────────────────<br>
+Total memory         <span class="error-msg">UNDEFINED</span><br><br>
+Total under 1 MB     795K       <span class="error-msg">????K</span>     <span class="error-msg">????K</span></div>
+      <div class="note">WARNING: Memory usage cannot be accurately determined. Some memory in this system has been allocated to processes with no known origin.</div>
+      <div class="see-also">See also: <a data-topic="himem">HIMEM.SYS</a> &nbsp;|&nbsp; <a data-topic="insufficient">Insufficient Memory</a></div>
+    `
+  },
+  path: {
+    title: 'PATH',
+    html: `
+      <p>Displays or sets a search path for executable files.</p>
+      <h2>Syntax</h2>
+      <div class="syntax">
+        <span class="cmd">PATH</span> <span class="param">[[drive:]path[;...]]</span><br>
+        <span class="cmd">PATH</span> <span class="param">;</span>
+      </div>
+      <h2>Notes</h2>
+      <p>Type <span class="cmd">PATH</span> alone to display the current path.</p>
+      <p>Type <span class="cmd">PATH ;</span> to clear all search paths and force MS-DOS to search only the current directory.</p>
+      <h2>Example</h2>
+      <div class="syntax">C:\NULL&gt; <span class="cmd">PATH</span><br>
+PATH=C:\DOS;C:\NULL;C:\NULL\SYSTEM;C:\NULL\GAMES;<br>
+<span class="dimmed">... 4,891 more paths ...</span><br><br>
+C:\NULL&gt; <span class="cmd">PATH</span> ;<br>
+<span class="error-msg">Warning: Path cannot be cleared. Minimum path enforced.</span><br>
+PATH=C:\NULL</div>
+      <div class="note">NOTE: The NULL path cannot be removed from the search path. It is a required system path.</div>
+      <div class="see-also">See also: <a data-topic="autoexec">AUTOEXEC.BAT</a></div>
+    `
+  },
+  null: {
+    title: 'NULL',
+    html: `
+      <p>NULL is a reserved device name in MS-DOS.</p>
+      <h2>Description</h2>
+      <p>The NUL device is a virtual device that discards all data written to it and returns end-of-file when read from. It produces no output and consumes no storage.</p>
+      <h2>Usage</h2>
+      <div class="syntax">
+        <span class="cmd">COPY</span> source <span class="cmd">NUL</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="dimmed">Discard file (test if readable)</span><br>
+        <span class="cmd">DIR</span> &gt; <span class="cmd">NUL</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="dimmed">Suppress output</span><br>
+        <span class="cmd">PROGRAM</span> &gt; <span class="cmd">NUL</span> 2&gt;&amp;1 &nbsp;<span class="dimmed">Suppress all output</span>
+      </div>
+      <h2>Extended Notes</h2>
+      <p>In this facility, NULL refers to something beyond a device name. The full nature of NULL is not documented here.</p>
+      <p>Attempts to read from the NULL volume return data. This is not standard behavior. The data is not random.</p>
+      <div class="note">This help entry was last verified: <span class="error-msg">UNKNOWN DATE</span><br>
+      Status: <span class="error-msg">POSSIBLY OUTDATED</span></div>
+      <div class="see-also">See also: <a data-topic="lost">Lost Sectors</a> &nbsp;|&nbsp; <a data-topic="format">FORMAT</a> &nbsp;|&nbsp; <a data-topic="index">Help Index</a></div>
+    `
+  },
+  config: {
+    title: 'CONFIG.SYS',
+    html: `
+      <p>CONFIG.SYS is a text file that MS-DOS reads at startup to configure the operating environment.</p>
+      <h2>Common Directives</h2>
+      <div class="syntax">FILES=<span class="param">30</span><br>
+BUFFERS=<span class="param">20</span><br>
+DEVICE=<span class="param">C:\DOS\HIMEM.SYS</span><br>
+DEVICE=<span class="param">C:\DOS\EMM386.EXE NOEMS</span><br>
+DOS=<span class="param">HIGH,UMB</span><br>
+SHELL=<span class="param">C:\DOS\COMMAND.COM /E:1024 /P</span></div>
+      <h2>Current CONFIG.SYS</h2>
+      <div class="syntax">FILES=255<br>
+BUFFERS=<span class="error-msg">UNDEFINED</span><br>
+DEVICE=C:\NULL\SYSTEM\HIMEM.SYS<br>
+DEVICE=C:\NULL\SYSTEM\<span class="error-msg">????????.SYS</span><br>
+DOS=<span class="error-msg">NEITHER</span><br>
+SHELL=<span class="error-msg">[REDACTED]</span><br>
+STACKS=<span class="error-msg">0,0</span> &nbsp;<span class="dimmed">; No stack. Do not ask why.</span></div>
+      <div class="note">WARNING: Modifying CONFIG.SYS on this system may have no effect, or may change everything. Documentation is unavailable.</div>
+      <div class="see-also">See also: <a data-topic="autoexec">AUTOEXEC.BAT</a> &nbsp;|&nbsp; <a data-topic="himem">HIMEM.SYS</a></div>
+    `
+  },
+  autoexec: {
+    title: 'AUTOEXEC.BAT',
+    html: `
+      <p>AUTOEXEC.BAT is a batch file that MS-DOS runs automatically at startup after processing CONFIG.SYS.</p>
+      <h2>Common Contents</h2>
+      <div class="syntax"><span class="cmd">@ECHO OFF</span><br>
+<span class="cmd">PATH</span> C:\DOS;C:\WINDOWS;C:\UTILS<br>
+<span class="cmd">PROMPT</span> $P$G<br>
+<span class="cmd">SET</span> TEMP=C:\TEMP<br>
+<span class="cmd">LH</span> C:\DOS\DOSKEY</div>
+      <h2>Current AUTOEXEC.BAT</h2>
+      <div class="syntax"><span class="cmd">@ECHO OFF</span><br>
+<span class="cmd">ECHO</span> <span class="error-msg">.</span><br>
+<span class="cmd">PATH</span> C:\NULL;C:\NULL\SYSTEM<br>
+<span class="cmd">PROMPT</span> $P$G<br>
+<span class="cmd">SET</span> IDENTITY=<span class="error-msg">[NOT SET]</span><br>
+<span class="cmd">SET</span> EXIT=<span class="error-msg">[UNDEFINED]</span><br>
+<span class="cmd">REM</span> <span class="dimmed">The following line has been here since installation.</span><br>
+<span class="cmd">REM</span> <span class="dimmed">No one knows what it does. Do not remove it.</span><br>
+<span class="error-msg">NULLSYS /INIT /SILENT /FOREVER</span></div>
+      <div class="note">NOTE: NULLSYS.EXE is not a recognized MS-DOS command. It runs anyway.</div>
+      <div class="see-also">See also: <a data-topic="config">CONFIG.SYS</a></div>
+    `
+  },
+  himem: {
+    title: 'HIMEM.SYS',
+    html: `
+      <p>HIMEM.SYS is an extended memory manager that allows MS-DOS to access memory above 1 MB.</p>
+      <h2>Loading HIMEM.SYS</h2>
+      <div class="syntax">DEVICE=<span class="cmd">C:\DOS\HIMEM.SYS</span></div>
+      <p>Add this line to CONFIG.SYS before any other DEVICE statements that use extended memory.</p>
+      <h2>Status in This System</h2>
+      <div class="syntax">C:\NULL&gt; <span class="cmd">HIMEM</span> /STATUS<br><br>
+HIMEM.SYS — Status Report<br>
+Extended Memory Manager: <span class="error-msg">UNCERTAIN</span><br>
+A20 Line: <span class="error-msg">STATE UNKNOWN</span><br>
+XMS Version: 2.0<br>
+Driver Version: 3.09<br>
+Handles used: <span class="error-msg">OVERFLOW</span><br>
+Handles free: 0<br><br>
+<span class="dimmed">All extended memory handles have been allocated.</span><br>
+<span class="dimmed">Allocated by: NULLSYS (PID unknown)</span></div>
+      <div class="note">WARNING: HIMEM.SYS reports that all memory handles are consumed. This has been the case since at least startup. The cause is unknown.</div>
+      <div class="see-also">See also: <a data-topic="mem">MEM</a> &nbsp;|&nbsp; <a data-topic="insufficient">Insufficient Memory</a></div>
+    `
+  },
+  badcommand: {
+    title: 'Bad Command or File Name',
+    html: `
+      <h2>Error Message</h2>
+      <div class="syntax"><span class="error-msg">Bad command or file name</span></div>
+      <h2>Cause</h2>
+      <p>MS-DOS cannot find the command, program, or batch file you typed. This occurs when:</p>
+      <p>• The command is misspelled<br>
+      • The program is not in a directory on the current PATH<br>
+      • The file does not exist<br>
+      • The command is valid but has been removed from this version</p>
+      <h2>Resolution</h2>
+      <p>1. Check spelling<br>
+      2. Verify the file exists using DIR<br>
+      3. Ensure the directory is in your PATH<br>
+      4. Accept that some commands no longer exist here</p>
+      <div class="syntax">C:\NULL&gt; <span class="cmd">EXIT</span><br>
+<span class="error-msg">Bad command or file name</span><br><br>
+C:\NULL&gt; <span class="cmd">ESCAPE</span><br>
+<span class="error-msg">Bad command or file name</span><br><br>
+C:\NULL&gt; <span class="cmd">LEAVE</span><br>
+<span class="error-msg">Bad command or file name</span><br><br>
+C:\NULL&gt; <span class="dimmed">_</span></div>
+      <div class="see-also">See also: <a data-topic="path">PATH</a> &nbsp;|&nbsp; <a data-topic="notfound">File Not Found</a></div>
+    `
+  },
+  insufficient: {
+    title: 'Insufficient Memory',
+    html: `
+      <h2>Error Message</h2>
+      <div class="syntax"><span class="error-msg">Insufficient memory</span></div>
+      <h2>Cause</h2>
+      <p>There is not enough free conventional memory to run the program. Conventional memory is the first 640K of RAM.</p>
+      <h2>Resolution</h2>
+      <p>Standard resolutions include:</p>
+      <p>• Load HIMEM.SYS to enable extended memory<br>
+      • Use EMM386.EXE to load drivers into upper memory<br>
+      • Remove unnecessary TSR programs<br>
+      • Add more physical RAM</p>
+      <h2>Status in This Facility</h2>
+      <div class="syntax">Conventional Memory: 640K<br>
+Allocated to known processes: <span class="error-msg">640K</span><br>
+Available: <span class="error-msg">0K</span><br><br>
+<span class="dimmed">No memory has ever been free on this system.</span><br>
+<span class="dimmed">All standard resolutions have been attempted.</span><br>
+<span class="dimmed">Memory situation unchanged.</span></div>
+      <div class="note">NOTE: Adding physical RAM to this system has no effect on available memory. The cause of this behavior is not documented.</div>
+      <div class="see-also">See also: <a data-topic="mem">MEM</a> &nbsp;|&nbsp; <a data-topic="himem">HIMEM.SYS</a></div>
+    `
+  },
+  notfound: {
+    title: 'File Not Found',
+    html: `
+      <h2>Error Message</h2>
+      <div class="syntax"><span class="error-msg">File not found</span></div>
+      <h2>Cause</h2>
+      <p>MS-DOS cannot locate the specified file in the given directory.</p>
+      <h2>Resolution</h2>
+      <p>1. Verify the filename and path<br>
+      2. Use DIR to list available files<br>
+      3. Check if the file has been moved or deleted</p>
+      <h2>Common Occurrences in This Facility</h2>
+      <div class="syntax">C:\NULL&gt; <span class="cmd">TYPE</span> README.TXT<br>
+<span class="error-msg">File not found</span><br><br>
+C:\NULL&gt; <span class="cmd">TYPE</span> INSTRUCTIONS.TXT<br>
+<span class="error-msg">File not found</span><br><br>
+C:\NULL&gt; <span class="cmd">TYPE</span> HOWTO.TXT<br>
+<span class="error-msg">File not found</span><br><br>
+C:\NULL&gt; <span class="cmd">DIR</span> *.TXT<br>
+<span class="error-msg">File not found</span><br><br>
+C:\NULL&gt; <span class="dimmed">_</span></div>
+      <div class="note">All documentation files in this facility return "File not found." This help system is the only remaining documentation.</div>
+      <div class="see-also">See also: <a data-topic="dir">DIR</a> &nbsp;|&nbsp; <a data-topic="lost">Lost Sectors</a></div>
+    `
+  },
+  lost: {
+    title: 'Lost Sectors / Lost Clusters',
+    html: `
+      <h2>Description</h2>
+      <p>Lost clusters (also called lost sectors) are areas of a disk that are marked as "in use" in the File Allocation Table (FAT) but are not linked to any file or directory.</p>
+      <h2>Cause</h2>
+      <p>Lost clusters typically occur when a program terminates abnormally without properly closing its files, leaving allocated disk space orphaned.</p>
+      <h2>Recovery</h2>
+      <div class="syntax"><span class="cmd">CHKDSK</span> C: /F</div>
+      <p>Running CHKDSK with the /F switch will attempt to recover lost clusters as files named FILE0000.CHK, FILE0001.CHK, etc.</p>
+      <h2>Status in This Facility</h2>
+      <div class="syntax">C:\NULL&gt; <span class="cmd">CHKDSK</span> C: /F<br><br>
+Checking drive C: ...<br><br>
+<span class="error-msg">2,147,483,647 lost clusters found in 2,147,483,647 chains.</span><br>
+Convert lost chains to files (Y/N)? Y<br><br>
+<span class="dimmed">Writing FILE0000.CHK...</span><br>
+<span class="dimmed">Writing FILE0001.CHK...</span><br>
+<span class="dimmed">Writing FILE0002.CHK...</span><br>
+<span class="error-msg">Disk full.</span><br><br>
+<span class="dimmed">The recovered files contain: no recognizable data.</span></div>
+      <div class="note">NOTE: The volume C: in this facility consists entirely of lost clusters. There are no valid files. The data that was lost is not recoverable using standard tools.</div>
+      <div class="see-also">See also: <a data-topic="format">FORMAT</a> &nbsp;|&nbsp; <a data-topic="notfound">File Not Found</a> &nbsp;|&nbsp; <a data-topic="null">NULL</a></div>
+    `
+  }
+};
+
+const contentEl = document.getElementById('content');
+const statusLeft = document.getElementById('status-left');
+
+function renderTopic(key) {
+  const topic = topics[key];
+  if (!topic) return;
+  contentEl.innerHTML = `<h1>${topic.title}</h1>${topic.html}`;
+  // Attach see-also links
+  contentEl.querySelectorAll('a[data-topic]').forEach(a => {
+    a.addEventListener('click', () => selectTopic(a.dataset.topic));
+  });
+}
+
+function selectTopic(key) {
+  document.querySelectorAll('#sidebar .topic').forEach(t => {
+    t.classList.toggle('selected', t.dataset.topic === key);
+  });
+  renderTopic(key);
+  const topic = topics[key];
+  statusLeft.textContent = topic ? `Topic: ${topic.title}` : 'Topic not found';
+}
+
+document.querySelectorAll('#sidebar .topic').forEach(t => {
+  t.addEventListener('click', () => selectTopic(t.dataset.topic));
+});
+
+// Keyboard navigation
+let currentTopicKey = 'index';
+const topicKeys = Array.from(document.querySelectorAll('#sidebar .topic')).map(t => t.dataset.topic);
+document.addEventListener('keydown', e => {
+  if (e.key === 'F3') { e.preventDefault(); return; }
+  if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+    e.preventDefault();
+    const idx = topicKeys.indexOf(currentTopicKey);
+    const next = e.key === 'ArrowDown' ? Math.min(idx + 1, topicKeys.length - 1) : Math.max(idx - 1, 0);
+    currentTopicKey = topicKeys[next];
+    selectTopic(currentTopicKey);
+  }
+});
+
+// Override selectTopic to track current
+const _origSelect = selectTopic;
+// (already handled by tracking currentTopicKey above)
+
+// Init
+renderTopic('index');
+</script>
+
+<script src="/shared/matrix-nav.js"></script>
+</body>
+</html>
