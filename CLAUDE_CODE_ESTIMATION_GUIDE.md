@@ -73,12 +73,21 @@ complexity. Writing under 200 lines costs 2-6 pts.
 Writing markdown or config is nearly free regardless of length.
 
 **Exception — self-contained room/page builds:** Writing a batch
-of standalone HTML rooms (each 80-280 lines, no cross-file
-dependencies, no debugging) costs roughly **1-2 pts per room**
-regardless of room complexity. Four confirmed data points put
-9 rooms at 14 pts total, 7 rooms at 11 pts total. If the task
-is "write N independent files from spec," use 1.5 pts × N,
-not the per-file line-count table above.
+of standalone HTML rooms (each 80-500 lines, no cross-file
+dependencies, no debugging) costs roughly **1-3 pts per room**
+depending on size and session state. Four confirmed data points put
+9 rooms at 14 pts total, 7 rooms at 11 pts total (warm sessions).
+Larger rooms (500+ lines) cost ~2–3 pts each. If the task
+is "write N independent files from spec," use 1.5 pts × N
+for warm sessions, not the per-file line-count table above.
+
+**Exception — summary-resumed sessions:** When resuming from a
+context summary (new quota window after compaction), there is a
+**fixed overhead of ~15–20 pts** regardless of what work is done.
+On top of that overhead: +2–3 pts per client-side room, or +5–8 pts
+per room requiring server.js edits. This has been confirmed across
+two summary-resumed sessions (33 pts and 69 pts). The 2× difference
+between them was caused entirely by server.js reads in the larger session.
 
 ### Cheap — Sequential operations on warm context
 After Claude Code reads a file in chunk 1, chunks 2 and 3 of
@@ -358,6 +367,7 @@ accurate these guidelines are over time.
 | 2026-05-25 | NULL | Batch 3 of 3: 8 rooms (00094–00101); warm context but more complex server changes (Joshua Room cross-room TTT trigger, activity API, 3 new persistence blocks); Cowsay, Yellow Door, UUID, MASH, Histogram, Joshua, 404s, 15-Puzzle | ~10 pts est. | 13 pts actual | 1.3x over | Measured 32%→45%. Server complexity adds cost: reading server.js sections to find insertion points, more API routes, TTT handler modification. Cross-room mechanics (Joshua unlock) cost extra vs pure HTML rooms. ~1.6 pts/room for a mix of simple and server-heavy rooms. |
 | 2026-05-25 | NULL | Full 3-batch web session total: 24 rooms (00078–00101) + README.md | ~32 pts est. | 39 pts actual | 1.2x over | Measured 6%→45%. Per-room rate across full session: 1.6 pts/room including orientation overhead. Web environment behaves identically to CLI for this workload. Best predictor: use 2.0 pts/room for first batch (orientation), 1.1 pts/room for subsequent warm batches, 1.5 pts/room if batches include server.js modifications. |
 | 2026-05-25 | NULL | Session resumed from context summary (new quota window); 8 rooms (00102–00109): Binary Panel, Geolocation, Game Over ×3, Wrong Tetris, Wrong Pac-Man, Physics Engine; multiple server.js section reads to find insertion points; added gameover persistence + routes | ~16 pts est. | 69 pts actual | 4.3x over | Measured 0%→69%. Catastrophic overrun. Root cause: loading a large detailed context summary at session start is far more expensive than a normal cold start. The summary covered 9 sections of dense project state. Also: multiple server.js reads (8+ chunks of a 1248-line file) compounded the cost. Key lesson: resumed-from-summary sessions cost 3–5× more than estimated. Treat large summary loads like reading a 200KB file (8–12 pts overhead alone). Rate: 8.6 pts/room — worst ever, driven almost entirely by read cost, not write cost. |
+| 2026-05-25 | NULL | Session resumed from context summary (new quota window); 5 effective rooms (00121 SPEC.md only, 00122–00125 full builds): MS-DOS Help, MS-DOS Prompt, Alternate Hangman, Sokoban; all client-side, no server.js reads needed; updated BUILD_PRIORITY.md | ~16 pts est. | 33 pts actual | 2.1x over | Measured 0%→33%. Summary-resumed session again — but 2× cheaper than previous summary session (33 vs 69 pts for ~same number of rooms). Key difference: zero server.js reads this time. Rooms were all client-side HTML. Confirms that the 4.3x overrun in the prior session was caused by summary overhead PLUS compounding server.js reads — not summary alone. Summary-resume base cost appears to be ~15–20 pts regardless of room count. On top of that: ~2–3 pts per large client-side room (500+ lines). Revised rule: summary-resume sessions cost ~15–20 pts fixed overhead + 2–3 pts per client-side room, or + 5–8 pts per room requiring server.js edits. |
 
 Add rows as data is collected. If the ratio column drifts
 consistently above 1.5x or below 0.7x, revise the base
