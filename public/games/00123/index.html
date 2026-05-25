@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>00123 — C:\NULL&gt;</title>
+<link rel="icon" href="data:,">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #000000;
+    color: #aaaaaa;
+    font-family: 'Courier New', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    font-size: 14px;
+    line-height: 1.5;
+    padding: 0;
+    overflow: hidden;
+  }
+  #screen {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 20px 4px;
+    scroll-behavior: smooth;
+  }
+  .line { white-space: pre-wrap; word-break: break-all; min-height: 1.5em; }
+  .line.prompt-line { color: #aaaaaa; }
+  .line.output { color: #aaaaaa; }
+  .line.error { color: #ff5555; }
+  .line.info { color: #55aaff; }
+  .line.warning { color: #ffaa00; }
+  .line.blank { height: 1.5em; }
+  #input-row {
+    display: flex;
+    align-items: center;
+    padding: 4px 20px 16px;
+    gap: 0;
+    flex-shrink: 0;
+  }
+  #prompt-label {
+    color: #aaaaaa;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  #cmd-input {
+    background: transparent;
+    border: none;
+    outline: none;
+    color: #aaaaaa;
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    flex: 1;
+    caret-color: #aaaaaa;
+  }
+
+  /* Scanline overlay */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      to bottom,
+      transparent 0px,
+      transparent 2px,
+      rgba(0,0,0,0.08) 2px,
+      rgba(0,0,0,0.08) 4px
+    );
+    pointer-events: none;
+    z-index: 100;
+  }
+
+  /* Blinking cursor on last output */
+  .blink::after {
+    content: '█';
+    animation: blink 1s step-start infinite;
+    color: #aaaaaa;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  ::-webkit-scrollbar { width: 6px; background: #000; }
+  ::-webkit-scrollbar-thumb { background: #333; }
+</style>
+</head>
+<body data-game="00123" data-nav="matrix">
+
+<div id="screen"></div>
+<div id="input-row">
+  <span id="prompt-label">C:\NULL&gt;&nbsp;</span>
+  <input id="cmd-input" type="text" autocomplete="off" spellcheck="false" autofocus>
+</div>
+
+<script>
+const screen = document.getElementById('screen');
+const input = document.getElementById('cmd-input');
+const promptLabel = document.getElementById('prompt-label');
+
+let cwd = 'C:\\NULL';
+let history = [];
+let histIdx = -1;
+let formatProgress = null;
+let formatInterval = null;
+
+function prompt() {
+  return cwd + '> ';
+}
+
+function setPrompt() {
+  promptLabel.textContent = cwd + '> ';
+}
+
+function println(text, cls = 'output') {
+  const d = document.createElement('div');
+  d.className = 'line ' + cls;
+  d.textContent = text;
+  screen.appendChild(d);
+  screen.scrollTop = screen.scrollHeight;
+  return d;
+}
+
+function blank() { println('', 'blank'); }
+
+function printPromptEcho(cmd) {
+  const d = document.createElement('div');
+  d.className = 'line prompt-line';
+  d.textContent = cwd + '> ' + cmd;
+  screen.appendChild(d);
+  screen.scrollTop = screen.scrollHeight;
+}
+
+// Filesystem
+const fs = {
+  'C:\\NULL': { type: 'dir', children: ['SYSTEM', 'GAMES', 'DATA', 'AUTOEXEC.BAT', 'CONFIG.SYS'] },
+  'C:\\NULL\\SYSTEM': { type: 'dir', children: ['HIMEM.SYS', 'NULLSYS.EXE', 'COMMAND.COM'] },
+  'C:\\NULL\\GAMES': { type: 'dir', children: ['ROOM00001', 'ROOM00002', '...'] },
+  'C:\\NULL\\DATA': { type: 'dir', children: ['USERS.JSON', 'MATRIX.JSON', 'SESSION.TMP'] },
+  'C:\\NULL\\AUTOEXEC.BAT': { type: 'file', size: 312, content: '@ECHO OFF\nNULLSYS /INIT /SILENT /FOREVER' },
+  'C:\\NULL\\CONFIG.SYS': { type: 'file', size: 128, content: 'FILES=255\nSTACKS=0,0\nDOS=NEITHER' },
+  'C:\\NULL\\SYSTEM\\HIMEM.SYS': { type: 'file', size: 29136, content: '(binary)' },
+  'C:\\NULL\\SYSTEM\\NULLSYS.EXE': { type: 'file', size: null, content: '(binary)' },
+  'C:\\NULL\\SYSTEM\\COMMAND.COM': { type: 'file', size: 54619, content: '(binary)' },
+  'C:\\NULL\\DATA\\SESSION.TMP': { type: 'file', size: 0, content: '' },
+};
+
+function resolvePath(p) {
+  if (!p || p === '.') return cwd;
+  if (p === '..') {
+    const parts = cwd.split('\\');
+    if (parts.length <= 2) return cwd; // C:\
+    parts.pop();
+    return parts.join('\\');
+  }
+  if (p.includes(':')) return p.toUpperCase().replace(/\//g, '\\').replace(/\\$/, '') || 'C:\\';
+  return (cwd + '\\' + p).toUpperCase().replace(/\\/g, '\\').replace(/\\+$/, '') || 'C:\\';
+}
+
+// Commands
+const commands = {
+  dir(args) {
+    const target = args[0] ? resolvePath(args[0]) : cwd;
+    const node = fs[target];
+    const wide = args.includes('/W');
+    const bare = args.includes('/B');
+
+    if (!node || node.type !== 'dir') {
+      println('File not found', 'error');
+      return;
+    }
+    if (!bare) {
+      blank();
+      println(` Volume in drive C is NULL`);
+      println(` Volume Serial Number is 0000-0000`);
+      blank();
+      println(` Directory of ${target}`);
+      blank();
+    }
+    println('.');
+    println('..');
+    node.children.forEach(child => {
+      const childPath = target + '\\' + child;
+      const childNode = fs[childPath];
+      if (!childNode) {
+        println(bare ? child : `${child.padEnd(12)} <DIR>          ????-??-??`);
+      } else if (childNode.type === 'dir') {
+        println(bare ? child : `${child.padEnd(12)} <DIR>          2024-01-01  00:00`);
+      } else {
+        const sz = childNode.size != null ? String(childNode.size).padStart(14) : '       UNKNOWN';
+        println(bare ? child : `${child.padEnd(12)}${sz} 2024-01-01  00:00`);
+      }
+    });
+    if (!bare) {
+      blank();
+      const files = node.children.filter(c => {
+        const cp = target + '\\' + c;
+        return fs[cp] && fs[cp].type === 'file';
+      }).length;
+      const dirs = node.children.filter(c => {
+        const cp = target + '\\' + c;
+        return fs[cp] && fs[cp].type === 'dir';
+      }).length;
+      println(`       ${files} File(s)              0 bytes`);
+      println(`       ${dirs} Dir(s)   UNKNOWN bytes free`, 'error');
+    }
+  },
+
+  cd(args) {
+    if (!args[0]) {
+      println(cwd);
+      return;
+    }
+    const target = resolvePath(args[0]);
+    if (target === 'C:\\' || target === 'C:') {
+      println('C:\\');
+      // Don't allow above C:\NULL
+      println('Cannot change to C:\\. You are already in the deepest level accessible.', 'error');
+      return;
+    }
+    if (fs[target] && fs[target].type === 'dir') {
+      cwd = target;
+      setPrompt();
+    } else if (!fs[target]) {
+      println('Invalid directory', 'error');
+    } else {
+      println('Not a directory', 'error');
+    }
+  },
+
+  type(args) {
+    if (!args[0]) { println('Required parameter missing', 'error'); return; }
+    const target = resolvePath(args[0]);
+    const node = fs[target];
+    if (!node) { println('File not found', 'error'); return; }
+    if (node.type === 'dir') { println('Access denied', 'error'); return; }
+    if (node.content === '(binary)') { println('Binary file - cannot display', 'error'); return; }
+    if (!node.content) { println('', 'output'); return; }
+    node.content.split('\n').forEach(l => println(l));
+  },
+
+  copy(args) {
+    if (args.length < 2) { println('Required parameter missing', 'error'); return; }
+    const dest = args[args.length - 1].toUpperCase();
+    if (dest === 'NUL' || dest === 'NULL') {
+      blank();
+      println('        1 file(s) copied.');
+      blank();
+      println('All data directed to NUL device. Nothing was retained.', 'warning');
+      return;
+    }
+    println('        0 file(s) copied.', 'error');
+    println('File not found', 'error');
+  },
+
+  del(args) {
+    if (!args[0]) { println('Required parameter missing', 'error'); return; }
+    const name = args[0].toUpperCase();
+    if (name.includes('*.') || name === '*.*') {
+      println('All files in directory will be deleted!');
+      println('Are you sure (Y/N)?y');
+      blank();
+      println('Access denied. System files cannot be deleted.', 'error');
+      println('0 file(s) deleted.', 'error');
+    } else {
+      println('File not found', 'error');
+    }
+  },
+
+  erase(args) { commands.del(args); },
+
+  mem() {
+    blank();
+    println('Memory Type          Total      Used      Free');
+    println('────────────────────────────────────────────');
+    println('Conventional         640K       640K      0K', 'error');
+    println('Upper                155K       155K      0K');
+    println('Reserved             [REDACTED]');
+    println('Extended (XMS)       OVERFLOW', 'error');
+    println('────────────────────────────────────────────');
+    println('Total memory         UNDEFINED', 'error');
+    blank();
+    println('Total under 1 MB     795K       795K      0K', 'error');
+    blank();
+  },
+
+  cls() {
+    screen.innerHTML = '';
+  },
+
+  echo(args) {
+    if (!args.length) { println('ECHO is on.'); return; }
+    if (args[0] === 'OFF' || args[0] === 'off') { println('ECHO is off.'); return; }
+    println(args.join(' '));
+  },
+
+  ver() {
+    blank();
+    println('MS-DOS Version 6.22');
+    println('NULL Facility System Layer: ACTIVE');
+    blank();
+  },
+
+  path(args) {
+    if (!args[0]) {
+      println('PATH=C:\\NULL;C:\\NULL\\SYSTEM');
+      return;
+    }
+    if (args[0] === ';') {
+      println('Warning: Path cannot be cleared. Minimum path enforced.', 'warning');
+      println('PATH=C:\\NULL');
+    } else {
+      println('Warning: Path cannot be modified in this facility.', 'warning');
+    }
+  },
+
+  date(args) {
+    if (!args[0]) {
+      blank();
+      println('Current date is: UNKNOWN');
+      println('Enter new date (MM-DD-YY): ');
+      println('Invalid date. Date cannot be set in this facility.', 'error');
+      blank();
+    }
+  },
+
+  time(args) {
+    if (!args[0]) {
+      blank();
+      println(`Current time is: ${new Date().toTimeString().slice(0,8)}`);
+      println('Enter new time: ');
+      println('Invalid time. Time cannot be modified.', 'error');
+      blank();
+    }
+  },
+
+  chkdsk(args) {
+    blank();
+    const drive = (args[0] || 'C:').replace('/', '').replace('\\', '').toUpperCase();
+    println(`Checking drive ${drive} ...`);
+    blank();
+    // Simulate delay
+    println('2,147,483,647 lost clusters found in 2,147,483,647 chains.', 'error');
+    println('Convert lost chains to files (Y/N)?Y');
+    blank();
+    let i = 0;
+    const intvl = setInterval(() => {
+      println(`Writing FILE${String(i).padStart(4, '0')}.CHK...`, 'info');
+      i++;
+      if (i >= 5) {
+        clearInterval(intvl);
+        blank();
+        println('Disk full.', 'error');
+        println('Recovery incomplete.');
+        blank();
+        println('0 bytes in bad sectors.');
+        println('0 bytes available on disk.', 'error');
+        blank();
+        input.disabled = false;
+        input.focus();
+      }
+    }, 300);
+    input.disabled = true;
+  },
+
+  format(args) {
+    if (!args[0]) { println('Required parameter missing', 'error'); return; }
+    const drive = args[0].replace('\\', '').toUpperCase();
+    blank();
+    println(`WARNING, ALL DATA ON NON-REMOVABLE DISK`);
+    println(`DRIVE ${drive} WILL BE LOST!`);
+    println(`Proceed with Format (Y/N)?Y`);
+    blank();
+
+    let dots = 0;
+    const total = 2147483647;
+    let pct = 0;
+
+    if (formatInterval) clearInterval(formatInterval);
+    input.disabled = true;
+
+    const outLine = println(`Formatting ${total.toLocaleString()}K`);
+    const progLine = println('  0 percent completed.');
+    blank();
+
+    formatInterval = setInterval(() => {
+      pct += Math.floor(Math.random() * 3) + 1;
+      if (pct >= 99) {
+        pct = 99;
+        clearInterval(formatInterval);
+        progLine.textContent = ` 99 percent completed.`;
+        setTimeout(() => {
+          println('Format incomplete. Volume cannot be formatted.', 'error');
+          println('This drive is not a drive.', 'error');
+          blank();
+          input.disabled = false;
+          input.focus();
+        }, 1200);
+        return;
+      }
+      progLine.textContent = ` ${pct} percent completed.`;
+      screen.scrollTop = screen.scrollHeight;
+    }, 200 + Math.random() * 200);
+  },
+
+  attrib(args) {
+    if (!args[0]) {
+      println('?  NULLSYS.EXE', 'error');
+      println('RSH COMMAND.COM');
+      println('?  SESSION.TMP', 'error');
+      return;
+    }
+    println('Access denied', 'error');
+  },
+
+  help(args) {
+    if (args[0]) {
+      println(`${args[0].toUpperCase()} - For more information, see ROOM 00122.`, 'info');
+      return;
+    }
+    blank();
+    println('For more information on a specific command, type HELP command-name');
+    blank();
+    println('ATTRIB    CD        CHKDSK    CLS       COPY      DATE');
+    println('DEL       DIR       ECHO      ERASE     FORMAT    HELP');
+    println('MEM       PATH      TIME      TREE      TYPE      VER');
+    blank();
+    println('For extended documentation, navigate to ROOM 00122.', 'info');
+    blank();
+  },
+
+  tree(args) {
+    blank();
+    println('Folder PATH listing for volume NULL');
+    println('Volume serial number is 0000-0000');
+    println('C:\\NULL');
+    println('├───SYSTEM');
+    println('│   ├───HIMEM.SYS');
+    println('│   ├───NULLSYS.EXE');
+    println('│   └───COMMAND.COM');
+    println('├───GAMES');
+    println('│   └───[' + String(Math.floor(Math.random() * 9000 + 1000)) + ' entries]');
+    println('└───DATA');
+    println('    ├───USERS.JSON');
+    println('    ├───MATRIX.JSON');
+    println('    └───SESSION.TMP');
+    blank();
+  },
+
+  exit() {
+    println('Bad command or file name', 'error');
+  },
+  quit() { commands.exit(); },
+  escape() { commands.exit(); },
+  leave() { commands.exit(); },
+  logout() { commands.exit(); },
+};
+
+// Boot sequence
+function boot() {
+  println('MS-DOS Version 6.22', 'info');
+  blank();
+  println('C:\\NULL\\SYSTEM\\HIMEM.SYS is installed.');
+  println('C:\\NULL\\SYSTEM\\NULLSYS.EXE loaded and resident.');
+  blank();
+  println('WARNING: Memory self-check failed.', 'warning');
+  println('WARNING: Date/time not available.', 'warning');
+  blank();
+  println('C:\\NULL\\AUTOEXEC.BAT is executing...', 'info');
+  blank();
+}
+boot();
+
+input.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    const raw = input.value;
+    const cmd = raw.trim();
+    input.value = '';
+    histIdx = -1;
+
+    printPromptEcho(raw);
+
+    if (!cmd) return;
+
+    history.unshift(cmd);
+    if (history.length > 50) history.pop();
+
+    const parts = cmd.split(/\s+/);
+    const name = parts[0].toLowerCase();
+    const args = parts.slice(1);
+
+    if (commands[name]) {
+      commands[name](args);
+    } else {
+      println(`'${parts[0]}' is not recognized as an internal or external`, 'error');
+      println('command, operable program or batch file.', 'error');
+    }
+    blank();
+    screen.scrollTop = screen.scrollHeight;
+  }
+
+  if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    if (histIdx < history.length - 1) {
+      histIdx++;
+      input.value = history[histIdx];
+    }
+  }
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    if (histIdx > 0) {
+      histIdx--;
+      input.value = history[histIdx];
+    } else {
+      histIdx = -1;
+      input.value = '';
+    }
+  }
+});
+
+// Keep input focused
+document.addEventListener('click', () => input.focus());
+</script>
+
+<script src="/shared/matrix-nav.js"></script>
+</body>
+</html>
