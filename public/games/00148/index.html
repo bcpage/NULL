@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>00148 — Observation Room</title>
+<link rel="icon" href="data:,">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #050508; color: #8a9aaa;
+    font-family: 'Courier New', monospace;
+    min-height: 100vh; display: flex; flex-direction: column;
+    align-items: center; gap: 16px;
+    padding: 40px 20px 60px;
+  }
+  .room-id { font-size: 10px; letter-spacing: 5px; color: #223; }
+  .title { font-size: 11px; letter-spacing: 5px; color: #445; text-transform: uppercase; }
+  .subtitle { font-size: 9px; letter-spacing: 3px; color: #223; text-align: center; }
+  #obs-canvas { display: block; border: 1px solid #0f0f1e; background: #030306; }
+  .legend { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; }
+  .legend-item { font-size: 9px; letter-spacing: 1px; color: #334; display: flex; align-items: center; gap: 6px; }
+  .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .info { font-size: 10px; letter-spacing: 1px; color: #223; text-align: center; line-height: 2; max-width: 400px; }
+  #total { font-size: 10px; letter-spacing: 2px; color: #334; }
+  #active-list { max-width: 500px; width: 100%; }
+  .active-label { font-size: 9px; letter-spacing: 3px; color: #223; border-bottom: 1px solid #0f0f18; padding-bottom: 4px; margin-bottom: 8px; }
+  .active-entry { font-size: 9px; letter-spacing: 1px; color: #334; line-height: 2.2; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #0a0a14; padding: 2px 0; }
+  .active-entry .room-label { color: #445; }
+  .active-entry .count { color: #556; }
+  .note { font-size: 10px; letter-spacing: 1px; color: #223; text-align: center; line-height: 2.2; max-width: 360px; border-top: 1px solid #111120; padding-top: 12px; }
+</style>
+</head>
+<body data-game="00148" data-nav="matrix">
+<div class="room-id">ROOM 00148</div>
+<div class="title">Observation Room</div>
+<div class="subtitle">Live occupancy — all connected visitors</div>
+
+<canvas id="obs-canvas" width="520" height="360"></canvas>
+<div id="total">Scanning...</div>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:#e94560"></div> occupied</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#1a2a3a"></div> empty</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#ffa040"></div> you are here</div>
+</div>
+
+<div id="active-list">
+  <div class="active-label">OCCUPIED ROOMS</div>
+  <div id="active-entries"><div style="font-size:9px;color:#223;letter-spacing:1px">Waiting for data...</div></div>
+</div>
+
+<div class="note">
+  Each cell is a room.<br>
+  A glow means someone is there right now.<br>
+  You are watching. They may not know.<br>
+  This is room 00148.
+</div>
+
+<script src="/shared/matrix-nav.js"></script>
+<script>
+const canvas = document.getElementById('obs-canvas');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+
+// Layout: rooms 00001–00153 arranged in a grid
+// 15 columns × ~10 rows, each cell 32×32 px
+const COLS = 15;
+const CELL = 32;
+const PAD = 4;
+const GRID_W = COLS * (CELL + PAD);
+const GRID_H = Math.ceil(154 / COLS) * (CELL + PAD);
+const OX = (W - GRID_W) / 2;
+const OY = (H - GRID_H) / 2;
+
+let rooms = {}; // roomId → count
+let maxRoom = 153;
+let frame = 0;
+let glowPhases = {}; // roomId → phase offset for pulsing
+
+function roomToGrid(n) {
+  // n is 1-based room number
+  const i = n - 1;
+  const col = i % COLS;
+  const row = Math.floor(i / COLS);
+  return {
+    x: OX + col * (CELL + PAD),
+    y: OY + row * (CELL + PAD),
+  };
+}
+
+function drawGrid() {
+  ctx.fillStyle = '#030306';
+  ctx.fillRect(0, 0, W, H);
+
+  for (let n = 1; n <= maxRoom; n++) {
+    const id = String(n).padStart(5, '0');
+    const { x, y } = roomToGrid(n);
+    const count = rooms[id] || 0;
+    const isHere = id === '00148';
+
+    if (count > 0 || isHere) {
+      // Occupied — glowing
+      if (!glowPhases[id]) glowPhases[id] = Math.random() * Math.PI * 2;
+      const pulse = Math.sin(frame * 0.04 + glowPhases[id]) * 0.3 + 0.7;
+      const color = isHere ? '#ffa040' : '#e94560';
+
+      // Outer glow
+      const grd = ctx.createRadialGradient(x + CELL/2, y + CELL/2, 2, x + CELL/2, y + CELL/2, CELL);
+      grd.addColorStop(0, color + Math.round(pulse * 80).toString(16).padStart(2, '0'));
+      grd.addColorStop(1, 'transparent');
+      ctx.fillStyle = grd;
+      ctx.fillRect(x - 4, y - 4, CELL + 8, CELL + 8);
+
+      // Cell fill
+      ctx.fillStyle = isHere
+        ? `rgba(255,160,64,${0.15 * pulse})`
+        : `rgba(233,69,96,${0.12 * pulse})`;
+      ctx.fillRect(x, y, CELL, CELL);
+
+      // Border
+      ctx.strokeStyle = isHere ? `rgba(255,160,64,${pulse})` : `rgba(233,69,96,${pulse})`;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x, y, CELL, CELL);
+
+      // Count label if > 1
+      if (count > 1) {
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 8px monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(count > 9 ? '9+' : count, x + CELL/2, y + CELL/2);
+      }
+    } else {
+      // Empty cell
+      ctx.fillStyle = '#060610';
+      ctx.fillRect(x, y, CELL, CELL);
+      ctx.strokeStyle = '#0f0f1e';
+      ctx.lineWidth = 0.5;
+      ctx.strokeRect(x, y, CELL, CELL);
+    }
+
+    // Room number in tiny text for occupied rooms
+    if (count > 0 || isHere) {
+      ctx.fillStyle = 'rgba(255,255,255,0.2)';
+      ctx.font = '6px monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'alphabetic';
+      ctx.fillText(id, x + CELL/2, y + CELL - 3);
+    }
+  }
+
+  frame++;
+}
+
+function updateUI() {
+  const total = Object.values(rooms).reduce((a, b) => a + b, 0);
+  document.getElementById('total').textContent =
+    total === 0 ? 'No active visitors detected.'
+    : total === 1 ? '1 visitor currently active.'
+    : `${total} visitors currently active across ${Object.keys(rooms).filter(r => rooms[r] > 0).length} rooms.`;
+
+  // Active rooms list
+  const occupied = Object.entries(rooms)
+    .filter(([, c]) => c > 0)
+    .sort(([a], [b]) => parseInt(a) - parseInt(b));
+
+  const el = document.getElementById('active-entries');
+  if (occupied.length === 0) {
+    el.innerHTML = '<div style="font-size:9px;color:#223;letter-spacing:1px">No active visitors.</div>';
+  } else {
+    el.innerHTML = occupied.map(([id, count]) => {
+      const label = id === '00148' ? `${id} — Observation Room (you are here)` : `Room ${id}`;
+      return `<div class="active-entry"><span class="room-label">${label}</span><span class="count">${count} visitor${count !== 1 ? 's' : ''}</span></div>`;
+    }).join('');
+  }
+}
+
+// WebSocket for live presence updates
+function connect() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  const ws = new WebSocket(`${proto}://${location.host}`);
+  ws.onmessage = e => {
+    try {
+      const msg = JSON.parse(e.data);
+      if (msg.game === 'presence' && msg.type === 'update') {
+        rooms = msg.rooms || {};
+        updateUI();
+      }
+    } catch {}
+  };
+  ws.onclose = () => setTimeout(connect, 3000);
+}
+
+// Initial load via REST
+fetch('/api/presence')
+  .then(r => r.json())
+  .then(d => { rooms = d.rooms || {}; updateUI(); })
+  .catch(() => {});
+
+connect();
+
+setInterval(drawGrid, 50); // 20fps animation
+</script>
+</body>
+</html>

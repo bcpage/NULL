@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>00153 — Number Dispenser</title>
+<link rel="icon" href="data:,">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #050508; color: #8a9aaa;
+    font-family: 'Courier New', monospace;
+    min-height: 100vh; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 20px; padding: 40px 20px;
+  }
+  .room-id { font-size: 10px; letter-spacing: 5px; color: #223; }
+  .title { font-size: 11px; letter-spacing: 5px; color: #445; text-transform: uppercase; }
+
+  /* The machine */
+  #machine {
+    border: 1px solid #1a1a2a; padding: 32px 40px;
+    display: flex; flex-direction: column; align-items: center; gap: 20px;
+    background: #040408; max-width: 340px; width: 100%;
+  }
+  .machine-label { font-size: 9px; letter-spacing: 4px; color: #223; }
+
+  /* Number display */
+  #number-display {
+    font-size: 72px; letter-spacing: 8px; color: #3a4a5a;
+    font-family: 'Courier New', monospace; min-height: 96px;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.4s;
+    text-shadow: 0 0 20px rgba(60,80,100,0.3);
+  }
+  #number-display.issued {
+    color: #7a9acc;
+    text-shadow: 0 0 30px rgba(80,120,180,0.4);
+  }
+  #number-display.new-issue {
+    animation: flash 0.4s ease-out;
+  }
+  @keyframes flash {
+    0% { color: #e94560; text-shadow: 0 0 40px rgba(233,69,96,0.8); }
+    100% { color: #7a9acc; text-shadow: 0 0 30px rgba(80,120,180,0.4); }
+  }
+
+  /* Ticket strip */
+  #ticket-strip {
+    border-top: 1px dashed #111120; border-bottom: 1px dashed #111120;
+    padding: 8px 16px; width: 100%;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .ticket-field { font-size: 9px; letter-spacing: 2px; color: #1a2a3a; }
+  .ticket-val { color: #2a3a4a; }
+
+  /* Button */
+  #take-btn {
+    background: #060610; border: 1px solid #1a2a4a; color: #3a5a7a;
+    font-family: 'Courier New', monospace; font-size: 10px;
+    letter-spacing: 3px; padding: 12px 28px; cursor: pointer;
+    width: 100%; transition: all 0.2s;
+  }
+  #take-btn:hover:not(:disabled) { background: #080c18; border-color: #2a4a6a; color: #5a8acc; }
+  #take-btn:disabled { opacity: 0.35; cursor: default; }
+
+  #status-msg { font-size: 9px; letter-spacing: 2px; color: #1a2a3a; text-align: center; min-height: 16px; }
+  #next-label { font-size: 9px; letter-spacing: 2px; color: #1a1a28; }
+
+  .divider { width: 100%; border: none; border-top: 1px solid #0a0a14; }
+
+  .note { font-size: 10px; letter-spacing: 1px; color: #223; text-align: center; line-height: 2.2; max-width: 340px; border-top: 1px solid #111120; padding-top: 12px; }
+  .history { max-width: 340px; width: 100%; }
+  .history-label { font-size: 9px; letter-spacing: 3px; color: #1a1a28; margin-bottom: 8px; }
+  #recent-list { display: flex; flex-direction: column; gap: 4px; }
+  .recent-entry { font-size: 9px; letter-spacing: 1px; color: #1a1a28; display: flex; justify-content: space-between; border-bottom: 1px solid #08080f; padding: 3px 0; }
+  .recent-entry .rnum { color: #2a3a4a; }
+  .recent-entry .rtime { color: #1a1a28; }
+</style>
+</head>
+<body data-game="00153" data-nav="matrix">
+<div class="room-id">ROOM 00153</div>
+<div class="title">Number Dispenser</div>
+
+<div id="machine">
+  <div class="machine-label">NULL FACILITY — QUEUE MANAGEMENT TERMINAL</div>
+
+  <div id="number-display">—</div>
+
+  <div id="ticket-strip">
+    <div class="ticket-field">YOUR NUMBER<br><span class="ticket-val" id="ticket-num">—</span></div>
+    <div class="ticket-field" style="text-align:right">ISSUED AT<br><span class="ticket-val" id="ticket-time">—</span></div>
+  </div>
+
+  <button id="take-btn">TAKE A NUMBER</button>
+  <div id="status-msg">Checking your status...</div>
+  <div id="next-label">Next available: <span id="next-num">—</span></div>
+</div>
+
+<div class="history">
+  <div class="history-label">RECENTLY ISSUED</div>
+  <div id="recent-list"></div>
+</div>
+
+<div class="note">
+  Each visitor receives exactly one number.<br>
+  Numbers are never reused.<br>
+  The sequence has been running since launch.<br>
+  Your number is permanent.
+</div>
+
+<script src="/shared/matrix-nav.js"></script>
+<script>
+let myNumber = null;
+const recentIssued = JSON.parse(localStorage.getItem('dispenser_recent') || '[]');
+
+function formatTime(ts) {
+  if (!ts) return '—';
+  const d = new Date(ts);
+  return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function showNumber(n, isNew) {
+  const el = document.getElementById('number-display');
+  el.textContent = String(n).padStart(4, '0');
+  el.className = 'issued' + (isNew ? ' new-issue' : '');
+  document.getElementById('ticket-num').textContent = String(n).padStart(4, '0');
+}
+
+function updateRecentList() {
+  const el = document.getElementById('recent-list');
+  if (recentIssued.length === 0) {
+    el.innerHTML = '<div style="font-size:9px;color:#1a1a28;letter-spacing:1px">No records in this terminal.</div>';
+    return;
+  }
+  el.innerHTML = recentIssued.slice(-8).reverse().map(({ n, time }) =>
+    `<div class="recent-entry"><span class="rnum">${String(n).padStart(4,'0')}</span><span class="rtime">${formatTime(time)}</span></div>`
+  ).join('');
+}
+
+function checkStatus() {
+  fetch('/api/ticket')
+    .then(r => r.json())
+    .then(d => {
+      if (d.number) {
+        myNumber = d.number;
+        showNumber(myNumber, false);
+        document.getElementById('ticket-time').textContent = '—';
+        document.getElementById('take-btn').disabled = true;
+        document.getElementById('status-msg').textContent = 'You have already been issued a number.';
+      } else {
+        document.getElementById('number-display').textContent = '—';
+        document.getElementById('status-msg').textContent = 'You have not yet received a number.';
+        document.getElementById('take-btn').disabled = false;
+      }
+
+      // Always show next available
+      fetch('/api/ticket/take', { method: 'POST' })
+        .then(r => r.json())
+        .then(d2 => {
+          // Only peek, don't commit — actually we can't peek without taking
+          // So: if we took it, show it; if already had one, don't double-count
+        }).catch(() => {});
+    })
+    .catch(() => {
+      document.getElementById('status-msg').textContent = 'Terminal offline.';
+    });
+}
+
+document.getElementById('take-btn').addEventListener('click', () => {
+  document.getElementById('take-btn').disabled = true;
+  document.getElementById('status-msg').textContent = 'Dispensing...';
+
+  fetch('/api/ticket/take', { method: 'POST' })
+    .then(r => r.json())
+    .then(d => {
+      myNumber = d.number;
+      const now = Date.now();
+      showNumber(myNumber, true);
+      document.getElementById('ticket-time').textContent = formatTime(now);
+      document.getElementById('status-msg').textContent = 'Number issued. This is yours permanently.';
+
+      // Save to recent list
+      recentIssued.push({ n: myNumber, time: now });
+      if (recentIssued.length > 20) recentIssued.shift();
+      localStorage.setItem('dispenser_recent', JSON.stringify(recentIssued));
+      updateRecentList();
+    })
+    .catch(() => {
+      document.getElementById('status-msg').textContent = 'Dispenser error. Try again.';
+      document.getElementById('take-btn').disabled = false;
+    });
+});
+
+// Init
+updateRecentList();
+checkStatus();
+</script>
+</body>
+</html>

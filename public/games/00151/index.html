@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>00151 — Recursive Room</title>
+<link rel="icon" href="data:,">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #050508; color: #8a9aaa;
+    font-family: 'Courier New', monospace;
+    min-height: 100vh; display: flex; flex-direction: column;
+    align-items: center; gap: 12px;
+    padding: 30px 20px 40px;
+  }
+  .room-id { font-size: 10px; letter-spacing: 5px; color: #223; }
+  .title { font-size: 11px; letter-spacing: 5px; color: #445; text-transform: uppercase; }
+  .subtitle { font-size: 9px; letter-spacing: 3px; color: #1a1a28; }
+  #frame-wrap {
+    position: relative;
+    border: 1px solid #111120;
+    box-shadow: 0 0 20px rgba(0,0,10,0.8);
+    background: #030306;
+    width: 520px;
+    height: 380px;
+    overflow: hidden;
+  }
+  iframe {
+    width: 100%; height: 100%;
+    border: none;
+    transform-origin: top left;
+    pointer-events: none; /* prevent user from navigating inside */
+  }
+  .depth-label {
+    position: absolute; top: 6px; right: 8px;
+    font-size: 8px; letter-spacing: 2px; color: #223;
+    background: rgba(5,5,8,0.8); padding: 2px 6px;
+  }
+  .note { font-size: 10px; letter-spacing: 1px; color: #223; text-align: center; line-height: 2.2; max-width: 360px; border-top: 1px solid #111120; padding-top: 12px; }
+  .nav-hint { font-size: 9px; letter-spacing: 2px; color: #1a1a28; }
+  .depth-count { font-size: 9px; letter-spacing: 2px; color: #334; text-align: center; }
+</style>
+</head>
+<body data-game="00151" data-nav="matrix">
+<div class="room-id">ROOM 00151</div>
+<div class="title">Recursive Room</div>
+<div class="subtitle">a room containing itself</div>
+
+<div id="frame-wrap">
+  <iframe id="rec-frame" src="/game/00151" sandbox="allow-same-origin allow-scripts" scrolling="no"></iframe>
+  <div class="depth-label" id="depth-label">depth: 1</div>
+</div>
+
+<div class="depth-count" id="depth-count">Currently showing depth 1 of ∞</div>
+
+<div class="note">
+  This room contains itself.<br>
+  The room inside also contains itself.<br>
+  This continues indefinitely.<br>
+  At some depth, the rendering stops.<br>
+  The recursion does not.
+</div>
+
+<script src="/shared/matrix-nav.js"></script>
+<script>
+// Read depth from URL param
+const params = new URLSearchParams(location.search);
+const depth = parseInt(params.get('d') || '0');
+
+// Update depth label for THIS room's context
+if (depth === 0) {
+  document.getElementById('depth-label').textContent = `depth: 1`;
+  document.getElementById('depth-count').textContent = 'Currently showing depth 1 of ∞';
+}
+
+// The iframe src includes depth+1 as a query param
+// The iframe iframe src will include depth+2, etc.
+// Browsers stop rendering at some point (stack overflow / rendering limit)
+const NEXT_DEPTH = depth + 1;
+const MAX_RENDER = 5; // stop after this many visible recursions to prevent browser hang
+
+const iframe = document.getElementById('rec-frame');
+if (NEXT_DEPTH <= MAX_RENDER) {
+  iframe.src = `/game/00151?d=${NEXT_DEPTH}`;
+} else {
+  // End of recursion — replace iframe content with a mirror-image placeholder
+  iframe.src = 'about:blank';
+  iframe.onload = () => {
+    try {
+      const doc = iframe.contentDocument;
+      if (doc) {
+        doc.write(`<html><body style="background:#030306;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-family:monospace;color:#1a1a28;font-size:9px;letter-spacing:3px;">∞</body></html>`);
+        doc.close();
+      }
+    } catch (e) {}
+  };
+}
+
+// Scale each depth level so it fits the containing frame
+// depth 0: 100%, depth 1: scaled down to fit, etc.
+// The iframe itself handles this via its own CSS at each recursion level
+// We apply a visual scaling effect based on depth param
+if (depth > 0) {
+  document.body.style.transform = 'none';
+  // Hide header elements at deeper levels
+  document.querySelector('.room-id').style.display = 'none';
+  document.querySelector('.title').style.display = 'none';
+  document.querySelector('.subtitle').style.display = 'none';
+  document.querySelector('.note').style.display = 'none';
+  document.querySelector('.depth-count').style.display = 'none';
+  document.body.style.padding = '4px';
+  document.body.style.gap = '4px';
+  document.getElementById('frame-wrap').style.width = '100%';
+  document.getElementById('frame-wrap').style.height = '100%';
+  document.getElementById('depth-label').textContent = `depth: ${depth + 1}`;
+}
+</script>
+</body>
+</html>

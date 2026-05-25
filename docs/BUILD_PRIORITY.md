@@ -34,9 +34,18 @@ It replaces re-generating assessments from scratch each session.
 | ~~Compression Engine~~ | 10% | **BUILT → 00127** (2026-05-25). Interactive Huffman tree, frequency table, color-coded bitstream. Seeded with pangram. |
 | ~~Partial Matrix Fragments ×5~~ | 8% | **BUILT → 00128–00132** (2026-05-25). Five sector printouts A–E. Fragment C has corrupt node 00070. Fragment D flags JOSHUA/gameover rooms. Fragment E contains itself. |
 | ~~2D Platformer (Llama)~~ | 11% | **BUILT → 00133** (2026-05-25). 3 levels, moving platforms, gem collection, llama sprite with walking animation. |
-| Shape Factory | 7% | Draw custom tetromino-like pieces → they enter the Wrong Tetris piece pool (00107). Wrong Tetris is built but hardcoded client-side. Needs: server persistence for custom pieces + 00107 updated to load them. Small lift. |
+| ~~Shape Factory~~ | ~~7%~~ | **BUILT → 00141** (2026-05-25). 6×6 draw grid, BFS connectivity validation, custom pieces enter Wrong Tetris pool. |
 | ~~Racetrack / Vector Race~~ | ~~10%~~ | **BUILT → 00135** (2026-05-25). Grid vector physics, 2-player turn-based WS, 9-button velocity pad, keyboard numpad. |
 | ~~Paper Soccer~~ | ~~10%~~ | **BUILT → 00136** (2026-05-25). 9×13 grid, bounce rule, goal detection, edge drawing on canvas. |
+| ~~Galton Board~~ | ~~5%~~ | **BUILT → 00138** (2026-05-25). Ball drop simulation, 8 peg rows, 9 bins, speed modes, bell curve overlay. |
+| ~~Logo Turtle Graphics~~ | ~~6%~~ | **BUILT → 00139** (2026-05-25). Full Logo interpreter, FD/BK/RT/LT/REPEAT/TO, 8 examples, 420×380 canvas. |
+| ~~Visible Spectrum~~ | ~~5%~~ | **BUILT → 00140** (2026-05-25). Spectrum gradient, magenta gap, non-spectral color cards, RGB mixer. |
+| ~~PRNG vs True RNG~~ | ~~5%~~ | **BUILT → 00142** (2026-05-25). LCG vs Web Crypto, bit stream, bitmap, histogram, scatter plot side-by-side. |
+| ~~Zeno's Paradox~~ | ~~4%~~ | **BUILT → 00143** (2026-05-25). Achilles race animation, 18 convergence steps, partial sums canvas. |
+| ~~Ship of Theseus~~ | ~~5%~~ | **BUILT → 00144** (2026-05-25). 20-plank visualization, slider, three answer types, aggregate histogram. |
+| ~~Sorites Paradox~~ | ~~5%~~ | **BUILT → 00145** (2026-05-25). Grain pile canvas, one-at-a-time input, aggregate answer distribution. |
+| ~~Tamagotchi — Shared Pet~~ | ~~14%~~ | **BUILT → 00146** (2026-05-25). Hunger/happiness/health decay, server-side timer, death/revival, WS broadcasts. |
+| ~~Goldfish~~ | ~~3%~~ | **BUILT → 00147** (2026-05-25). Autonomous fish navigation, bubbles, caustic lights, visit counter. |
 
 ---
 
@@ -90,8 +99,12 @@ Built: 00126–00133 (8 rooms). Warm session ~1.5 pts/room.
 ~~HAL 9000 Eye + Vector Race + Paper Soccer + NULL Interactive Fiction~~
 Built: 00134–00137 (4 rooms, server-heavy). Warm session resumed from summary.
 
-### Session D — ~20% budget, READY + BLOCKED
-Shape Factory + resolve presence tracking → build Observation Room + consider Tamagotchi
+### ~~Session D — ~35% budget, READY + COMPLEX~~ ✅ DONE (2026-05-25 session 4)
+~~Galton Board + Logo Turtle + Visible Spectrum + Shape Factory + PRNG vs TRNG + Zeno's Paradox + Ship of Theseus + Sorites Paradox + Shared Pet + Goldfish~~
+Built: 00138–00147 (10 rooms, mix of client-side and server-heavy). Summary-resumed session.
+
+### Session E — next batch
+Add presence tracking → build Observation Room (00148) + ELIZA Upgraded (00149) + TARDIS (00150) + more atmospheric rooms
 
 ---
 
@@ -123,3 +136,13 @@ These appear in BACKLOG_INDEX.md but are done:
 | Vector Race (Racetrack) | 00135 | 2026-05-25 |
 | Paper Soccer | 00136 | 2026-05-25 |
 | NULL Interactive Fiction | 00137 | 2026-05-25 |
+| Galton Board | 00138 | 2026-05-25 |
+| Logo Turtle Graphics | 00139 | 2026-05-25 |
+| Visible Spectrum | 00140 | 2026-05-25 |
+| Shape Factory | 00141 | 2026-05-25 |
+| PRNG vs True RNG | 00142 | 2026-05-25 |
+| Zeno's Paradox | 00143 | 2026-05-25 |
+| Ship of Theseus | 00144 | 2026-05-25 |
+| Sorites Paradox | 00145 | 2026-05-25 |
+| Shared Pet (Tamagotchi) | 00146 | 2026-05-25 |
+| Goldfish | 00147 | 2026-05-25 |

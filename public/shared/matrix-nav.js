@@ -135,4 +135,21 @@
   }
 
   loadExits();
+
+  // ── Presence reporting ────────────────────────────────────────────────────
+  // Open a minimal WS connection to report which room we're in.
+  // The server tracks this for the Observation Room.
+  (function reportPresence() {
+    const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+    let presWs = null;
+    function connect() {
+      try {
+        presWs = new WebSocket(`${proto}://${location.host}`);
+        presWs.onopen = () => presWs.send(JSON.stringify({ game: 'presence', room: gameId }));
+        presWs.onclose = () => setTimeout(connect, 5000);
+        presWs.onerror = () => {};
+      } catch (e) {}
+    }
+    connect();
+  })();
 })();

@@ -17,7 +17,8 @@ const GAMES = ['00001', '00002', '00003', '00004', '00005', '00006', '00007', '0
   '00134', '00135', '00136', '00137',
   '00138', '00139', '00140', '00141',
   '00142', '00143', '00144',
-  '00145', '00146', '00147'];
+  '00145', '00146', '00147',
+  '00148', '00149', '00150', '00151', '00152', '00153'];
 
 // ─── Matrix navigation ────────────────────────────────────────────────────────
 const MATRIX_FILE = path.join(__dirname, 'data', 'matrix.json');
@@ -1253,6 +1254,11 @@ const httpServer = http.createServer((req, res) => {
     return;
   }
 
+  // API: Presence — room occupancy (00148 Observation Room)
+  if (pathname === '/api/presence' && method === 'GET') {
+    sendJSON(res, { rooms: presenceCounts() }); return;
+  }
+
   // API: Game Over lockout (rooms 00104–00106)
   const goMatch = pathname.match(/^\/api\/gameover\/(00104|00105|00106)$/);
   if (goMatch) {
@@ -1381,6 +1387,24 @@ const httpServer = http.createServer((req, res) => {
 // ─── WebSocket (colour game) ──────────────────────────────────────────────────
 const wss = new WebSocket.Server({ server: httpServer });
 
+// ── Presence tracking (room 00148) ───────────────────────────────────────────
+// Maps each WS client to the room it is currently viewing.
+// Used by the Observation Room to show live occupancy.
+const presenceMap = new Map(); // ws → roomId string
+function presenceCounts() {
+  const counts = {};
+  for (const roomId of presenceMap.values()) {
+    counts[roomId] = (counts[roomId] || 0) + 1;
+  }
+  return counts;
+}
+function broadcastPresence() {
+  broadcast({ game: 'presence', type: 'update', rooms: presenceCounts() });
+}
+
+// GET /api/presence — current room occupancy
+// (registered in the HTTP handler below)
+
 wss.on('connection', (ws) => {
   console.log(`Player connected. Total: ${wss.clients.size}`);
   ws.send(JSON.stringify({ type: 'init', grid }));
@@ -1414,6 +1438,12 @@ wss.on('connection', (ws) => {
   ws.on('message', (message) => {
     try {
       const data = JSON.parse(message);
+
+      // ── Presence tracking ──
+      if (data.game === 'presence' && typeof data.room === 'string') {
+        const roomId = data.room.replace(/[^0-9]/g, '').padStart(5, '0').slice(0, 5);
+        if (roomId) { presenceMap.set(ws, roomId); broadcastPresence(); }
+      }
 
       // ── Colour game ──
       if (data.type === 'paint') {
@@ -1748,6 +1778,8 @@ wss.on('connection', (ws) => {
     // Soccer seat cleanup
     if (soccer._s0 === ws) { soccer._s0 = null; soccer.seatCount = Math.max(0, soccer.seatCount-1); if (soccer.status==='playing') soccer.status='waiting'; broadcast(soccerStateMsg()); }
     if (soccer._s1 === ws) { soccer._s1 = null; soccer.seatCount = Math.max(0, soccer.seatCount-1); if (soccer.status==='playing') soccer.status='waiting'; broadcast(soccerStateMsg()); }
+    // Presence cleanup
+    if (presenceMap.has(ws)) { presenceMap.delete(ws); broadcastPresence(); }
     console.log(`Player disconnected. Total: ${wss.clients.size}`);
   });
 });
