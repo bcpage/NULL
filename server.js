@@ -15,7 +15,8 @@ const GAMES = ['00001', '00002', '00003', '00004', '00005', '00006', '00007', '0
   '00118', '00119', '00120', '00121', '00122', '00123', '00124', '00125',
   '00126', '00127', '00128', '00129', '00130', '00131', '00132', '00133',
   '00134', '00135', '00136', '00137',
-  '00138', '00139', '00140', '00141'];
+  '00138', '00139', '00140', '00141',
+  '00142', '00143', '00144'];
 
 // ─── Matrix navigation ────────────────────────────────────────────────────────
 const MATRIX_FILE = path.join(__dirname, 'data', 'matrix.json');
@@ -151,6 +152,21 @@ const GAMEOVER_FILE = path.join(__dirname, 'data', 'gameover.json');
 let gameoverLocks = {}; // { "deviceId:roomId": unlockTimestamp }
 try { gameoverLocks = JSON.parse(fs.readFileSync(GAMEOVER_FILE, 'utf8')); } catch (e) {}
 function saveGameover() { fs.writeFileSync(GAMEOVER_FILE, JSON.stringify(gameoverLocks)); }
+
+// ─── Ship of Theseus aggregate (00144) ───────────────────────────────────────
+// users answer: at what % replacement does the ship become a different ship?
+// the aggregate is the data
+// some people say 1%
+// some people say 100%
+// most people say somewhere in the middle
+// the ship does not care what people say
+// the ship is still being repaired
+const THESEUS_FILE = path.join(__dirname, 'public', 'games', '00144', 'data', 'theseus.json');
+const THESEUS_DATA_DIR = path.join(__dirname, 'public', 'games', '00144', 'data');
+if (!fs.existsSync(THESEUS_DATA_DIR)) fs.mkdirSync(THESEUS_DATA_DIR, { recursive: true });
+let theseusData = { votes: [], count: 0 };
+try { theseusData = JSON.parse(fs.readFileSync(THESEUS_FILE, 'utf8')); } catch (e) {}
+function saveTheseus() { fs.writeFileSync(THESEUS_FILE, JSON.stringify(theseusData)); }
 
 // ─── Shape Factory (00141) — user-drawn pieces for Wrong Tetris ──────────────
 // players draw custom pentomino-like pieces here
@@ -1049,6 +1065,31 @@ const httpServer = http.createServer((req, res) => {
         saveShapes();
         broadcast({ type: 'shapes_update', count: shapesData.count, total: shapesData.pieces.length });
         sendJSON(res, { ok: true, count: shapesData.count }); return;
+      } catch { res.writeHead(400); res.end('Bad JSON'); return; }
+    });
+    return;
+  }
+
+  // API: Ship of Theseus aggregate (00144)
+  if (pathname === '/api/theseus' && method === 'GET') {
+    const buckets = new Array(10).fill(0);
+    theseusData.votes.forEach(v => { const b = Math.min(9, Math.floor(v / 10)); buckets[b]++; });
+    sendJSON(res, { count: theseusData.count, buckets, mean: theseusData.count > 0
+      ? Math.round(theseusData.votes.reduce((a,b)=>a+b,0)/theseusData.votes.length) : null }); return;
+  }
+  if (pathname === '/api/theseus' && method === 'POST') {
+    let body = '';
+    req.on('data', d => body += d);
+    req.on('end', () => {
+      try {
+        const { threshold } = JSON.parse(body);
+        const t = parseInt(threshold);
+        if (isNaN(t) || t < 0 || t > 100) { res.writeHead(400); res.end('Bad threshold'); return; }
+        theseusData.votes.push(t);
+        if (theseusData.votes.length > 10000) theseusData.votes.shift();
+        theseusData.count++;
+        saveTheseus();
+        sendJSON(res, { ok: true, count: theseusData.count }); return;
       } catch { res.writeHead(400); res.end('Bad JSON'); return; }
     });
     return;

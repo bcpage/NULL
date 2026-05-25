@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>00144 — Ship of Theseus</title>
+<link rel="icon" href="data:,">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #050508; color: #8a9aaa;
+    font-family: 'Courier New', monospace;
+    min-height: 100vh; display: flex; flex-direction: column;
+    align-items: center; gap: 20px;
+    padding: 40px 20px 60px;
+  }
+  .room-id { font-size: 10px; letter-spacing: 5px; color: #223; }
+  .title { font-size: 11px; letter-spacing: 5px; color: #445; text-transform: uppercase; }
+  .intro { font-size: 10px; letter-spacing: 1px; color: #334; line-height: 2; max-width: 480px; text-align: center; }
+  #ship-canvas { border: 1px solid #1a1a2a; display: block; }
+  .slider-section { width: 100%; max-width: 540px; display: flex; flex-direction: column; gap: 10px; }
+  .slider-row { display: flex; align-items: center; gap: 16px; }
+  .pct-label { font-size: 22px; letter-spacing: 2px; color: #7a9aaa; width: 60px; text-align: right; }
+  input[type=range] { flex: 1; accent-color: #5a9acc; }
+  .slider-note { font-size: 10px; letter-spacing: 1px; color: #334; }
+  .question-box { max-width: 540px; width: 100%; border: 1px solid #1a1a2a; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .question { font-size: 11px; letter-spacing: 3px; color: #445; }
+  .btn-row { display: flex; gap: 10px; }
+  button {
+    background: #0c0c18; border: 1px solid #1a2a3a; color: #7a9aaa;
+    font-family: 'Courier New', monospace; font-size: 10px; letter-spacing: 2px;
+    padding: 8px 16px; cursor: pointer; flex: 1;
+  }
+  button:hover { background: #10101e; border-color: #2a3a4a; }
+  button.selected { background: #0a1a2a; border-color: #3a5a7a; color: #9ab4c4; }
+  #submit-btn { color: #7acc7a; border-color: #2a4a2a; }
+  #submit-btn:hover { background: #0a140a; }
+  #submit-btn:disabled { opacity: 0.4; cursor: default; }
+  .result { font-size: 10px; letter-spacing: 1px; color: #445; line-height: 2; }
+  .aggregate-section { max-width: 540px; width: 100%; }
+  .agg-label { font-size: 10px; letter-spacing: 3px; color: #334; border-bottom: 1px solid #111120; padding-bottom: 4px; margin-bottom: 10px; }
+  #agg-canvas { border: 1px solid #1a1a2a; display: block; }
+  .agg-stats { font-size: 10px; letter-spacing: 1px; color: #334; line-height: 2; }
+  .agg-stats span { color: #556; }
+  .exposition { max-width: 500px; font-size: 10px; letter-spacing: 1px; color: #334; line-height: 2.2; border: 1px solid #0d0d18; padding: 14px 18px; }
+  .exposition em { color: #4a6a8a; font-style: normal; }
+  .note { font-size: 10px; letter-spacing: 1px; color: #223; text-align: center; line-height: 2.2; max-width: 460px; border-top: 1px solid #111120; padding-top: 16px; }
+</style>
+</head>
+<body data-game="00144" data-nav="matrix">
+<div class="room-id">ROOM 00144</div>
+<div class="title">Ship of Theseus</div>
+
+<div class="intro">
+  The ship of Theseus was repaired plank by plank over many years.<br>
+  Each replacement was small. Each replacement was necessary.<br>
+  Eventually every plank had been replaced.<br>
+  Is it still the same ship?
+</div>
+
+<canvas id="ship-canvas" width="540" height="160"></canvas>
+
+<div class="slider-section">
+  <div class="slider-row">
+    <input type="range" id="pct-slider" min="0" max="100" value="50" step="1">
+    <span class="pct-label"><span id="pct-display">50</span>%</span>
+  </div>
+  <div class="slider-note" id="slider-note">50% of planks have been replaced</div>
+</div>
+
+<div class="question-box">
+  <div class="question">AT WHAT PERCENTAGE DOES IT BECOME A DIFFERENT SHIP?</div>
+  <div class="btn-row">
+    <button id="btn-same">STILL THE SAME</button>
+    <button id="btn-never">NEVER — ALWAYS DIFFERENT</button>
+    <button id="btn-always">ALWAYS THE SAME</button>
+  </div>
+  <div id="threshold-row" style="display:none; flex-direction:column; gap:8px;">
+    <div class="slider-note">It becomes a different ship at: <span id="threshold-pct">50</span>%</div>
+    <input type="range" id="threshold-slider" min="1" max="100" value="50" step="1" style="accent-color:#cc7a3a;">
+  </div>
+  <button id="submit-btn" disabled>RECORD YOUR ANSWER</button>
+  <div id="result-text" class="result"></div>
+</div>
+
+<div class="aggregate-section">
+  <div class="agg-label">AGGREGATE — WHERE OTHERS DREW THE LINE</div>
+  <canvas id="agg-canvas" width="540" height="80"></canvas>
+  <div class="agg-stats" id="agg-stats">Loading aggregate data…</div>
+</div>
+
+<div class="exposition">
+  <em>The Paradox (Plutarch, ~75 AD):</em><br><br>
+  The Athenians preserved the ship in which Theseus returned from Crete, replacing
+  old planks with new ones as they decayed. Philosophers debated whether the repaired
+  ship was the same object as the original — which is now called the Ship of Theseus
+  paradox. Thomas Hobbes added a second complication: if the old planks were collected
+  and reassembled into a second ship, which would be the original?<br><br>
+  <em>What it reveals:</em><br><br>
+  The paradox exposes that "sameness" is not a property of objects — it is a judgment
+  made by observers. The ship does not know whether it is the same ship. The question
+  is about language and identity, not about wood.
+</div>
+
+<div class="note">
+  You have set the threshold.<br>
+  The threshold has been noted.<br>
+  The ship does not know about the threshold.<br>
+  The ship continues to be repaired.
+</div>
+
+<script src="/shared/matrix-nav.js"></script>
+<script>
+const canvas = document.getElementById('ship-canvas');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+
+const PLANKS = 20;
+const PLANK_W = Math.floor((W - 40) / PLANKS);
+const PLANK_H = 60;
+const SHIP_Y = (H - PLANK_H) / 2 + 20;
+
+let pct = 50;
+let choice = null; // 'same', 'never', 'always', or threshold number
+let answered = false;
+
+const ORIG_COLOR = '#3a2a1a'; // dark wood
+const NEW_COLOR = '#7a5a2a'; // lighter new wood
+const HULL_ACCENT = '#1a1820';
+
+function drawShip() {
+  ctx.fillStyle = '#060609';
+  ctx.fillRect(0, 0, W, H);
+
+  // Hull outline
+  ctx.strokeStyle = '#2a2a3a';
+  ctx.lineWidth = 1;
+  // Waterline
+  ctx.beginPath();
+  ctx.moveTo(20, SHIP_Y + PLANK_H + 16);
+  ctx.lineTo(W - 20, SHIP_Y + PLANK_H + 16);
+  ctx.stroke();
+  ctx.fillStyle = '#0a0a18';
+  ctx.fillRect(20, SHIP_Y + PLANK_H + 16, W - 40, 20);
+
+  // Keel line
+  ctx.fillStyle = '#111118';
+  ctx.fillRect(18, SHIP_Y + PLANK_H, W - 36, 16);
+
+  // Mast
+  ctx.strokeStyle = '#2a2a3a';
+  ctx.lineWidth = 2;
+  const mastX = W / 2;
+  ctx.beginPath();
+  ctx.moveTo(mastX, SHIP_Y - 60); ctx.lineTo(mastX, SHIP_Y);
+  ctx.stroke();
+  // Sail (triangular)
+  ctx.beginPath();
+  ctx.moveTo(mastX, SHIP_Y - 55);
+  ctx.lineTo(mastX + 60, SHIP_Y - 10);
+  ctx.lineTo(mastX, SHIP_Y - 10);
+  ctx.closePath();
+  ctx.fillStyle = '#1a1824';
+  ctx.fill();
+  ctx.strokeStyle = '#2a2a3a';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // Planks
+  const replaced = Math.round(PLANKS * pct / 100);
+  // Shuffle which planks are replaced (deterministic based on pct for smooth slider)
+  // First `replaced` planks from start
+  for (let i = 0; i < PLANKS; i++) {
+    const isNew = i < replaced;
+    const x = 20 + i * PLANK_W;
+    const y = SHIP_Y;
+
+    // Main plank
+    ctx.fillStyle = isNew ? NEW_COLOR : ORIG_COLOR;
+    ctx.fillRect(x + 1, y, PLANK_W - 2, PLANK_H);
+
+    // Wood grain lines
+    ctx.strokeStyle = isNew ? 'rgba(180,140,60,0.2)' : 'rgba(80,50,20,0.2)';
+    ctx.lineWidth = 1;
+    for (let g = 1; g < 4; g++) {
+      ctx.beginPath();
+      ctx.moveTo(x + 1, y + g * PLANK_H / 4);
+      ctx.lineTo(x + PLANK_W - 2, y + g * PLANK_H / 4);
+      ctx.stroke();
+    }
+
+    // Plank borders
+    ctx.strokeStyle = HULL_ACCENT;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x + 0.5, y + 0.5, PLANK_W - 1, PLANK_H - 1);
+  }
+
+  // Legend
+  ctx.fillStyle = ORIG_COLOR;
+  ctx.fillRect(24, H - 20, 12, 10);
+  ctx.fillStyle = '#334';
+  ctx.font = '8px Courier New';
+  ctx.textAlign = 'left';
+  ctx.fillText('ORIGINAL', 40, H - 11);
+  ctx.fillStyle = NEW_COLOR;
+  ctx.fillRect(110, H - 20, 12, 10);
+  ctx.fillText('REPLACED', 126, H - 11);
+
+  // % label
+  ctx.fillStyle = '#556';
+  ctx.font = '10px Courier New';
+  ctx.textAlign = 'right';
+  ctx.fillText(`${replaced}/${PLANKS} planks replaced`, W - 22, H - 11);
+}
+
+function updateSlider() {
+  pct = parseInt(document.getElementById('pct-slider').value);
+  document.getElementById('pct-display').textContent = pct;
+  const replaced = Math.round(PLANKS * pct / 100);
+  document.getElementById('slider-note').textContent =
+    `${replaced} of ${PLANKS} planks have been replaced (${pct}%)`;
+  drawShip();
+}
+
+document.getElementById('pct-slider').addEventListener('input', updateSlider);
+
+// Answer buttons
+const btnSame = document.getElementById('btn-same');
+const btnNever = document.getElementById('btn-never');
+const btnAlways = document.getElementById('btn-always');
+const thresholdRow = document.getElementById('threshold-row');
+const submitBtn = document.getElementById('submit-btn');
+
+function selectChoice(c) {
+  if (answered) return;
+  choice = c;
+  [btnSame, btnNever, btnAlways].forEach(b => b.classList.remove('selected'));
+  if (c === 'threshold') { btnSame.classList.add('selected'); thresholdRow.style.display = 'flex'; }
+  else if (c === 'never') { btnNever.classList.add('selected'); thresholdRow.style.display = 'none'; }
+  else if (c === 'always') { btnAlways.classList.add('selected'); thresholdRow.style.display = 'none'; }
+  submitBtn.disabled = false;
+}
+
+btnSame.addEventListener('click', () => selectChoice('threshold'));
+btnNever.addEventListener('click', () => selectChoice('never'));
+btnAlways.addEventListener('click', () => selectChoice('always'));
+
+const thresholdSlider = document.getElementById('threshold-slider');
+thresholdSlider.addEventListener('input', () => {
+  document.getElementById('threshold-pct').textContent = thresholdSlider.value;
+});
+
+submitBtn.addEventListener('click', async () => {
+  if (!choice || answered) return;
+  answered = true;
+  submitBtn.disabled = true;
+  [btnSame, btnNever, btnAlways].forEach(b => b.disabled = true);
+  thresholdSlider.disabled = true;
+
+  let threshold;
+  if (choice === 'never') threshold = 0; // 0 = never — always different
+  else if (choice === 'always') threshold = 101; // 101 = always same
+  else threshold = parseInt(thresholdSlider.value);
+
+  const resultEl = document.getElementById('result-text');
+  try {
+    await fetch('/api/theseus', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ threshold }),
+    });
+    if (choice === 'never') resultEl.textContent = 'Your answer: It is never the same ship. Every replacement changes it.';
+    else if (choice === 'always') resultEl.textContent = 'Your answer: It is always the same ship, regardless of replacement.';
+    else resultEl.textContent = `Your answer: It becomes a different ship at ${threshold}% replacement.`;
+    resultEl.style.color = '#7a9aaa';
+    loadAggregate();
+  } catch (e) {
+    resultEl.textContent = 'Answer recorded locally.';
+    resultEl.style.color = '#334';
+  }
+});
+
+// Aggregate display
+const aggCanvas = document.getElementById('agg-canvas');
+const actx = aggCanvas.getContext('2d');
+const AW = aggCanvas.width, AH = aggCanvas.height;
+
+async function loadAggregate() {
+  try {
+    const res = await fetch('/api/theseus');
+    const data = await res.json();
+    drawAggregate(data);
+    document.getElementById('agg-stats').innerHTML =
+      `Total responses: <span>${data.count}</span> &nbsp; Mean threshold: <span>${data.mean ?? '—'}%</span>`;
+  } catch (e) {
+    document.getElementById('agg-stats').textContent = 'No aggregate data yet.';
+  }
+}
+
+function drawAggregate(data) {
+  actx.fillStyle = '#060609';
+  actx.fillRect(0, 0, AW, AH);
+
+  if (!data.count || !data.buckets) return;
+  const max = Math.max(1, ...data.buckets);
+  const bw = Math.floor((AW - 40) / 10);
+  const labels = ['0-10%','11-20%','21-30%','31-40%','41-50%','51-60%','61-70%','71-80%','81-90%','91-101%'];
+
+  data.buckets.forEach((v, i) => {
+    const x = 20 + i * bw;
+    const h = Math.round((v / max) * (AH - 24));
+    const alpha = 0.3 + (v / max) * 0.6;
+    actx.fillStyle = `rgba(90,154,204,${alpha})`;
+    actx.fillRect(x + 2, AH - 16 - h, bw - 4, h);
+    if (v > 0) {
+      actx.fillStyle = '#334';
+      actx.font = '8px Courier New';
+      actx.textAlign = 'center';
+      actx.fillText(v, x + bw/2, AH - 18 - h);
+    }
+    actx.fillStyle = '#223';
+    actx.font = '7px Courier New';
+    actx.textAlign = 'center';
+    actx.fillText(labels[i], x + bw/2, AH - 4);
+  });
+
+  // Mean line
+  if (data.mean !== null) {
+    const mx = 20 + (data.mean / 100) * (AW - 40);
+    actx.strokeStyle = '#cc7a3a';
+    actx.lineWidth = 1;
+    actx.setLineDash([2, 2]);
+    actx.beginPath();
+    actx.moveTo(mx, 0); actx.lineTo(mx, AH - 16);
+    actx.stroke();
+    actx.setLineDash([]);
+    actx.fillStyle = '#cc7a3a';
+    actx.font = '8px Courier New';
+    actx.textAlign = 'center';
+    actx.fillText(`mean: ${data.mean}%`, mx, 10);
+  }
+}
+
+// Check if already answered (localStorage)
+const already = localStorage.getItem('theseus_answered');
+if (already) {
+  answered = true;
+  submitBtn.disabled = true;
+  [btnSame, btnNever, btnAlways].forEach(b => b.disabled = true);
+  document.getElementById('result-text').textContent = `Previously answered. Aggregate shown below.`;
+  document.getElementById('result-text').style.color = '#334';
+}
+
+submitBtn.addEventListener('click', () => { localStorage.setItem('theseus_answered', '1'); }, { once: false });
+
+drawShip();
+updateSlider();
+loadAggregate();
+</script>
+</body>
+</html>

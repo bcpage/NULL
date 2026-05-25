@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>00142 — PRNG vs TRNG</title>
+<link rel="icon" href="data:,">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #050508; color: #8a9aaa;
+    font-family: 'Courier New', monospace;
+    min-height: 100vh; display: flex; flex-direction: column;
+    align-items: center; gap: 18px;
+    padding: 40px 20px 60px;
+  }
+  .room-id { font-size: 10px; letter-spacing: 5px; color: #223; }
+  .title { font-size: 11px; letter-spacing: 5px; color: #445; text-transform: uppercase; }
+  .columns {
+    display: flex; gap: 24px; flex-wrap: wrap; justify-content: center; max-width: 860px; width: 100%;
+  }
+  .col {
+    flex: 1; min-width: 280px; max-width: 400px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .col-header {
+    text-align: center; font-size: 11px; letter-spacing: 4px; padding: 8px;
+    border: 1px solid #1a1a2a;
+  }
+  .col-header.prng { color: #5a9acc; border-color: #1a2a3a; }
+  .col-header.trng { color: #7acc7a; border-color: #1a3a1a; }
+  .panel-label { font-size: 9px; letter-spacing: 3px; color: #334; }
+  canvas { display: block; border: 1px solid #1a1a2a; image-rendering: pixelated; }
+  .stream-box {
+    background: #060609; border: 1px solid #1a1a2a;
+    font-size: 9px; letter-spacing: 1px; color: #334;
+    padding: 6px 8px; min-height: 60px; line-height: 1.8;
+    word-break: break-all; overflow: hidden; max-height: 60px;
+  }
+  .controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .ctrl-label { font-size: 9px; letter-spacing: 2px; color: #334; }
+  input[type=text] {
+    background: #080810; border: 1px solid #1a2a3a; color: #7a9aaa;
+    font-family: 'Courier New', monospace; font-size: 10px;
+    padding: 4px 8px; width: 120px;
+  }
+  button {
+    background: #0c0c18; border: 1px solid #1a2a3a; color: #7a9aaa;
+    font-family: 'Courier New', monospace; font-size: 10px; letter-spacing: 2px;
+    padding: 5px 12px; cursor: pointer;
+  }
+  button:hover { background: #10101e; }
+  .stat-row {
+    display: flex; justify-content: space-between;
+    font-size: 9px; letter-spacing: 1px; color: #334;
+    padding: 3px 0; border-bottom: 1px solid #0d0d18;
+  }
+  .stat-row span { color: #556; }
+  .divider {
+    width: 100%; max-width: 860px;
+    border-top: 1px solid #0d0d18; padding-top: 16px;
+    font-size: 10px; letter-spacing: 1px; color: #334; line-height: 2;
+    text-align: center;
+  }
+  .reveal { color: #5a9acc; }
+  .note {
+    font-size: 10px; letter-spacing: 1px; color: #223; text-align: center;
+    line-height: 2.2; max-width: 500px;
+    border-top: 1px solid #111120; padding-top: 16px;
+  }
+</style>
+</head>
+<body data-game="00142" data-nav="matrix">
+<div class="room-id">ROOM 00142</div>
+<div class="title">PRNG vs TRNG</div>
+
+<div class="columns">
+  <!-- PRNG Column -->
+  <div class="col">
+    <div class="col-header prng">PSEUDO-RANDOM</div>
+    <div class="controls">
+      <span class="ctrl-label">SEED</span>
+      <input type="text" id="prng-seed" value="42" maxlength="20">
+      <button id="prng-reseed">RESEED</button>
+    </div>
+    <div class="panel-label">BIT STREAM</div>
+    <div class="stream-box" id="prng-stream"></div>
+    <div class="panel-label">BIT BITMAP (512 bits)</div>
+    <canvas id="prng-bitmap" width="128" height="64" style="width:256px;height:128px"></canvas>
+    <div class="panel-label">VALUE HISTOGRAM (0–15)</div>
+    <canvas id="prng-hist" width="160" height="60"></canvas>
+    <div class="panel-label">SEQUENTIAL PAIR PLOT</div>
+    <canvas id="prng-scatter" width="100" height="100" style="width:200px;height:200px"></canvas>
+    <div class="stat-row">Values generated <span id="prng-count">0</span></div>
+    <div class="stat-row">Algorithm <span>LCG (a=1664525, c=1013904223)</span></div>
+    <div class="stat-row">Seed <span id="prng-seed-disp">42</span></div>
+    <div class="stat-row">Deterministic <span>YES</span></div>
+  </div>
+
+  <!-- TRNG Column -->
+  <div class="col">
+    <div class="col-header trng">TRUE RANDOM</div>
+    <div class="controls">
+      <span class="ctrl-label">SOURCE</span>
+      <span style="font-size:9px;letter-spacing:1px;color:#556">Web Crypto API</span>
+    </div>
+    <div class="panel-label">BIT STREAM</div>
+    <div class="stream-box" id="trng-stream"></div>
+    <div class="panel-label">BIT BITMAP (512 bits)</div>
+    <canvas id="trng-bitmap" width="128" height="64" style="width:256px;height:128px"></canvas>
+    <div class="panel-label">VALUE HISTOGRAM (0–15)</div>
+    <canvas id="trng-hist" width="160" height="60"></canvas>
+    <div class="panel-label">SEQUENTIAL PAIR PLOT</div>
+    <canvas id="trng-scatter" width="100" height="100" style="width:200px;height:200px"></canvas>
+    <div class="stat-row">Values generated <span id="trng-count">0</span></div>
+    <div class="stat-row">Algorithm <span>crypto.getRandomValues()</span></div>
+    <div class="stat-row">Seed <span>NONE — unreproducible</span></div>
+    <div class="stat-row">Deterministic <span>NO</span></div>
+  </div>
+</div>
+
+<div class="divider">
+  Both sequences look random.<br>
+  <span class="reveal">Left is PRNG.</span> &nbsp; <span class="reveal">Right is TRNG.</span><br>
+  Knowing does not help you see it.<br>
+  Same seed → same PRNG sequence, every time.<br>
+  TRNG cannot be reproduced. It is gone.
+</div>
+
+<div class="note">
+  Both sequences look random.<br>
+  One of them is.<br>
+  The other is completely predictable<br>
+  to anyone who knows the seed.<br>
+  You are looking at both.<br>
+  You cannot tell which is which.<br>
+  The facility will not tell you.
+</div>
+
+<script src="/shared/matrix-nav.js"></script>
+<script>
+// ── LCG PRNG ──────────────────────────────────────────────────────────────────
+// Linear Congruential Generator
+// x_{n+1} = (a * x_n + c) mod 2^32
+const LCG_A = 1664525, LCG_C = 1013904223, LCG_M = 2 ** 32;
+let prngState = 42n; // BigInt for precision
+let prngSeed = 42;
+let prngCount = 0;
+
+function prngNext() {
+  prngState = (BigInt(LCG_A) * prngState + BigInt(LCG_C)) % BigInt(LCG_M);
+  prngCount++;
+  return Number(prngState) / LCG_M; // 0..1
+}
+
+function prngByte() { return Math.floor(prngNext() * 256); }
+
+function reseed(seed) {
+  prngSeed = parseInt(seed) || 0;
+  prngState = BigInt(prngSeed >>> 0);
+  prngCount = 0;
+  prngBitsBuffer = [];
+  prngHistData = new Array(16).fill(0);
+  prngScatterPrev = null;
+  document.getElementById('prng-seed-disp').textContent = prngSeed;
+  document.getElementById('prng-count').textContent = 0;
+  renderAll();
+}
+
+// ── TRNG (Web Crypto) ─────────────────────────────────────────────────────────
+let trngCount = 0;
+function trngByte() {
+  const arr = new Uint8Array(1);
+  crypto.getRandomValues(arr);
+  trngCount++;
+  return arr[0];
+}
+
+// ── State buffers ─────────────────────────────────────────────────────────────
+let prngBitsBuffer = [];
+let trngBitsBuffer = [];
+let prngHistData = new Array(16).fill(0);
+let trngHistData = new Array(16).fill(0);
+let prngScatterPrev = null, trngScatterPrev = null;
+// Scatter plot pixel buffers
+let prngScatterData = [];
+let trngScatterData = [];
+
+// ── Rendering ─────────────────────────────────────────────────────────────────
+function renderBitmap(canvas, bits) {
+  const W = canvas.width, H = canvas.height;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#060609';
+  ctx.fillRect(0, 0, W, H);
+  for (let i = 0; i < Math.min(bits.length, W * H); i++) {
+    const x = i % W, y = Math.floor(i / W);
+    ctx.fillStyle = bits[i] ? '#7a9aaa' : '#0d0d1a';
+    ctx.fillRect(x, y, 1, 1);
+  }
+}
+
+function renderHist(canvas, hist, color) {
+  const W = canvas.width, H = canvas.height;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#060609';
+  ctx.fillRect(0, 0, W, H);
+  const max = Math.max(1, ...hist);
+  const bw = Math.floor(W / 16);
+  hist.forEach((v, i) => {
+    const h = Math.round((v / max) * (H - 4));
+    const x = i * bw + 1;
+    ctx.fillStyle = color;
+    ctx.globalAlpha = 0.3 + (v / max) * 0.6;
+    ctx.fillRect(x, H - h, bw - 2, h);
+  });
+  ctx.globalAlpha = 1;
+  // Expected line
+  const expected = Math.max(...hist) > 0 ? Math.round((Object.values(hist).reduce((a,b)=>a+b,0) / 16 / max) * (H-4)) : H/2;
+  ctx.strokeStyle = '#334';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([2, 2]);
+  ctx.beginPath();
+  ctx.moveTo(0, H - expected); ctx.lineTo(W, H - expected);
+  ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+function renderScatter(canvas, points, color) {
+  const W = canvas.width, H = canvas.height;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#060609';
+  ctx.fillRect(0, 0, W, H);
+  points.forEach(([x, y]) => {
+    ctx.fillStyle = color;
+    ctx.globalAlpha = 0.5;
+    ctx.fillRect(x, y, 1, 1);
+  });
+  ctx.globalAlpha = 1;
+}
+
+function renderAll() {
+  renderBitmap(document.getElementById('prng-bitmap'), prngBitsBuffer);
+  renderBitmap(document.getElementById('trng-bitmap'), trngBitsBuffer);
+  renderHist(document.getElementById('prng-hist'), prngHistData, '#5a9acc');
+  renderHist(document.getElementById('trng-hist'), trngHistData, '#7acc7a');
+  renderScatter(document.getElementById('prng-scatter'), prngScatterData, '#5a9acc');
+  renderScatter(document.getElementById('trng-scatter'), trngScatterData, '#7acc7a');
+  document.getElementById('prng-count').textContent = prngCount;
+  document.getElementById('trng-count').textContent = trngCount;
+}
+
+function updateStream(el, bits, maxChars = 256) {
+  const str = bits.slice(-maxChars).join('');
+  el.textContent = str;
+}
+
+// ── Main loop ─────────────────────────────────────────────────────────────────
+function generate() {
+  // Generate 8 bits of PRNG
+  const pb = prngByte();
+  for (let i = 7; i >= 0; i--) prngBitsBuffer.push((pb >> i) & 1);
+  if (prngBitsBuffer.length > 512) prngBitsBuffer = prngBitsBuffer.slice(-512);
+  const pv = pb >> 4; // top 4 bits → 0-15
+  prngHistData[pv]++;
+  // Scatter: previous byte X, current byte Y
+  const scatterByte = prngByte();
+  if (prngScatterPrev !== null) {
+    prngScatterData.push([
+      Math.round(prngScatterPrev / 255 * 99),
+      Math.round(scatterByte / 255 * 99)
+    ]);
+    if (prngScatterData.length > 2000) prngScatterData = prngScatterData.slice(-2000);
+  }
+  prngScatterPrev = scatterByte;
+
+  // Generate 8 bits of TRNG
+  const tb = trngByte();
+  for (let i = 7; i >= 0; i--) trngBitsBuffer.push((tb >> i) & 1);
+  if (trngBitsBuffer.length > 512) trngBitsBuffer = trngBitsBuffer.slice(-512);
+  const tv = tb >> 4;
+  trngHistData[tv]++;
+  const scatterByteT = trngByte();
+  if (trngScatterPrev !== null) {
+    trngScatterData.push([
+      Math.round(trngScatterPrev / 255 * 99),
+      Math.round(scatterByteT / 255 * 99)
+    ]);
+    if (trngScatterData.length > 2000) trngScatterData = trngScatterData.slice(-2000);
+  }
+  trngScatterPrev = scatterByteT;
+
+  // Update stream displays
+  updateStream(document.getElementById('prng-stream'), prngBitsBuffer.slice(-200));
+  updateStream(document.getElementById('trng-stream'), trngBitsBuffer.slice(-200));
+
+  renderAll();
+}
+
+// Initial seed
+reseed(42);
+
+// Run loop
+setInterval(generate, 100);
+
+// Controls
+document.getElementById('prng-reseed').addEventListener('click', () => {
+  reseed(document.getElementById('prng-seed').value);
+});
+document.getElementById('prng-seed').addEventListener('keydown', e => {
+  if (e.key === 'Enter') reseed(e.target.value);
+});
+</script>
+</body>
+</html>
