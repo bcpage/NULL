@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>00168 — ASCII Art</title>
+<link rel="icon" href="data:,">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #050508; color: #8a9aaa;
+    font-family: 'Courier New', monospace;
+    min-height: 100vh; display: flex; flex-direction: column;
+    align-items: center; gap: 12px;
+    padding: 30px 20px 50px;
+  }
+  .room-id { font-size: 10px; letter-spacing: 5px; color: #223; }
+  .title { font-size: 11px; letter-spacing: 5px; color: #445; text-transform: uppercase; }
+
+  .controls { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; align-items: center; max-width: 560px; width: 100%; }
+
+  .ctrl-group { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .ctrl-label { font-size: 8px; letter-spacing: 2px; color: #223; }
+
+  select, input[type=text] {
+    background: #060610; border: 1px solid #0f0f18; color: #4a6a7a;
+    font-family: 'Courier New', monospace; font-size: 9px;
+    letter-spacing: 1px; padding: 6px 10px; outline: none;
+  }
+  input[type=range] {
+    -webkit-appearance: none; width: 90px; height: 3px;
+    background: #0f0f18; outline: none;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 10px; height: 10px;
+    border-radius: 50%; background: #3a5a7a; cursor: pointer;
+  }
+
+  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  button {
+    background: #060610; border: 1px solid #0f0f18; color: #334;
+    font-family: 'Courier New', monospace; font-size: 9px;
+    letter-spacing: 2px; padding: 7px 14px; cursor: pointer;
+  }
+  button:hover { background: #0a0a18; color: #556; }
+  button.primary { border-color: #1a2a4a; color: #3a5a7a; }
+  button.primary:hover { color: #5a8acc; }
+
+  #upload-btn { display: none; }
+  .upload-label {
+    background: #060610; border: 1px solid #0f0f18; color: #334;
+    font-family: 'Courier New', monospace; font-size: 9px;
+    letter-spacing: 2px; padding: 7px 14px; cursor: pointer;
+  }
+  .upload-label:hover { background: #0a0a18; color: #556; }
+
+  #canvas-wrap { position: relative; display: none; }
+  #img-canvas { display: block; }
+
+  #ascii-out {
+    max-width: 560px; width: 100%;
+    background: #020205; border: 1px solid #0f0f1a;
+    padding: 10px; overflow: auto;
+    max-height: 420px; min-height: 60px;
+  }
+  #ascii-pre {
+    font-size: 6px; line-height: 1.0; letter-spacing: 0;
+    color: #3a6a5a; white-space: pre; font-family: 'Courier New', monospace;
+    margin: 0;
+  }
+
+  .copy-row { display: flex; gap: 8px; justify-content: center; }
+
+  #drop-zone {
+    max-width: 560px; width: 100%;
+    border: 1px dashed #111120; padding: 28px;
+    text-align: center; background: #030306; cursor: pointer;
+  }
+  #drop-zone.drag-over { border-color: #2a4a2a; background: #030906; }
+  #drop-zone p { font-size: 10px; letter-spacing: 1px; color: #1a2a3a; line-height: 2.2; }
+
+  .stat-row { font-size: 9px; letter-spacing: 2px; color: #1a2a3a; text-align: center; min-height: 16px; }
+
+  .note { font-size: 10px; letter-spacing: 1px; color: #223; text-align: center; line-height: 2.2; max-width: 380px; border-top: 1px solid #111120; padding-top: 12px; }
+</style>
+</head>
+<body data-game="00168" data-nav="matrix">
+<div class="room-id">ROOM 00168</div>
+<div class="title">ASCII Art</div>
+
+<div class="controls">
+  <div class="ctrl-group">
+    <div class="ctrl-label">CHARSET</div>
+    <select id="charset-sel">
+      <option value="dense">dense</option>
+      <option value="standard" selected>standard</option>
+      <option value="blocks">blocks</option>
+      <option value="minimal">minimal</option>
+      <option value="hex">hex</option>
+    </select>
+  </div>
+  <div class="ctrl-group">
+    <div class="ctrl-label">WIDTH (chars)</div>
+    <input type="range" id="width-slider" min="40" max="160" value="80" step="4">
+    <span class="ctrl-label" id="width-val">80</span>
+  </div>
+  <div class="ctrl-group">
+    <div class="ctrl-label">CONTRAST</div>
+    <input type="range" id="contrast-sl" min="0.5" max="3" value="1.2" step="0.1">
+    <span class="ctrl-label" id="contrast-val">1.2</span>
+  </div>
+  <div class="ctrl-group">
+    <div class="ctrl-label">INVERT</div>
+    <input type="range" id="invert-sl" min="0" max="1" value="0" step="1">
+    <span class="ctrl-label" id="invert-val">OFF</span>
+  </div>
+</div>
+
+<div class="btn-row">
+  <label class="upload-label" for="upload-btn">UPLOAD IMAGE</label>
+  <input type="file" id="upload-btn" accept="image/*">
+  <button id="demo-btn">DEMO IMAGE</button>
+  <button id="text-btn" class="primary">TEXT→ASCII</button>
+</div>
+
+<div id="drop-zone">
+  <p>Drop an image here<br>or use UPLOAD / DEMO above</p>
+</div>
+
+<canvas id="img-canvas" style="display:none" width="1" height="1"></canvas>
+
+<div id="ascii-out" style="display:none">
+  <pre id="ascii-pre"></pre>
+</div>
+
+<div class="stat-row" id="stat-row"></div>
+
+<div class="copy-row" id="copy-row" style="display:none">
+  <button id="copy-btn">COPY TEXT</button>
+  <button id="regen-btn">REGENERATE</button>
+</div>
+
+<!-- Text to ASCII modal-ish inline panel -->
+<div id="text-panel" style="display:none; max-width:560px; width:100%; background:#030306; border:1px solid #0f0f1a; padding:16px;">
+  <div class="ctrl-label" style="margin-bottom:8px;">INPUT TEXT</div>
+  <div style="display:flex;gap:0;">
+    <input type="text" id="text-input" placeholder="enter text..." maxlength="20" style="flex:1;">
+    <button id="text-render-btn" style="border-left:none;">RENDER</button>
+  </div>
+  <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
+    <div class="ctrl-group">
+      <div class="ctrl-label">FONT SIZE</div>
+      <select id="font-size-sel">
+        <option value="8">tiny (8px)</option>
+        <option value="16" selected>small (16px)</option>
+        <option value="24">medium (24px)</option>
+        <option value="32">large (32px)</option>
+      </select>
+    </div>
+    <div class="ctrl-group">
+      <div class="ctrl-label">FONT</div>
+      <select id="font-sel">
+        <option value="Courier New">Courier New</option>
+        <option value="serif">Serif</option>
+        <option value="sans-serif">Sans-serif</option>
+      </select>
+    </div>
+  </div>
+</div>
+
+<script src="/shared/matrix-nav.js"></script>
+<script>
+const CHARSETS = {
+  dense:    ' .\'`^",:;Il!i><~+_-?][}{1)(|/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$',
+  standard: ' .:-=+*#%@',
+  blocks:   ' ░▒▓█',
+  minimal:  ' .:X@',
+  hex:      ' 0123456789ABCDEF'
+};
+
+const canvas = document.getElementById('img-canvas');
+const ctx = canvas.getContext('2d');
+let currentImage = null;
+let asciiWidth = 80;
+let contrast = 1.2;
+let invert = false;
+let charset = CHARSETS.standard;
+
+// Sliders
+document.getElementById('width-slider').addEventListener('input', e => {
+  asciiWidth = parseInt(e.target.value);
+  document.getElementById('width-val').textContent = asciiWidth;
+  if (currentImage) renderASCII();
+});
+document.getElementById('contrast-sl').addEventListener('input', e => {
+  contrast = parseFloat(e.target.value);
+  document.getElementById('contrast-val').textContent = contrast.toFixed(1);
+  if (currentImage) renderASCII();
+});
+document.getElementById('invert-sl').addEventListener('input', e => {
+  invert = parseInt(e.target.value) === 1;
+  document.getElementById('invert-val').textContent = invert ? 'ON' : 'OFF';
+  if (currentImage) renderASCII();
+});
+document.getElementById('charset-sel').addEventListener('change', e => {
+  charset = CHARSETS[e.target.value];
+  if (currentImage) renderASCII();
+});
+
+function loadImageSrc(src) {
+  const img = new Image();
+  img.onload = () => {
+    currentImage = img;
+    document.getElementById('drop-zone').style.display = 'none';
+    renderASCII();
+  };
+  img.src = src;
+}
+
+function renderASCII() {
+  if (!currentImage) return;
+  const W = asciiWidth;
+  // Chars are roughly 2x taller than wide in monospace
+  const H = Math.round(W * (currentImage.naturalHeight / currentImage.naturalWidth) * 0.45);
+
+  canvas.width = W;
+  canvas.height = H;
+  ctx.filter = `contrast(${contrast})`;
+  ctx.drawImage(currentImage, 0, 0, W, H);
+  ctx.filter = 'none';
+
+  const imageData = ctx.getImageData(0, 0, W, H);
+  const d = imageData.data;
+
+  let lines = [];
+  for (let y = 0; y < H; y++) {
+    let row = '';
+    for (let x = 0; x < W; x++) {
+      const i = (y * W + x) * 4;
+      const lum = 0.299 * d[i] + 0.587 * d[i+1] + 0.114 * d[i+2];
+      let v = lum / 255;
+      if (invert) v = 1 - v;
+      const ci = Math.floor(v * (charset.length - 1));
+      row += charset[Math.max(0, Math.min(charset.length - 1, ci))];
+    }
+    lines.push(row);
+  }
+
+  const text = lines.join('\n');
+  document.getElementById('ascii-pre').textContent = text;
+  document.getElementById('ascii-out').style.display = 'block';
+  document.getElementById('copy-row').style.display = 'flex';
+  document.getElementById('stat-row').textContent = `${W} × ${H} chars — ${(text.length / 1000).toFixed(1)}K characters`;
+}
+
+// Upload
+document.getElementById('upload-btn').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => loadImageSrc(ev.target.result);
+  reader.readAsDataURL(file);
+});
+
+// Demo image — generate a procedural image on canvas
+document.getElementById('demo-btn').addEventListener('click', () => {
+  // Create a demo image: facility badge / face-like shape
+  const dc = document.createElement('canvas');
+  dc.width = 200; dc.height = 200;
+  const dctx = dc.getContext('2d');
+
+  // Background
+  dctx.fillStyle = '#000';
+  dctx.fillRect(0, 0, 200, 200);
+
+  // Gradient background
+  const grad = dctx.createRadialGradient(100, 100, 10, 100, 100, 130);
+  grad.addColorStop(0, '#333');
+  grad.addColorStop(1, '#000');
+  dctx.fillStyle = grad;
+  dctx.fillRect(0, 0, 200, 200);
+
+  // Face outline (circle)
+  dctx.strokeStyle = '#aaa';
+  dctx.lineWidth = 3;
+  dctx.beginPath();
+  dctx.arc(100, 100, 65, 0, Math.PI * 2);
+  dctx.stroke();
+
+  // Eyes
+  dctx.fillStyle = '#ccc';
+  dctx.beginPath(); dctx.arc(75, 85, 10, 0, Math.PI * 2); dctx.fill();
+  dctx.beginPath(); dctx.arc(125, 85, 10, 0, Math.PI * 2); dctx.fill();
+  dctx.fillStyle = '#000';
+  dctx.beginPath(); dctx.arc(77, 87, 4, 0, Math.PI * 2); dctx.fill();
+  dctx.beginPath(); dctx.arc(127, 87, 4, 0, Math.PI * 2); dctx.fill();
+
+  // Mouth
+  dctx.strokeStyle = '#888';
+  dctx.lineWidth = 2;
+  dctx.beginPath();
+  dctx.arc(100, 110, 25, 0.2 * Math.PI, 0.8 * Math.PI);
+  dctx.stroke();
+
+  // Grid lines (facility aesthetic)
+  dctx.strokeStyle = 'rgba(50,50,80,0.4)';
+  dctx.lineWidth = 1;
+  for (let i = 0; i < 200; i += 20) {
+    dctx.beginPath(); dctx.moveTo(i, 0); dctx.lineTo(i, 200); dctx.stroke();
+    dctx.beginPath(); dctx.moveTo(0, i); dctx.lineTo(200, i); dctx.stroke();
+  }
+
+  loadImageSrc(dc.toDataURL());
+});
+
+// Drop zone
+const dropZone = document.getElementById('drop-zone');
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (!file || !file.type.startsWith('image/')) return;
+  const reader = new FileReader();
+  reader.onload = ev => loadImageSrc(ev.target.result);
+  reader.readAsDataURL(file);
+});
+dropZone.addEventListener('click', () => document.getElementById('upload-btn').click());
+
+// Copy
+document.getElementById('copy-btn').addEventListener('click', () => {
+  const text = document.getElementById('ascii-pre').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    document.getElementById('copy-btn').textContent = 'COPIED';
+    setTimeout(() => { document.getElementById('copy-btn').textContent = 'COPY TEXT'; }, 1500);
+  }).catch(() => {});
+});
+
+// Regen
+document.getElementById('regen-btn').addEventListener('click', () => {
+  if (currentImage) renderASCII();
+});
+
+// Text → ASCII panel
+document.getElementById('text-btn').addEventListener('click', () => {
+  const panel = document.getElementById('text-panel');
+  panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+});
+
+document.getElementById('text-render-btn').addEventListener('click', () => {
+  const text = document.getElementById('text-input').value.trim();
+  if (!text) return;
+  const fontSize = parseInt(document.getElementById('font-size-sel').value);
+  const font = document.getElementById('font-sel').value;
+
+  const tc = document.createElement('canvas');
+  const tctx = tc.getContext('2d');
+  tctx.font = `bold ${fontSize}px "${font}"`;
+  const metrics = tctx.measureText(text);
+  tc.width = Math.ceil(metrics.width) + 20;
+  tc.height = fontSize * 1.4 + 10;
+
+  const tctx2 = tc.getContext('2d');
+  tctx2.fillStyle = '#000';
+  tctx2.fillRect(0, 0, tc.width, tc.height);
+  tctx2.font = `bold ${fontSize}px "${font}"`;
+  tctx2.fillStyle = '#fff';
+  tctx2.fillText(text, 10, fontSize * 1.1);
+
+  document.getElementById('text-panel').style.display = 'none';
+  loadImageSrc(tc.toDataURL());
+});
+
+document.getElementById('text-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('text-render-btn').click();
+});
+</script>
+</body>
+</html>

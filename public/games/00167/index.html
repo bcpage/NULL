@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>00167 — Mirror Room</title>
+<link rel="icon" href="data:,">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #050508; color: #8a9aaa;
+    font-family: 'Courier New', monospace;
+    min-height: 100vh; display: flex; flex-direction: column;
+    align-items: center; gap: 12px;
+    padding: 30px 20px 50px;
+  }
+  .room-id { font-size: 10px; letter-spacing: 5px; color: #223; }
+  .title { font-size: 11px; letter-spacing: 5px; color: #445; text-transform: uppercase; }
+
+  #mirror-wrap { position: relative; display: inline-block; }
+  #mirror-canvas { display: block; border: 1px solid #0f0f1e; }
+  #video { display: none; }
+
+  #start-btn {
+    border: 1px solid #1a2a4a; background: #040410; color: #3a5a7a;
+    font-family: 'Courier New', monospace; font-size: 10px;
+    letter-spacing: 3px; padding: 14px 28px; cursor: pointer;
+  }
+  #start-btn:hover { background: #060618; color: #5a8acc; }
+
+  .effects { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  button.effect {
+    background: #060610; border: 1px solid #0f0f18; color: #334;
+    font-family: 'Courier New', monospace; font-size: 9px;
+    letter-spacing: 2px; padding: 7px 12px; cursor: pointer;
+  }
+  button.effect:hover { background: #0a0a18; color: #556; }
+  button.effect.active { border-color: #2a4a2a; color: #7acc7a; }
+
+  .sliders { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
+  .slider-group { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .slider-label { font-size: 8px; letter-spacing: 2px; color: #223; }
+  input[type=range] {
+    -webkit-appearance: none; width: 100px; height: 3px;
+    background: #0f0f18; outline: none;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 10px; height: 10px;
+    border-radius: 50%; background: #3a5a7a; cursor: pointer;
+  }
+
+  #no-camera {
+    max-width: 440px; border: 1px solid #0f0f1a; padding: 24px;
+    background: #030306; text-align: center; display: none;
+  }
+  #no-camera p { font-size: 10px; letter-spacing: 1px; color: #334; line-height: 2; }
+
+  .note { font-size: 10px; letter-spacing: 1px; color: #223; text-align: center; line-height: 2.2; max-width: 380px; border-top: 1px solid #111120; padding-top: 12px; }
+</style>
+</head>
+<body data-game="00167" data-nav="matrix">
+<div class="room-id">ROOM 00167</div>
+<div class="title">Mirror Room</div>
+
+<div id="mirror-wrap">
+  <canvas id="mirror-canvas" width="440" height="330"></canvas>
+  <video id="video" autoplay playsinline muted></video>
+</div>
+
+<button id="start-btn">ACTIVATE MIRROR</button>
+
+<div id="no-camera">
+  <p>Camera access denied or unavailable.<br>The mirror cannot reflect what is not there.</p>
+</div>
+
+<div class="effects">
+  <button class="effect active" data-effect="normal">NORMAL</button>
+  <button class="effect" data-effect="invert">INVERT</button>
+  <button class="effect" data-effect="grayscale">GRAYSCALE</button>
+  <button class="effect" data-effect="pixelate">PIXELATE</button>
+  <button class="effect" data-effect="edge">EDGE</button>
+  <button class="effect" data-effect="mirror">FLIP H</button>
+</div>
+
+<div class="sliders">
+  <div class="slider-group">
+    <div class="slider-label">BRIGHTNESS</div>
+    <input type="range" id="brightness" min="0.2" max="2" value="1" step="0.1">
+  </div>
+  <div class="slider-group">
+    <div class="slider-label">CONTRAST</div>
+    <input type="range" id="contrast" min="0.2" max="3" value="1" step="0.1">
+  </div>
+  <div class="slider-group">
+    <div class="slider-label">DELAY (frames)</div>
+    <input type="range" id="delay" min="0" max="30" value="0" step="1">
+  </div>
+</div>
+
+<div class="note">
+  You are looking at yourself.<br>
+  Delayed slightly.<br>
+  The mirror has no memory.<br>
+  The camera might.
+</div>
+
+<script src="/shared/matrix-nav.js"></script>
+<script>
+const canvas = document.getElementById('mirror-canvas');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+const video = document.getElementById('video');
+let stream = null;
+let currentEffect = 'normal';
+let brightness = 1, contrast = 1, delayFrames = 0;
+const frameBuffer = []; // for delay effect
+
+ctx.fillStyle = '#020205';
+ctx.fillRect(0, 0, W, H);
+ctx.fillStyle = '#1a2a3a';
+ctx.font = '10px Courier New';
+ctx.textAlign = 'center';
+ctx.fillText('MIRROR INACTIVE', W/2, H/2);
+
+document.getElementById('start-btn').addEventListener('click', async () => {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: { width: 440, height: 330 }, audio: false });
+    video.srcObject = stream;
+    await video.play();
+    document.getElementById('start-btn').style.display = 'none';
+    requestAnimationFrame(renderFrame);
+  } catch (e) {
+    document.getElementById('start-btn').style.display = 'none';
+    document.getElementById('no-camera').style.display = 'block';
+  }
+});
+
+function renderFrame() {
+  if (!stream) return;
+
+  ctx.save();
+
+  // Mirror horizontally if effect is 'mirror'
+  if (currentEffect === 'mirror') {
+    ctx.translate(W, 0);
+    ctx.scale(-1, 1);
+  }
+
+  // Draw video
+  ctx.filter = `brightness(${brightness}) contrast(${contrast})`;
+  ctx.drawImage(video, 0, 0, W, H);
+  ctx.restore();
+  ctx.filter = 'none';
+
+  // Apply pixel effects
+  if (currentEffect !== 'normal' && currentEffect !== 'mirror') {
+    const imageData = ctx.getImageData(0, 0, W, H);
+    const d = imageData.data;
+
+    if (currentEffect === 'invert') {
+      for (let i = 0; i < d.length; i += 4) {
+        d[i] = 255 - d[i];
+        d[i+1] = 255 - d[i+1];
+        d[i+2] = 255 - d[i+2];
+      }
+    } else if (currentEffect === 'grayscale') {
+      for (let i = 0; i < d.length; i += 4) {
+        const gray = 0.299 * d[i] + 0.587 * d[i+1] + 0.114 * d[i+2];
+        d[i] = d[i+1] = d[i+2] = gray;
+      }
+    } else if (currentEffect === 'pixelate') {
+      const size = 12;
+      for (let y = 0; y < H; y += size) {
+        for (let x = 0; x < W; x += size) {
+          const i = (y * W + x) * 4;
+          const r = d[i], g = d[i+1], b = d[i+2];
+          for (let py = y; py < Math.min(y+size,H); py++) {
+            for (let px = x; px < Math.min(x+size,W); px++) {
+              const j = (py * W + px) * 4;
+              d[j] = r; d[j+1] = g; d[j+2] = b;
+            }
+          }
+        }
+      }
+    } else if (currentEffect === 'edge') {
+      const copy = new Uint8ClampedArray(d);
+      for (let y = 1; y < H-1; y++) {
+        for (let x = 1; x < W-1; x++) {
+          const gx = (
+            -copy[((y-1)*W+(x-1))*4] + copy[((y-1)*W+(x+1))*4]
+            -2*copy[(y*W+(x-1))*4] + 2*copy[(y*W+(x+1))*4]
+            -copy[((y+1)*W+(x-1))*4] + copy[((y+1)*W+(x+1))*4]
+          );
+          const gy = (
+            -copy[((y-1)*W+(x-1))*4] - 2*copy[((y-1)*W+x)*4] - copy[((y-1)*W+(x+1))*4]
+            + copy[((y+1)*W+(x-1))*4] + 2*copy[((y+1)*W+x)*4] + copy[((y+1)*W+(x+1))*4]
+          );
+          const mag = Math.min(255, Math.sqrt(gx*gx + gy*gy));
+          const i = (y*W+x)*4;
+          d[i] = d[i+1] = d[i+2] = mag;
+        }
+      }
+    }
+
+    // Delay effect: buffer frames
+    if (delayFrames > 0) {
+      frameBuffer.push(new ImageData(new Uint8ClampedArray(d), W, H));
+      if (frameBuffer.length > delayFrames) {
+        ctx.putImageData(frameBuffer.shift(), 0, 0);
+      }
+    } else {
+      frameBuffer.length = 0;
+      ctx.putImageData(imageData, 0, 0);
+    }
+  }
+
+  // Overlay: dim vignette
+  const vgrad = ctx.createRadialGradient(W/2, H/2, H/3, W/2, H/2, H*0.8);
+  vgrad.addColorStop(0, 'transparent');
+  vgrad.addColorStop(1, 'rgba(0,0,0,0.4)');
+  ctx.fillStyle = vgrad;
+  ctx.fillRect(0, 0, W, H);
+
+  requestAnimationFrame(renderFrame);
+}
+
+document.querySelectorAll('.effect').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.effect').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentEffect = btn.dataset.effect;
+    frameBuffer.length = 0;
+  });
+});
+
+document.getElementById('brightness').addEventListener('input', e => brightness = parseFloat(e.target.value));
+document.getElementById('contrast').addEventListener('input', e => contrast = parseFloat(e.target.value));
+document.getElementById('delay').addEventListener('input', e => { delayFrames = parseInt(e.target.value); frameBuffer.length = 0; });
+</script>
+</body>
+</html>

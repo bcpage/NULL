@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>00166 — π Digits</title>
+<link rel="icon" href="data:,">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #050508; color: #8a9aaa;
+    font-family: 'Courier New', monospace;
+    min-height: 100vh; display: flex; flex-direction: column;
+    align-items: center; gap: 14px;
+    padding: 30px 20px 50px;
+  }
+  .room-id { font-size: 10px; letter-spacing: 5px; color: #223; }
+  .title { font-size: 11px; letter-spacing: 5px; color: #445; text-transform: uppercase; }
+
+  #pi-display {
+    max-width: 520px; width: 100%; background: #030306;
+    border: 1px solid #0f0f1a; padding: 14px;
+    font-size: 13px; letter-spacing: 2px; color: #2a4a5a;
+    line-height: 2; word-break: break-all; max-height: 300px; overflow-y: auto;
+  }
+  .pi-prefix { color: #e94560; }
+  .pi-digit { transition: color 0.1s; }
+  .pi-highlight { background: #1a3a2a; color: #7acc7a; border-radius: 1px; }
+
+  .search-row { display: flex; gap: 0; max-width: 520px; width: 100%; }
+  #search-input {
+    flex: 1; background: #030306; border: 1px solid #0f0f18; border-right: none;
+    color: #4a6a7a; font-family: 'Courier New', monospace; font-size: 11px;
+    padding: 9px 12px; outline: none; letter-spacing: 1px;
+  }
+  #search-input::placeholder { color: #1a1a28; }
+  #search-btn {
+    background: #050510; border: 1px solid #0f0f18; color: #2a3a4a;
+    font-family: 'Courier New', monospace; font-size: 9px;
+    letter-spacing: 2px; padding: 9px 14px; cursor: pointer;
+  }
+  #search-btn:hover { background: #080818; color: #3a5a6a; }
+
+  #search-result { font-size: 10px; letter-spacing: 2px; color: #334; text-align: center; min-height: 18px; }
+
+  .stats-row { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; }
+  .stat { font-size: 9px; letter-spacing: 2px; color: #223; text-align: center; }
+  .stat span { display: block; color: #445; font-size: 14px; margin-top: 3px; }
+
+  .digit-freq {
+    max-width: 520px; width: 100%; display: flex; gap: 4px; align-items: flex-end; height: 60px;
+  }
+  .freq-bar { flex: 1; background: #1a2a3a; border-radius: 1px 1px 0 0; transition: height 0.3s; }
+  .freq-label { max-width: 520px; width: 100%; display: flex; gap: 4px; }
+  .freq-lbl { flex: 1; font-size: 8px; color: #1a2a3a; text-align: center; }
+
+  .note { font-size: 10px; letter-spacing: 1px; color: #223; text-align: center; line-height: 2.2; max-width: 380px; border-top: 1px solid #111120; padding-top: 12px; }
+</style>
+</head>
+<body data-game="00166" data-nav="matrix">
+<div class="room-id">ROOM 00166</div>
+<div class="title">π Digits</div>
+
+<div id="pi-display"><span class="pi-prefix">3.</span><span id="digits-span"></span></div>
+
+<div class="search-row">
+  <input type="text" id="search-input" placeholder="search for a digit sequence..." maxlength="10" />
+  <button id="search-btn">FIND</button>
+</div>
+<div id="search-result"></div>
+
+<div class="stats-row">
+  <div class="stat">DIGITS SHOWN<span id="shown-count">0</span></div>
+  <div class="stat">SEARCHING IN<span id="search-in">0</span></div>
+</div>
+
+<div class="digit-freq" id="freq-bars"></div>
+<div class="freq-label" id="freq-labels"></div>
+
+<div class="note">
+  π = 3.14159265358979323846...<br>
+  The digits continue without pattern, without end.<br>
+  Your birthday appears somewhere in π.<br>
+  Every finite sequence of digits appears.<br>
+  (Probably. It hasn't been proven.)
+</div>
+
+<script src="/shared/matrix-nav.js"></script>
+<script>
+// First 1000 digits of π (after decimal point)
+const PI_DIGITS = '14159265358979323846264338327950288419716939937510582097494459230781640628620899862803482534211706798214808651328230664709384460955058223172535940812848111745028410270193852110555964462294895493038196442881097566593344612847564823378678316527120190914564856692346034861045432664821339360726024914127372458700660631558817488152092096282925409171536436789259036001133053054882046652138414695194151160943305727036575959195309218611738193261179310511854807446237996274956735188575272489122793818301194912983367336244065664308602139494639522473719070217986094370277053921717629317675238467481846766940513200056812714526356082778577134275778960917363717872146844090122495343014654958537105079227968925892354201995611212902196086403441815981362977477130996051870721134999999837297804995105973173281609631859502445945534690830264252230825334468503526193118817101000313783875288658753320838142061717766914730359825349042875546873115956286388235378759375195778185778053217122680661300192787661119590921642019';
+
+const SEARCH_SPACE = PI_DIGITS; // search in these digits
+
+// Display first 500 digits
+const DISPLAY_COUNT = 500;
+const digitsSpan = document.getElementById('digits-span');
+document.getElementById('shown-count').textContent = DISPLAY_COUNT;
+document.getElementById('search-in').textContent = PI_DIGITS.length;
+
+digitsSpan.innerHTML = PI_DIGITS.slice(0, DISPLAY_COUNT).split('').map((d, i) =>
+  `<span class="pi-digit" data-i="${i}">${d}</span>`
+).join('');
+
+// Digit frequency chart
+const freq = new Array(10).fill(0);
+for (const d of PI_DIGITS) freq[parseInt(d)]++;
+const maxFreq = Math.max(...freq);
+
+const freqBars = document.getElementById('freq-bars');
+const freqLabels = document.getElementById('freq-labels');
+for (let d = 0; d < 10; d++) {
+  const bar = document.createElement('div');
+  bar.className = 'freq-bar';
+  bar.style.height = Math.round((freq[d] / maxFreq) * 55) + 'px';
+  bar.title = `${d}: ${freq[d]} times`;
+  freqBars.appendChild(bar);
+
+  const lbl = document.createElement('div');
+  lbl.className = 'freq-lbl';
+  lbl.textContent = d;
+  freqLabels.appendChild(lbl);
+}
+
+// Search
+function searchPi(query) {
+  const q = query.replace(/\D/g, ''); // digits only
+  if (!q) return;
+
+  const idx = SEARCH_SPACE.indexOf(q);
+  const resultEl = document.getElementById('search-result');
+
+  if (idx === -1) {
+    resultEl.textContent = `"${q}" not found in the first ${PI_DIGITS.length} digits.`;
+    return;
+  }
+
+  resultEl.textContent = `"${q}" found at position ${idx + 1} after the decimal point.`;
+
+  // Highlight in display if within view
+  document.querySelectorAll('.pi-highlight').forEach(e => e.classList.remove('pi-highlight'));
+  if (idx < DISPLAY_COUNT) {
+    for (let i = idx; i < Math.min(idx + q.length, DISPLAY_COUNT); i++) {
+      const el = digitsSpan.querySelector(`[data-i="${i}"]`);
+      if (el) el.classList.add('pi-highlight');
+    }
+    // Scroll to highlight
+    const first = digitsSpan.querySelector('.pi-highlight');
+    if (first) first.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+}
+
+document.getElementById('search-btn').addEventListener('click', () => {
+  searchPi(document.getElementById('search-input').value);
+});
+document.getElementById('search-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') searchPi(e.target.value);
+});
+
+// Birthday search
+const today = new Date();
+const birthday = String(today.getMonth() + 1).padStart(2,'0') + String(today.getDate()).padStart(2,'0');
+const bIdx = SEARCH_SPACE.indexOf(birthday);
+if (bIdx !== -1) {
+  document.getElementById('search-input').placeholder = `e.g. ${birthday} (today's date — position ${bIdx + 1})`;
+}
+</script>
+</body>
+</html>
