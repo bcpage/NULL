@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>00172 — Base Converter</title>
+<link rel="icon" href="data:,">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #050508; color: #8a9aaa;
+    font-family: 'Courier New', monospace;
+    min-height: 100vh; display: flex; flex-direction: column;
+    align-items: center; gap: 14px;
+    padding: 30px 20px 50px;
+  }
+  .room-id { font-size: 10px; letter-spacing: 5px; color: #223; }
+  .title { font-size: 11px; letter-spacing: 5px; color: #445; text-transform: uppercase; }
+
+  .converter { max-width: 480px; width: 100%; display: flex; flex-direction: column; gap: 10px; }
+
+  .base-row {
+    background: #030306; border: 1px solid #0f0f1a;
+    display: flex; align-items: stretch; gap: 0;
+  }
+  .base-label {
+    background: #020205; border-right: 1px solid #0f0f1a;
+    padding: 0 14px; display: flex; align-items: center;
+    font-size: 9px; letter-spacing: 2px; color: #1a2a3a; min-width: 80px;
+  }
+  .base-label span { color: #2a4a6a; font-size: 16px; margin-right: 6px; }
+  .base-input {
+    flex: 1; background: transparent; border: none;
+    color: #4a7a8a; font-family: 'Courier New', monospace;
+    font-size: 13px; padding: 12px 14px; outline: none;
+    letter-spacing: 1px; text-transform: uppercase;
+  }
+  .base-input:focus { color: #6a9aaa; }
+  .base-input.error { color: #7a2a2a; }
+  .copy-btn {
+    background: transparent; border: none; border-left: 1px solid #0a0a14;
+    color: #1a2a3a; font-size: 10px; padding: 0 12px; cursor: pointer;
+    font-family: 'Courier New', monospace;
+  }
+  .copy-btn:hover { color: #3a5a7a; }
+
+  .divider { height: 1px; background: #0a0a14; }
+
+  .info-panel {
+    max-width: 480px; width: 100%;
+    background: #030306; border: 1px solid #0f0f1a;
+    padding: 14px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+  }
+  .info-item { font-size: 9px; letter-spacing: 1px; }
+  .info-key { color: #1a2a3a; margin-bottom: 3px; }
+  .info-val { color: #3a5a6a; font-size: 11px; }
+
+  .quick-row { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; max-width: 480px; }
+  button.quick {
+    background: #060610; border: 1px solid #0f0f18; color: #223;
+    font-family: 'Courier New', monospace; font-size: 8px;
+    letter-spacing: 1px; padding: 5px 10px; cursor: pointer;
+  }
+  button.quick:hover { background: #0a0a18; color: #445; }
+
+  .bit-display {
+    max-width: 480px; width: 100%;
+    background: #020205; border: 1px solid #0a0a14;
+    padding: 10px 14px; font-size: 11px; letter-spacing: 4px;
+    color: #1a3a2a; word-break: break-all; line-height: 2;
+    min-height: 36px;
+  }
+  .bit-1 { color: #5a9a6a; }
+  .bit-0 { color: #1a2a1a; }
+
+  .note { font-size: 10px; letter-spacing: 1px; color: #223; text-align: center; line-height: 2.2; max-width: 380px; border-top: 1px solid #111120; padding-top: 12px; }
+</style>
+</head>
+<body data-game="00172" data-nav="matrix">
+<div class="room-id">ROOM 00172</div>
+<div class="title">Base Converter</div>
+
+<div class="converter">
+  <div class="base-row">
+    <div class="base-label"><span>2</span>BIN</div>
+    <input class="base-input" id="in-bin" type="text" placeholder="01010..." autocomplete="off" spellcheck="false">
+    <button class="copy-btn" onclick="copyField('in-bin')">⎘</button>
+  </div>
+  <div class="base-row">
+    <div class="base-label"><span>8</span>OCT</div>
+    <input class="base-input" id="in-oct" type="text" placeholder="0-7..." autocomplete="off" spellcheck="false">
+    <button class="copy-btn" onclick="copyField('in-oct')">⎘</button>
+  </div>
+  <div class="base-row">
+    <div class="base-label"><span>10</span>DEC</div>
+    <input class="base-input" id="in-dec" type="text" placeholder="0-9..." autocomplete="off" spellcheck="false">
+    <button class="copy-btn" onclick="copyField('in-dec')">⎘</button>
+  </div>
+  <div class="base-row">
+    <div class="base-label"><span>16</span>HEX</div>
+    <input class="base-input" id="in-hex" type="text" placeholder="0-F..." autocomplete="off" spellcheck="false">
+    <button class="copy-btn" onclick="copyField('in-hex')">⎘</button>
+  </div>
+  <div class="base-row">
+    <div class="base-label"><span>64</span>B64</div>
+    <input class="base-input" id="in-b64" type="text" placeholder="A-Za-z0-9+/=" autocomplete="off" spellcheck="false">
+    <button class="copy-btn" onclick="copyField('in-b64')">⎘</button>
+  </div>
+  <div class="base-row">
+    <div class="base-label"><span>∞</span>TEXT</div>
+    <input class="base-input" id="in-txt" type="text" placeholder="ASCII text..." autocomplete="off" spellcheck="false">
+    <button class="copy-btn" onclick="copyField('in-txt')">⎘</button>
+  </div>
+</div>
+
+<div class="bit-display" id="bit-display"></div>
+
+<div class="info-panel">
+  <div class="info-item"><div class="info-key">DECIMAL VALUE</div><div class="info-val" id="info-dec">—</div></div>
+  <div class="info-item"><div class="info-key">BIT LENGTH</div><div class="info-val" id="info-bits">—</div></div>
+  <div class="info-item"><div class="info-key">SIGNED (32-bit)</div><div class="info-val" id="info-signed">—</div></div>
+  <div class="info-item"><div class="info-key">IS POWER OF 2</div><div class="info-val" id="info-pow2">—</div></div>
+  <div class="info-item"><div class="info-key">IS PRIME</div><div class="info-val" id="info-prime">—</div></div>
+  <div class="info-item"><div class="info-key">BYTE COUNT</div><div class="info-val" id="info-bytes">—</div></div>
+</div>
+
+<div class="quick-row">
+  <button class="quick" onclick="setDec(0)">0</button>
+  <button class="quick" onclick="setDec(1)">1</button>
+  <button class="quick" onclick="setDec(42)">42</button>
+  <button class="quick" onclick="setDec(255)">255</button>
+  <button class="quick" onclick="setDec(256)">256</button>
+  <button class="quick" onclick="setDec(1024)">1024</button>
+  <button class="quick" onclick="setDec(65535)">65535</button>
+  <button class="quick" onclick="setDec(2147483647)">2³¹−1</button>
+  <button class="quick" onclick="setTxt('NULL')">NULL</button>
+  <button class="quick" onclick="setTxt('ACCESS DENIED')">ACCESS DENIED</button>
+</div>
+
+<div class="note">
+  Every number is the same number.<br>
+  The base is only notation.<br>
+  01001110 01010101 01001100 01001100<br>
+  That spells NULL.
+</div>
+
+<script src="/shared/matrix-nav.js"></script>
+<script>
+let updating = false;
+
+function isPrime(n) {
+  if (n < 2) return false;
+  if (n === 2) return true;
+  if (n % 2 === 0) return false;
+  for (let i = 3; i <= Math.sqrt(n); i += 2) if (n % i === 0) return false;
+  return true;
+}
+
+function updateAll(val) {
+  if (updating) return;
+  updating = true;
+
+  if (val === null || val === undefined) {
+    ['in-bin','in-oct','in-dec','in-hex','in-b64','in-txt'].forEach(id => {
+      document.getElementById(id).value = '';
+      document.getElementById(id).classList.remove('error');
+    });
+    document.getElementById('bit-display').innerHTML = '';
+    document.getElementById('info-dec').textContent = '—';
+    document.getElementById('info-bits').textContent = '—';
+    document.getElementById('info-signed').textContent = '—';
+    document.getElementById('info-pow2').textContent = '—';
+    document.getElementById('info-prime').textContent = '—';
+    document.getElementById('info-bytes').textContent = '—';
+    updating = false;
+    return;
+  }
+
+  // val is BigInt
+  const n = val;
+  const isNeg = n < 0n;
+  const absN = isNeg ? -n : n;
+
+  document.getElementById('in-bin').value = isNeg ? '-' + absN.toString(2) : n.toString(2);
+  document.getElementById('in-oct').value = isNeg ? '-' + absN.toString(8) : n.toString(8);
+  document.getElementById('in-dec').value = n.toString(10);
+  document.getElementById('in-hex').value = (isNeg ? '-' : '') + absN.toString(16).toUpperCase();
+
+  // Base64 from bytes
+  if (!isNeg && n <= BigInt('0x' + 'ff'.repeat(256))) {
+    try {
+      const hex = absN.toString(16);
+      const padded = hex.length % 2 ? '0' + hex : hex;
+      const bytes = new Uint8Array(padded.match(/.{2}/g).map(h => parseInt(h, 16)));
+      let b64 = btoa(String.fromCharCode(...bytes));
+      document.getElementById('in-b64').value = b64;
+    } catch (e) {
+      document.getElementById('in-b64').value = '';
+    }
+  } else {
+    document.getElementById('in-b64').value = '';
+  }
+
+  // Text (ASCII from bytes if number < 2^64)
+  if (!isNeg && n < 2n**64n) {
+    try {
+      const hex = absN.toString(16);
+      const padded = hex.length % 2 ? '0' + hex : hex;
+      const text = padded.match(/.{2}/g).map(h => {
+        const c = parseInt(h, 16);
+        return c >= 32 && c < 127 ? String.fromCharCode(c) : '.';
+      }).join('');
+      document.getElementById('in-txt').value = text;
+    } catch(e) {
+      document.getElementById('in-txt').value = '';
+    }
+  } else {
+    document.getElementById('in-txt').value = '';
+  }
+
+  // Bit display
+  const binStr = absN.toString(2).padStart(Math.max(8, Math.ceil(absN.toString(2).length / 8) * 8), '0');
+  document.getElementById('bit-display').innerHTML = binStr.split('').map(b =>
+    `<span class="bit-${b}">${b}</span>`
+  ).join('');
+
+  // Info
+  document.getElementById('info-dec').textContent = n.toString();
+  document.getElementById('info-bits').textContent = absN === 0n ? '1' : absN.toString(2).length;
+  const asNum = Number(n);
+  document.getElementById('info-signed').textContent =
+    n >= -2147483648n && n <= 2147483647n ? n.toString() : 'overflow';
+  document.getElementById('info-pow2').textContent =
+    absN > 0n && (absN & (absN - 1n)) === 0n ? 'YES — 2^' + (absN.toString(2).length - 1) : 'NO';
+  document.getElementById('info-prime').textContent =
+    absN < 2n ? 'NO' : absN < 10000000n ? (isPrime(Number(absN)) ? 'YES' : 'NO') : '(too large)';
+  const byteLen = Math.ceil(absN.toString(16).length / 2);
+  document.getElementById('info-bytes').textContent = byteLen + ' byte' + (byteLen !== 1 ? 's' : '');
+
+  ['in-bin','in-oct','in-dec','in-hex','in-b64','in-txt'].forEach(id =>
+    document.getElementById(id).classList.remove('error'));
+
+  updating = false;
+}
+
+function parseField(id, radix) {
+  const val = document.getElementById(id).value.trim();
+  if (!val) return null;
+  try {
+    const neg = val.startsWith('-');
+    const abs = neg ? val.slice(1) : val;
+    if (!abs) return null;
+    const n = BigInt(radix === 10 ? (neg ? '-' + abs : abs) : ('0' + (radix === 2 ? 'b' : radix === 8 ? 'o' : 'x') + abs));
+    return neg ? -n : n;
+  } catch(e) { return undefined; } // undefined = parse error
+}
+
+function onInput(id, radix) {
+  const val = document.getElementById(id).value.trim();
+  if (!val) { updateAll(null); return; }
+  const n = parseField(id, radix);
+  if (n === undefined) {
+    document.getElementById(id).classList.add('error');
+    return;
+  }
+  updateAll(n);
+}
+
+document.getElementById('in-bin').addEventListener('input', () => onInput('in-bin', 2));
+document.getElementById('in-oct').addEventListener('input', () => onInput('in-oct', 8));
+document.getElementById('in-dec').addEventListener('input', () => onInput('in-dec', 10));
+document.getElementById('in-hex').addEventListener('input', () => onInput('in-hex', 16));
+
+document.getElementById('in-b64').addEventListener('input', () => {
+  if (updating) return;
+  const val = document.getElementById('in-b64').value.trim();
+  if (!val) { updateAll(null); return; }
+  try {
+    const bytes = Uint8Array.from(atob(val), c => c.charCodeAt(0));
+    let hexStr = '';
+    bytes.forEach(b => hexStr += b.toString(16).padStart(2,'0'));
+    const n = hexStr ? BigInt('0x' + hexStr) : 0n;
+    updateAll(n);
+  } catch(e) {
+    document.getElementById('in-b64').classList.add('error');
+  }
+});
+
+document.getElementById('in-txt').addEventListener('input', () => {
+  if (updating) return;
+  const val = document.getElementById('in-txt').value;
+  if (!val) { updateAll(null); return; }
+  let hexStr = '';
+  for (let i = 0; i < val.length; i++) {
+    hexStr += val.charCodeAt(i).toString(16).padStart(2,'0');
+  }
+  const n = BigInt('0x' + hexStr);
+  updateAll(n);
+});
+
+function setDec(num) {
+  document.getElementById('in-dec').value = num;
+  updateAll(BigInt(num));
+}
+function setTxt(str) {
+  document.getElementById('in-txt').value = str;
+  let hexStr = '';
+  for (let i = 0; i < str.length; i++) hexStr += str.charCodeAt(i).toString(16).padStart(2,'0');
+  updateAll(BigInt('0x' + hexStr));
+}
+window.setDec = setDec;
+window.setTxt = setTxt;
+
+function copyField(id) {
+  const val = document.getElementById(id).value;
+  if (!val) return;
+  navigator.clipboard.writeText(val).catch(() => {});
+}
+window.copyField = copyField;
+
+// Init with NULL
+setTxt('NULL');
+</script>
+</body>
+</html>

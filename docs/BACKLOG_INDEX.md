@@ -1,6 +1,6 @@
 # NULL — Backlog Index
-Last updated: 2026-05-25 (session 4)
-Built through: 00147
+Last updated: 2026-05-25 (session 5)
+Built through: 00172
 
 See docs/BUILD_PRIORITY.md for full ratings, status, and recommended build order.
 
@@ -97,3 +97,25 @@ For full specs, grep docs/BACKLOG.md for the room name.
 | ~~Visible Spectrum + Non-Spectral Colors~~ | ~~Medium~~ | — | **BUILT** → 00140 |
 | ~~PRNG vs True RNG~~ | ~~Medium~~ | — | **BUILT** → 00142 |
 | ~~Goldfish Room~~ | ~~Easy~~ | — | **BUILT** → 00147 |
+| ~~Recursive Room~~ | ~~Easy~~ | — | **BUILT** → 00151 |
+| ~~Conway's Game of Life~~ | ~~Medium~~ | — | **BUILT** → 00152 |
+| ~~Number Dispenser~~ | ~~Easy~~ | — | **BUILT** → 00153 |
+| ~~The NULL Room (full map)~~ | ~~Medium~~ | — | **BUILT** → 00154 |
+| ~~Waiting Room~~ | ~~Easy~~ | — | **BUILT** → 00155 |
+| ~~Vending Machine~~ | ~~Easy~~ | — | **BUILT** → 00156 |
+| ~~Fibonacci Sequence~~ | ~~Easy~~ | — | **BUILT** → 00157 |
+| ~~Binary Clock~~ | ~~Easy~~ | — | **BUILT** → 00158 |
+| ~~Mandelbrot Set~~ | ~~Medium~~ | — | **BUILT** → 00159 |
+| ~~The Audit~~ | ~~Easy~~ | — | **BUILT** → 00160 |
+| ~~Cellular Automata (Rule 110)~~ | ~~Medium~~ | — | **BUILT** → 00161 |
+| ~~Periodic Table~~ | ~~Medium~~ | — | **BUILT** → 00162 |
+| ~~Morse Code~~ | ~~Easy~~ | — | **BUILT** → 00163 |
+| ~~Brainfuck Interpreter~~ | ~~Medium~~ | — | **BUILT** → 00164 |
+| ~~Sound Room (browser synth)~~ | ~~Medium~~ | — | **BUILT** → 00165 |
+| ~~Pi Digits~~ | ~~Easy~~ | — | **BUILT** → 00166 |
+| ~~Mirror Room (webcam)~~ | ~~Easy~~ | — | **BUILT** → 00167 |
+| ~~ASCII Art Generator~~ | ~~Easy~~ | — | **BUILT** → 00168 |
+| ~~Starfield~~ | ~~Easy~~ | — | **BUILT** → 00169 |
+| ~~Color Mixer~~ | ~~Easy~~ | — | **BUILT** → 00170 |
+| ~~Typing Test~~ | ~~Easy-Med~~ | — | **BUILT** → 00171 |
+| ~~Base Converter~~ | ~~Trivial~~ | — | **BUILT** → 00172 |

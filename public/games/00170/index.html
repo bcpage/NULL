@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>00170 — Color Mixer</title>
+<link rel="icon" href="data:,">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #050508; color: #8a9aaa;
+    font-family: 'Courier New', monospace;
+    min-height: 100vh; display: flex; flex-direction: column;
+    align-items: center; gap: 14px;
+    padding: 30px 20px 50px;
+  }
+  .room-id { font-size: 10px; letter-spacing: 5px; color: #223; }
+  .title { font-size: 11px; letter-spacing: 5px; color: #445; text-transform: uppercase; }
+
+  .mixer { display: flex; gap: 12px; max-width: 560px; width: 100%; flex-wrap: wrap; justify-content: center; }
+
+  .color-panel {
+    background: #030306; border: 1px solid #0f0f1a; padding: 14px;
+    display: flex; flex-direction: column; gap: 8px; width: 170px;
+  }
+  .panel-label { font-size: 8px; letter-spacing: 3px; color: #1a1a28; }
+  .color-swatch { height: 50px; border-radius: 1px; border: 1px solid #0f0f1a; cursor: pointer; }
+  .swatch-big { height: 80px; }
+
+  .slider-row { display: flex; flex-direction: column; gap: 3px; }
+  .sl-label { font-size: 7px; letter-spacing: 2px; color: #223; display: flex; justify-content: space-between; }
+  input[type=range] {
+    -webkit-appearance: none; width: 100%; height: 3px;
+    background: #0f0f18; outline: none;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 10px; height: 10px;
+    border-radius: 50%; background: #3a5a7a; cursor: pointer;
+  }
+
+  .hex-row { display: flex; gap: 0; }
+  input[type=text].hex-input {
+    flex: 1; background: #020205; border: 1px solid #0f0f18; border-right: none;
+    color: #4a6a7a; font-family: 'Courier New', monospace; font-size: 9px;
+    padding: 5px 8px; outline: none; letter-spacing: 1px; text-transform: uppercase;
+  }
+  button.hex-apply {
+    background: #060610; border: 1px solid #0f0f18; color: #2a3a4a;
+    font-family: 'Courier New', monospace; font-size: 8px;
+    letter-spacing: 1px; padding: 5px 8px; cursor: pointer;
+  }
+  button.hex-apply:hover { color: #4a6a8a; }
+
+  .info-box {
+    background: #030306; border: 1px solid #0f0f1a; padding: 10px;
+    font-size: 9px; letter-spacing: 1px; color: #2a4a5a; line-height: 2;
+  }
+
+  .palette-row {
+    max-width: 560px; width: 100%; display: flex; gap: 6px; flex-wrap: wrap;
+  }
+  .pal-swatch {
+    width: 32px; height: 32px; border: 1px solid #0f0f1a; cursor: pointer;
+    border-radius: 1px; transition: transform 0.1s;
+  }
+  .pal-swatch:hover { transform: scale(1.15); border-color: #2a3a5a; }
+
+  .mix-controls { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  button {
+    background: #060610; border: 1px solid #0f0f18; color: #334;
+    font-family: 'Courier New', monospace; font-size: 9px;
+    letter-spacing: 2px; padding: 7px 14px; cursor: pointer;
+  }
+  button:hover { background: #0a0a18; color: #556; }
+
+  .note { font-size: 10px; letter-spacing: 1px; color: #223; text-align: center; line-height: 2.2; max-width: 380px; border-top: 1px solid #111120; padding-top: 12px; }
+</style>
+</head>
+<body data-game="00170" data-nav="matrix">
+<div class="room-id">ROOM 00170</div>
+<div class="title">Color Mixer</div>
+
+<div class="mixer">
+  <!-- Color A -->
+  <div class="color-panel" id="panel-a">
+    <div class="panel-label">COLOR A</div>
+    <div class="color-swatch" id="swatch-a"></div>
+    <div class="slider-row">
+      <div class="sl-label"><span>R</span><span id="r-a-val">200</span></div>
+      <input type="range" class="ch-a" data-ch="r" min="0" max="255" value="200">
+    </div>
+    <div class="slider-row">
+      <div class="sl-label"><span>G</span><span id="g-a-val">50</span></div>
+      <input type="range" class="ch-a" data-ch="g" min="0" max="255" value="50">
+    </div>
+    <div class="slider-row">
+      <div class="sl-label"><span>B</span><span id="b-a-val">80</span></div>
+      <input type="range" class="ch-a" data-ch="b" min="0" max="255" value="80">
+    </div>
+    <div class="hex-row">
+      <input type="text" class="hex-input" id="hex-a" maxlength="7" value="#C83250">
+      <button class="hex-apply" onclick="applyHex('a')">→</button>
+    </div>
+  </div>
+
+  <!-- Mix result -->
+  <div class="color-panel" style="align-items:center;">
+    <div class="panel-label">MIX</div>
+    <div class="color-swatch swatch-big" id="swatch-mix" style="width:100%"></div>
+    <div class="slider-row" style="width:100%">
+      <div class="sl-label" style="justify-content:center;"><span>RATIO</span><span id="ratio-val">50%</span></div>
+      <input type="range" id="ratio-sl" min="0" max="100" value="50">
+    </div>
+    <div id="mix-info" class="info-box" style="width:100%; font-size:8px;"></div>
+  </div>
+
+  <!-- Color B -->
+  <div class="color-panel" id="panel-b">
+    <div class="panel-label">COLOR B</div>
+    <div class="color-swatch" id="swatch-b"></div>
+    <div class="slider-row">
+      <div class="sl-label"><span>R</span><span id="r-b-val">30</span></div>
+      <input type="range" class="ch-b" data-ch="r" min="0" max="255" value="30">
+    </div>
+    <div class="slider-row">
+      <div class="sl-label"><span>G</span><span id="g-b-val">80</span></div>
+      <input type="range" class="ch-b" data-ch="g" min="0" max="255" value="80">
+    </div>
+    <div class="slider-row">
+      <div class="sl-label"><span>B</span><span id="b-b-val">180</span></div>
+      <input type="range" class="ch-b" data-ch="b" min="0" max="255" value="180">
+    </div>
+    <div class="hex-row">
+      <input type="text" class="hex-input" id="hex-b" maxlength="7" value="#1E50B4">
+      <button class="hex-apply" onclick="applyHex('b')">→</button>
+    </div>
+  </div>
+</div>
+
+<div class="mix-controls">
+  <button id="swap-btn">SWAP A↔B</button>
+  <button id="complement-btn">A → COMPLEMENT</button>
+  <button id="triad-btn">SHOW TRIAD</button>
+  <button id="rand-btn">RANDOM PAIR</button>
+</div>
+
+<div class="palette-row" id="palette-row"></div>
+
+<div class="note">
+  Light mixes by addition.<br>
+  Pigment mixes by subtraction.<br>
+  This room uses neither.<br>
+  It is a simulation.
+</div>
+
+<script src="/shared/matrix-nav.js"></script>
+<script>
+let colorA = { r: 200, g: 50, b: 80 };
+let colorB = { r: 30, g: 80, b: 180 };
+let ratio = 0.5;
+
+function h2(n) { return n.toString(16).padStart(2, '0').toUpperCase(); }
+function toHex(c) { return '#' + h2(c.r) + h2(c.g) + h2(c.b); }
+function toRgb(c) { return `rgb(${c.r},${c.g},${c.b})`; }
+
+function rgbToHsl(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h, s, l = (max + min) / 2;
+  if (max === min) { h = s = 0; }
+  else {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+      case g: h = ((b - r) / d + 2) / 6; break;
+      case b: h = ((r - g) / d + 4) / 6; break;
+    }
+  }
+  return { h: Math.round(h * 360), s: Math.round(s * 100), l: Math.round(l * 100) };
+}
+
+function hslToRgb(h, s, l) {
+  h /= 360; s /= 100; l /= 100;
+  let r, g, b;
+  if (s === 0) { r = g = b = l; }
+  else {
+    const hue2rgb = (p, q, t) => {
+      if (t < 0) t += 1; if (t > 1) t -= 1;
+      if (t < 1/6) return p + (q - p) * 6 * t;
+      if (t < 1/2) return q;
+      if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+      return p;
+    };
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+    const p = 2 * l - q;
+    r = hue2rgb(p, q, h + 1/3);
+    g = hue2rgb(p, q, h);
+    b = hue2rgb(p, q, h - 1/3);
+  }
+  return { r: Math.round(r*255), g: Math.round(g*255), b: Math.round(b*255) };
+}
+
+function mixColors(a, b, t) {
+  return {
+    r: Math.round(a.r * (1-t) + b.r * t),
+    g: Math.round(a.g * (1-t) + b.g * t),
+    b: Math.round(a.b * (1-t) + b.b * t)
+  };
+}
+
+function updateUI() {
+  // Swatches
+  document.getElementById('swatch-a').style.background = toRgb(colorA);
+  document.getElementById('swatch-b').style.background = toRgb(colorB);
+
+  const mix = mixColors(colorA, colorB, ratio);
+  document.getElementById('swatch-mix').style.background = toRgb(mix);
+
+  // Sliders A
+  ['r','g','b'].forEach(ch => {
+    document.querySelector(`.ch-a[data-ch="${ch}"]`).value = colorA[ch];
+    document.getElementById(`${ch}-a-val`).textContent = colorA[ch];
+  });
+  document.getElementById('hex-a').value = toHex(colorA);
+
+  // Sliders B
+  ['r','g','b'].forEach(ch => {
+    document.querySelector(`.ch-b[data-ch="${ch}"]`).value = colorB[ch];
+    document.getElementById(`${ch}-b-val`).textContent = colorB[ch];
+  });
+  document.getElementById('hex-b').value = toHex(colorB);
+
+  // Mix info
+  const hsl = rgbToHsl(mix.r, mix.g, mix.b);
+  document.getElementById('mix-info').innerHTML =
+    `HEX: ${toHex(mix)}<br>` +
+    `RGB: ${mix.r}, ${mix.g}, ${mix.b}<br>` +
+    `HSL: ${hsl.h}°, ${hsl.s}%, ${hsl.l}%`;
+
+  // Gradient palette: 7 steps A→B
+  buildGradient();
+}
+
+function buildGradient() {
+  const row = document.getElementById('palette-row');
+  row.innerHTML = '';
+  const steps = 9;
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    const c = mixColors(colorA, colorB, t);
+    const div = document.createElement('div');
+    div.className = 'pal-swatch';
+    div.style.background = toRgb(c);
+    div.title = toHex(c);
+    div.addEventListener('click', () => {
+      navigator.clipboard.writeText(toHex(c)).catch(() => {});
+    });
+    row.appendChild(div);
+  }
+}
+
+// Slider events A
+document.querySelectorAll('.ch-a').forEach(sl => {
+  sl.addEventListener('input', () => {
+    colorA[sl.dataset.ch] = parseInt(sl.value);
+    updateUI();
+  });
+});
+document.querySelectorAll('.ch-b').forEach(sl => {
+  sl.addEventListener('input', () => {
+    colorB[sl.dataset.ch] = parseInt(sl.value);
+    updateUI();
+  });
+});
+document.getElementById('ratio-sl').addEventListener('input', e => {
+  ratio = parseInt(e.target.value) / 100;
+  document.getElementById('ratio-val').textContent = Math.round(ratio*100) + '%';
+  updateUI();
+});
+
+function applyHex(which) {
+  const val = document.getElementById(`hex-${which}`).value.trim().replace('#','');
+  if (!/^[0-9a-fA-F]{6}$/.test(val)) return;
+  const r = parseInt(val.slice(0,2),16), g = parseInt(val.slice(2,4),16), b = parseInt(val.slice(4,6),16);
+  if (which === 'a') colorA = {r,g,b};
+  else colorB = {r,g,b};
+  updateUI();
+}
+window.applyHex = applyHex;
+
+document.querySelectorAll('.hex-input').forEach(inp => {
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Enter') applyHex(inp.id.split('-')[1]);
+  });
+});
+
+document.getElementById('swap-btn').addEventListener('click', () => {
+  [colorA, colorB] = [colorB, colorA];
+  updateUI();
+});
+
+document.getElementById('complement-btn').addEventListener('click', () => {
+  const hsl = rgbToHsl(colorA.r, colorA.g, colorA.b);
+  colorA = hslToRgb((hsl.h + 180) % 360, hsl.s, hsl.l);
+  updateUI();
+});
+
+document.getElementById('triad-btn').addEventListener('click', () => {
+  const hsl = rgbToHsl(colorA.r, colorA.g, colorA.b);
+  colorB = hslToRgb((hsl.h + 120) % 360, hsl.s, hsl.l);
+  updateUI();
+});
+
+document.getElementById('rand-btn').addEventListener('click', () => {
+  colorA = { r: Math.floor(Math.random()*255), g: Math.floor(Math.random()*255), b: Math.floor(Math.random()*255) };
+  colorB = { r: Math.floor(Math.random()*255), g: Math.floor(Math.random()*255), b: Math.floor(Math.random()*255) };
+  updateUI();
+});
+
+updateUI();
+</script>
+</body>
+</html>

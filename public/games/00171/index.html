@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>00171 — Typing Test</title>
+<link rel="icon" href="data:,">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #050508; color: #8a9aaa;
+    font-family: 'Courier New', monospace;
+    min-height: 100vh; display: flex; flex-direction: column;
+    align-items: center; gap: 14px;
+    padding: 30px 20px 50px;
+  }
+  .room-id { font-size: 10px; letter-spacing: 5px; color: #223; }
+  .title { font-size: 11px; letter-spacing: 5px; color: #445; text-transform: uppercase; }
+
+  .stats-row { display: flex; gap: 24px; flex-wrap: wrap; justify-content: center; }
+  .stat { text-align: center; }
+  .stat-val { font-size: 28px; letter-spacing: 2px; color: #3a5a7a; }
+  .stat-label { font-size: 8px; letter-spacing: 3px; color: #1a2a3a; margin-top: 3px; }
+
+  #text-display {
+    max-width: 560px; width: 100%;
+    background: #030306; border: 1px solid #0f0f1a;
+    padding: 16px; font-size: 13px; line-height: 2.2;
+    letter-spacing: 1px; word-break: break-word;
+    min-height: 80px;
+  }
+  .ch { color: #1a2a3a; }
+  .ch.correct { color: #3a7a4a; }
+  .ch.wrong { color: #7a2a2a; background: #1a0505; }
+  .ch.current { color: #6a9aaa; border-bottom: 1px solid #4a7aaa; }
+
+  #input-area {
+    max-width: 560px; width: 100%;
+    background: #020205; border: 1px solid #0f0f18;
+    color: #4a6a7a; font-family: 'Courier New', monospace;
+    font-size: 13px; padding: 12px 14px; outline: none;
+    letter-spacing: 1px; caret-color: #3a6a8a;
+    resize: none; height: 48px;
+  }
+
+  .controls { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  button {
+    background: #060610; border: 1px solid #0f0f18; color: #334;
+    font-family: 'Courier New', monospace; font-size: 9px;
+    letter-spacing: 2px; padding: 7px 14px; cursor: pointer;
+  }
+  button:hover { background: #0a0a18; color: #556; }
+  button.active { border-color: #1a3a2a; color: #7acc7a; }
+
+  #result-panel {
+    max-width: 560px; width: 100%;
+    background: #030306; border: 1px solid #0f0f1a;
+    padding: 20px; text-align: center; display: none;
+  }
+  .result-wpm { font-size: 48px; letter-spacing: 2px; color: #3a6a8a; }
+  .result-label { font-size: 9px; letter-spacing: 3px; color: #1a2a3a; margin-bottom: 10px; }
+  .result-details { font-size: 10px; letter-spacing: 1px; color: #2a4a5a; line-height: 2.2; }
+
+  #timer-bar {
+    max-width: 560px; width: 100%; height: 3px;
+    background: #0a0a14; position: relative;
+  }
+  #timer-fill { height: 100%; background: #1a3a5a; transition: width 0.1s linear; width: 100%; }
+
+  .note { font-size: 10px; letter-spacing: 1px; color: #223; text-align: center; line-height: 2.2; max-width: 380px; border-top: 1px solid #111120; padding-top: 12px; }
+</style>
+</head>
+<body data-game="00171" data-nav="matrix">
+<div class="room-id">ROOM 00171</div>
+<div class="title">Typing Test</div>
+
+<div class="stats-row">
+  <div class="stat">
+    <div class="stat-val" id="wpm-live">—</div>
+    <div class="stat-label">WPM</div>
+  </div>
+  <div class="stat">
+    <div class="stat-val" id="acc-live">—</div>
+    <div class="stat-label">ACCURACY</div>
+  </div>
+  <div class="stat">
+    <div class="stat-val" id="timer-live">60</div>
+    <div class="stat-label">SECONDS</div>
+  </div>
+</div>
+
+<div id="timer-bar"><div id="timer-fill"></div></div>
+
+<div id="text-display"></div>
+
+<textarea id="input-area" placeholder="Start typing to begin..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
+
+<div class="controls">
+  <button id="restart-btn">NEW TEST</button>
+  <button id="mode-30">30s</button>
+  <button id="mode-60" class="active">60s</button>
+  <button id="mode-120">120s</button>
+  <button id="theme-fac">FACILITY</button>
+  <button id="theme-std">STANDARD</button>
+</div>
+
+<div id="result-panel">
+  <div class="result-label">TEST COMPLETE</div>
+  <div class="result-wpm" id="final-wpm">0</div>
+  <div class="result-label">WORDS PER MINUTE</div>
+  <div class="result-details" id="final-details"></div>
+</div>
+
+<div class="note">
+  Speed matters in the facility.<br>
+  Accuracy matters more.<br>
+  The test records nothing.<br>
+  But you will remember.
+</div>
+
+<script src="/shared/matrix-nav.js"></script>
+<script>
+const FACILITY_WORDS = [
+  'access','denied','sector','void','null','room','door','lock','key','code',
+  'terminal','signal','error','breach','clearance','level','zone','node',
+  'matrix','entry','exit','log','trace','record','data','loop','scan',
+  'silent','dark','deep','cold','still','lost','wait','pass','gate','hall',
+  'desk','badge','floor','screen','light','sound','time','unit','file',
+  'alert','active','closed','open','check','valid','wrong','right','found',
+  'gone','here','there','near','far','back','front','up','down','left',
+  'right','true','false','yes','no','zero','one','two','three','four',
+  'five','six','seven','eight','nine','ten','count','end','start','stop'
+];
+
+const STD_WORDS = [
+  'the','be','to','of','and','a','in','that','have','it','for','not','on',
+  'with','he','as','you','do','at','this','but','his','by','from','they',
+  'we','say','her','she','or','an','will','my','one','all','would','there',
+  'their','what','so','up','out','if','about','who','get','which','go',
+  'me','when','make','can','like','time','no','just','him','know','take',
+  'people','into','year','your','good','some','could','them','see','other',
+  'than','then','now','look','only','come','its','over','think','also','back',
+  'after','use','two','how','our','work','first','well','way','even','new',
+  'want','because','any','these','give','day','most','us','great','between',
+  'need','large','often','hand','high','place','hold','turn','found','cause',
+  'same','tell','point','long','still','around','form','three','small','set'
+];
+
+let duration = 60;
+let wordList = FACILITY_WORDS;
+let words = [];
+let typed = 0; // chars typed
+let correct = 0;
+let errors = 0;
+let startTime = null;
+let timerInterval = null;
+let finished = false;
+let currentWordIdx = 0;
+let currentWord = '';
+let correctWords = 0;
+
+function generateText() {
+  const pool = [...wordList].sort(() => Math.random() - 0.5);
+  words = [];
+  for (let i = 0; i < 80; i++) {
+    words.push(pool[i % pool.length]);
+  }
+  return words.join(' ');
+}
+
+let fullText = '';
+let charEls = [];
+
+function initTest() {
+  clearInterval(timerInterval);
+  finished = false;
+  startTime = null;
+  typed = 0;
+  correct = 0;
+  errors = 0;
+  correctWords = 0;
+  currentWordIdx = 0;
+
+  fullText = generateText();
+  const display = document.getElementById('text-display');
+  display.innerHTML = '';
+  charEls = [];
+
+  for (let i = 0; i < fullText.length; i++) {
+    const span = document.createElement('span');
+    span.className = 'ch' + (i === 0 ? ' current' : '');
+    span.textContent = fullText[i];
+    display.appendChild(span);
+    charEls.push(span);
+  }
+
+  document.getElementById('input-area').value = '';
+  document.getElementById('input-area').disabled = false;
+  document.getElementById('input-area').focus();
+  document.getElementById('result-panel').style.display = 'none';
+  document.getElementById('wpm-live').textContent = '—';
+  document.getElementById('acc-live').textContent = '—';
+  document.getElementById('timer-live').textContent = duration;
+  document.getElementById('timer-fill').style.width = '100%';
+}
+
+function startTimer() {
+  startTime = Date.now();
+  timerInterval = setInterval(() => {
+    const elapsed = (Date.now() - startTime) / 1000;
+    const remaining = Math.max(0, duration - elapsed);
+    document.getElementById('timer-live').textContent = Math.ceil(remaining);
+    document.getElementById('timer-fill').style.width = (remaining / duration * 100) + '%';
+
+    // Live WPM
+    const words = correct / 5;
+    const minutes = elapsed / 60;
+    const wpm = minutes > 0 ? Math.round(words / minutes) : 0;
+    document.getElementById('wpm-live').textContent = wpm;
+    const acc = (typed > 0) ? Math.round(correct / typed * 100) : 100;
+    document.getElementById('acc-live').textContent = acc + '%';
+
+    if (remaining <= 0) finishTest();
+  }, 100);
+}
+
+function finishTest() {
+  clearInterval(timerInterval);
+  finished = true;
+  document.getElementById('input-area').disabled = true;
+  document.getElementById('timer-fill').style.width = '0%';
+
+  const elapsed = (Date.now() - startTime) / 1000;
+  const wpm = Math.round((correct / 5) / (elapsed / 60));
+  const acc = typed > 0 ? Math.round(correct / typed * 100) : 100;
+
+  document.getElementById('final-wpm').textContent = wpm;
+  document.getElementById('final-details').innerHTML =
+    `${correctWords} words correct<br>` +
+    `${typed} keystrokes — ${errors} errors<br>` +
+    `${acc}% accuracy<br>` +
+    `${Math.round(elapsed)}s elapsed`;
+  document.getElementById('result-panel').style.display = 'block';
+  document.getElementById('result-panel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+document.getElementById('input-area').addEventListener('input', e => {
+  if (finished) return;
+  const val = e.target.value;
+  const pos = val.length - 1;
+
+  if (!startTime && val.length > 0) startTimer();
+
+  // Process last typed character
+  if (val.length > typed) {
+    const ch = val[pos];
+    const expected = fullText[pos];
+    if (ch === expected) { correct++; charEls[pos] && charEls[pos].classList.add('correct'); }
+    else { errors++; charEls[pos] && charEls[pos].classList.add('wrong'); }
+    typed++;
+  } else if (val.length < typed) {
+    // Backspace
+    const undone = typed - 1;
+    charEls[undone] && charEls[undone].classList.remove('correct', 'wrong');
+    if (fullText[undone] === val[undone]) correct--;
+    else errors--;
+    typed--;
+  }
+
+  // Move cursor indicator
+  charEls.forEach((el, i) => el.classList.remove('current'));
+  if (typed < charEls.length) charEls[typed].classList.add('current');
+
+  // Count correct words (space after correct word sequence)
+  if (val.endsWith(' ') || val.length === fullText.length) {
+    const typedSoFar = val.trimEnd();
+    const parts = typedSoFar.split(' ');
+    const expectedParts = fullText.split(' ');
+    correctWords = parts.filter((w, i) => w === expectedParts[i]).length;
+  }
+
+  // Scroll cursor into view
+  const curEl = charEls[typed];
+  if (curEl) curEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+  // Finished all text
+  if (typed >= fullText.length) finishTest();
+});
+
+// Prevent paste, drag
+document.getElementById('input-area').addEventListener('paste', e => e.preventDefault());
+
+// Mode buttons
+document.getElementById('restart-btn').addEventListener('click', initTest);
+[30, 60, 120].forEach(t => {
+  document.getElementById(`mode-${t}`).addEventListener('click', () => {
+    duration = t;
+    document.querySelectorAll('[id^="mode-"]').forEach(b => b.classList.remove('active'));
+    document.getElementById(`mode-${t}`).classList.add('active');
+    initTest();
+  });
+});
+
+document.getElementById('theme-fac').addEventListener('click', () => {
+  wordList = FACILITY_WORDS;
+  document.getElementById('theme-fac').classList.add('active');
+  document.getElementById('theme-std').classList.remove('active');
+  initTest();
+});
+document.getElementById('theme-std').addEventListener('click', () => {
+  wordList = STD_WORDS;
+  document.getElementById('theme-std').classList.add('active');
+  document.getElementById('theme-fac').classList.remove('active');
+  initTest();
+});
+
+initTest();
+</script>
+</body>
+</html>

@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>00169 — Starfield</title>
+<link rel="icon" href="data:,">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #050508; color: #8a9aaa;
+    font-family: 'Courier New', monospace;
+    min-height: 100vh; display: flex; flex-direction: column;
+    align-items: center; gap: 12px;
+    padding: 30px 20px 50px;
+  }
+  .room-id { font-size: 10px; letter-spacing: 5px; color: #223; }
+  .title { font-size: 11px; letter-spacing: 5px; color: #445; text-transform: uppercase; }
+
+  #sf-canvas { display: block; border: 1px solid #0f0f1e; cursor: crosshair; }
+
+  .controls { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
+  .ctrl-group { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .ctrl-label { font-size: 8px; letter-spacing: 2px; color: #223; }
+  .ctrl-val { font-size: 8px; letter-spacing: 1px; color: #334; }
+  input[type=range] {
+    -webkit-appearance: none; width: 100px; height: 3px;
+    background: #0f0f18; outline: none;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 10px; height: 10px;
+    border-radius: 50%; background: #3a5a7a; cursor: pointer;
+  }
+
+  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  button {
+    background: #060610; border: 1px solid #0f0f18; color: #334;
+    font-family: 'Courier New', monospace; font-size: 9px;
+    letter-spacing: 2px; padding: 7px 14px; cursor: pointer;
+  }
+  button:hover { background: #0a0a18; color: #556; }
+  button.active { border-color: #2a4a2a; color: #7acc7a; }
+
+  #coords { font-size: 9px; letter-spacing: 2px; color: #1a2a3a; text-align: center; min-height: 16px; }
+
+  .note { font-size: 10px; letter-spacing: 1px; color: #223; text-align: center; line-height: 2.2; max-width: 380px; border-top: 1px solid #111120; padding-top: 12px; }
+</style>
+</head>
+<body data-game="00169" data-nav="matrix">
+<div class="room-id">ROOM 00169</div>
+<div class="title">Starfield</div>
+
+<canvas id="sf-canvas" width="520" height="340"></canvas>
+
+<div class="controls">
+  <div class="ctrl-group">
+    <div class="ctrl-label">SPEED</div>
+    <input type="range" id="speed-sl" min="0.2" max="8" value="2" step="0.1">
+    <div class="ctrl-val" id="speed-val">2.0</div>
+  </div>
+  <div class="ctrl-group">
+    <div class="ctrl-label">STAR COUNT</div>
+    <input type="range" id="count-sl" min="50" max="600" value="200" step="10">
+    <div class="ctrl-val" id="count-val">200</div>
+  </div>
+  <div class="ctrl-group">
+    <div class="ctrl-label">DEPTH LAYERS</div>
+    <input type="range" id="depth-sl" min="1" max="5" value="3" step="1">
+    <div class="ctrl-val" id="depth-val">3</div>
+  </div>
+  <div class="ctrl-group">
+    <div class="ctrl-label">TRAIL LENGTH</div>
+    <input type="range" id="trail-sl" min="0" max="0.98" value="0.85" step="0.01">
+    <div class="ctrl-val" id="trail-val">0.85</div>
+  </div>
+</div>
+
+<div class="btn-row">
+  <button id="warp-btn">WARP</button>
+  <button id="pause-btn">PAUSE</button>
+  <button id="origin-btn">RESET ORIGIN</button>
+  <button id="mode-btn" class="active">FORWARD</button>
+</div>
+
+<div id="coords"></div>
+
+<div class="note">
+  You are traveling through the void.<br>
+  Speed is relative to nothing.<br>
+  The stars are not stars.<br>
+  They are facility nodes.
+</div>
+
+<script src="/shared/matrix-nav.js"></script>
+<script>
+const canvas = document.getElementById('sf-canvas');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+
+let speed = 2;
+let starCount = 200;
+let depths = 3;
+let trailAlpha = 0.85;
+let paused = false;
+let warpMode = false;
+let mode = 'forward'; // 'forward' | 'rotate' | 'radial'
+let cx = W / 2, cy = H / 2; // vanishing point
+let stars = [];
+
+function makeStar() {
+  const layer = Math.floor(Math.random() * depths) + 1;
+  return {
+    x: Math.random() * W,
+    y: Math.random() * H,
+    z: Math.random(),           // 0 = far, 1 = near
+    layer,
+    baseSpeed: layer / depths,  // faster = closer
+    size: layer * 0.6,
+    color: layer === depths ? '#aabbcc' : layer === 2 ? '#667788' : '#334455'
+  };
+}
+
+function resetStars() {
+  stars = [];
+  for (let i = 0; i < starCount; i++) stars.push(makeStar());
+}
+resetStars();
+
+function reseedCount(n) {
+  while (stars.length > n) stars.pop();
+  while (stars.length < n) stars.push(makeStar());
+}
+
+function tick() {
+  if (!paused) {
+    const spd = warpMode ? speed * 5 : speed;
+
+    // Trail
+    ctx.fillStyle = `rgba(5,5,8,${1 - trailAlpha})`;
+    ctx.fillRect(0, 0, W, H);
+
+    stars.forEach(s => {
+      const v = s.baseSpeed * spd;
+
+      if (mode === 'forward') {
+        // Move away from vanishing point
+        const dx = s.x - cx, dy = s.y - cy;
+        const dist = Math.sqrt(dx*dx + dy*dy) || 1;
+        s.x += (dx / dist) * v;
+        s.y += (dy / dist) * v;
+      } else if (mode === 'rotate') {
+        // Rotate around origin
+        const dx = s.x - cx, dy = s.y - cy;
+        const angle = v * 0.005;
+        const cos = Math.cos(angle), sin = Math.sin(angle);
+        s.x = cx + dx * cos - dy * sin;
+        s.y = cy + dx * sin + dy * cos;
+      } else {
+        // Radial outward from center
+        s.x += (s.x - cx) * 0.005 * v;
+        s.y += (s.y - cy) * 0.005 * v;
+      }
+
+      // Wrap
+      if (s.x < 0 || s.x > W || s.y < 0 || s.y > H) {
+        if (mode === 'forward') {
+          s.x = cx + (Math.random() * 4 - 2);
+          s.y = cy + (Math.random() * 4 - 2);
+        } else {
+          s.x = Math.random() * W;
+          s.y = Math.random() * H;
+        }
+      }
+
+      // Draw
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+      ctx.fillStyle = s.color;
+      ctx.fill();
+    });
+
+    // Crosshair at origin
+    ctx.strokeStyle = 'rgba(30,50,80,0.5)';
+    ctx.lineWidth = 0.5;
+    ctx.beginPath(); ctx.moveTo(cx - 6, cy); ctx.lineTo(cx + 6, cy); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx, cy - 6); ctx.lineTo(cx, cy + 6); ctx.stroke();
+  }
+  requestAnimationFrame(tick);
+}
+
+// Controls
+document.getElementById('speed-sl').addEventListener('input', e => {
+  speed = parseFloat(e.target.value);
+  document.getElementById('speed-val').textContent = speed.toFixed(1);
+});
+document.getElementById('count-sl').addEventListener('input', e => {
+  starCount = parseInt(e.target.value);
+  document.getElementById('count-val').textContent = starCount;
+  reseedCount(starCount);
+});
+document.getElementById('depth-sl').addEventListener('input', e => {
+  depths = parseInt(e.target.value);
+  document.getElementById('depth-val').textContent = depths;
+  resetStars();
+});
+document.getElementById('trail-sl').addEventListener('input', e => {
+  trailAlpha = parseFloat(e.target.value);
+  document.getElementById('trail-val').textContent = trailAlpha.toFixed(2);
+});
+
+document.getElementById('warp-btn').addEventListener('click', () => {
+  warpMode = !warpMode;
+  document.getElementById('warp-btn').classList.toggle('active', warpMode);
+});
+document.getElementById('pause-btn').addEventListener('click', () => {
+  paused = !paused;
+  document.getElementById('pause-btn').classList.toggle('active', paused);
+  document.getElementById('pause-btn').textContent = paused ? 'RESUME' : 'PAUSE';
+});
+document.getElementById('origin-btn').addEventListener('click', () => {
+  cx = W / 2; cy = H / 2;
+  if (mode === 'forward') resetStars();
+});
+document.getElementById('mode-btn').addEventListener('click', () => {
+  const modes = ['forward', 'rotate', 'radial'];
+  const labels = ['FORWARD', 'ROTATE', 'RADIAL'];
+  const idx = (modes.indexOf(mode) + 1) % modes.length;
+  mode = modes[idx];
+  document.getElementById('mode-btn').textContent = labels[idx];
+  if (mode === 'forward') resetStars();
+});
+
+// Mouse: move vanishing point
+canvas.addEventListener('mousemove', e => {
+  if (mode !== 'forward') return;
+  const r = canvas.getBoundingClientRect();
+  cx = e.clientX - r.left;
+  cy = e.clientY - r.top;
+  document.getElementById('coords').textContent = `origin: (${Math.round(cx)}, ${Math.round(cy)})`;
+});
+canvas.addEventListener('click', e => {
+  const r = canvas.getBoundingClientRect();
+  cx = e.clientX - r.left;
+  cy = e.clientY - r.top;
+});
+canvas.addEventListener('mouseleave', () => {
+  document.getElementById('coords').textContent = '';
+});
+
+// Black background
+ctx.fillStyle = '#050508';
+ctx.fillRect(0, 0, W, H);
+
+tick();
+</script>
+</body>
+</html>
