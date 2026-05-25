@@ -1,5 +1,5 @@
 # NULL — Build Priority & Room Ratings
-Last updated: 2026-05-26
+Last updated: 2026-05-25
 
 This file is the working reference for all unbuilt rooms.
 It replaces re-generating assessments from scratch each session.
@@ -25,11 +25,11 @@ It replaces re-generating assessments from scratch each session.
 
 | Room | Est. % | Notes |
 |------|--------|-------|
-| Info Room pairs ×2 remaining | 3% | 3 of 5 pairs built (00110–00115). Two more to complete the set. Copy the pattern, pick two new facts with subtle errors. Trivial. |
-| MS-DOS HELP Interface | 6% | Atmospheric fake DOS help screens. NULL platform rendered in 1993 DOS aesthetic. No logic needed — static content pages. Client-side only. |
-| Interactive MS-DOS Prompt | 8% | Fake `C:\NULL>` terminal. Canned responses per command. FORMAT C: runs indefinitely (never completes). More commands = more fun. Client-side only. |
-| Alternate Hangman — One Life | 9% | One game ever, shared across ALL users. Server state: word, guessed letters, win/loss outcome (permanent). Once the game ends the room changes forever. Needs server persistence + API routes. |
-| Sokoban — Block Pusher | 10% | Standard Sokoban. Canvas, multi-level, box-pushing. Pure client-side. **Build this before NULL Navigation Board** — that room reuses the Sokoban engine. |
+| ~~Info Room pairs ×2 remaining~~ | 3% | **BUILT → 00118–00121** (2026-05-25). Planck constant pair + Euler's number pair. All 5 pairs complete. |
+| ~~MS-DOS HELP Interface~~ | 6% | **BUILT → 00122** (2026-05-25). 16 topics, two-panel DOS help UI, all content subtly broken. |
+| ~~Interactive MS-DOS Prompt~~ | 8% | **BUILT → 00123** (2026-05-25). C:\NULL> terminal, ~20 commands, FORMAT stalls at 99%, CHKDSK finds 2B lost clusters, EXIT fails. |
+| ~~Alternate Hangman — One Life~~ | 9% | **BUILT → 00124** (2026-05-25). One shared global game, permanent outcome, ASCII gallows, /api/hangman routes. |
+| ~~Sokoban — Block Pusher~~ | 10% | **BUILT → 00125** (2026-05-25). 5 levels, canvas, unlimited undo, touch swipe. NULL Navigation Board can now use this engine. |
 | Compression Engine | 10% | Huffman coding with interactive tree visualization. Enter text → see tree build → compressed output. Pure client-side canvas. Interesting and self-contained. |
 | Source Code Room | 9% | Serve `server.js` via `/api/source`, display with syntax highlighting. Narrative comments baked into the source file become the room's story. Line 247 is noted in the spec as significant. |
 | Partial Matrix Fragments ×5 | 8% | Five rooms, each showing a different fragment of the full matrix graph. Atmospheric static display. ~1.5 pts/room. Compare them to find patterns. |
@@ -78,8 +78,9 @@ It replaces re-generating assessments from scratch each session.
 
 ## Recommended build order (next 3 sessions)
 
-### Session A — ~30% budget, all READY
-MS-DOS HELP + MS-DOS Prompt + Info pairs ×2 + Alternate Hangman + Sokoban
+### ~~Session A — ~30% budget, all READY~~ ✅ DONE (2026-05-25)
+~~MS-DOS HELP + MS-DOS Prompt + Info pairs ×2 + Alternate Hangman + Sokoban~~
+Built: 00118–00125 (8 rooms)
 
 ### Session B — ~30% budget, mostly READY
 Source Code Room + Compression Engine + Partial Matrix Fragments ×5 + Racetrack + Paper Soccer
@@ -104,3 +105,8 @@ These appear in BACKLOG_INDEX.md but are done:
 | Information Rooms pairs ×3 of ×5 | 00110–00115 | 2026-05-25 |
 | Calendar Room | 00116 | 2026-05-25 |
 | Wire Connection Puzzle | 00117 | 2026-05-25 |
+| Info Room pairs ×2 (Planck + Euler) | 00118–00121 | 2026-05-25 |
+| MS-DOS HELP Interface | 00122 | 2026-05-25 |
+| Interactive MS-DOS Prompt | 00123 | 2026-05-25 |
+| Alternate Hangman — One Life | 00124 | 2026-05-25 |
+| Sokoban — Block Pusher | 00125 | 2026-05-25 |
