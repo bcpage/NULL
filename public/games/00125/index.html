@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>00125 — Block Pusher</title>
+<link rel="icon" href="data:,">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #050508;
+    color: #8a9aaa;
+    font-family: 'Courier New', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    padding: 40px 20px;
+    user-select: none;
+  }
+  .room-id { font-size: 10px; letter-spacing: 5px; color: #223; }
+  .hud {
+    display: flex;
+    gap: 32px;
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: #334;
+  }
+  .hud span { color: #556; }
+  .hud .val { color: #7a9aaa; }
+
+  #canvas-wrap {
+    border: 1px solid #1a1a2a;
+    background: #080810;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+  canvas { display: block; image-rendering: pixelated; }
+
+  .controls {
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: #223;
+    text-align: center;
+    line-height: 2;
+  }
+  .controls span { color: #334; }
+
+  #level-name {
+    font-size: 11px;
+    letter-spacing: 5px;
+    color: #445;
+    text-transform: uppercase;
+  }
+
+  #win-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(5,5,8,0.92);
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 24px;
+    z-index: 50;
+  }
+  #win-overlay.active { display: flex; }
+  #win-overlay .big { font-size: 13px; letter-spacing: 6px; color: #55cc88; }
+  #win-overlay .sub { font-size: 10px; letter-spacing: 3px; color: #334; }
+  #win-overlay button {
+    background: #0c0c18;
+    border: 1px solid #2a4a3a;
+    color: #55cc88;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    letter-spacing: 3px;
+    padding: 10px 28px;
+    cursor: pointer;
+  }
+  #win-overlay button:hover { background: #0f1f18; }
+
+  #complete-msg {
+    display: none;
+    font-size: 11px;
+    letter-spacing: 4px;
+    color: #55cc88;
+    text-align: center;
+  }
+  #complete-msg.active { display: block; }
+</style>
+</head>
+<body data-game="00125" data-nav="matrix">
+
+<div class="room-id">ROOM 00125</div>
+<div id="level-name">LEVEL 1 — LOADING</div>
+
+<div class="hud">
+  <span>LEVEL <span class="val" id="hud-level">1/5</span></span>
+  <span>MOVES <span class="val" id="hud-moves">0</span></span>
+  <span>PUSHES <span class="val" id="hud-pushes">0</span></span>
+</div>
+
+<div id="canvas-wrap">
+  <canvas id="c"></canvas>
+</div>
+
+<div id="complete-msg">ALL LEVELS CLEARED — FACILITY BLOCK SEQUENCE COMPLETE</div>
+
+<div class="controls">
+  <span>WASD / ARROW KEYS</span> — MOVE &nbsp;|&nbsp; <span>Z / U</span> — UNDO &nbsp;|&nbsp; <span>R</span> — RESTART LEVEL
+</div>
+
+<div id="win-overlay">
+  <div class="big">LEVEL CLEARED</div>
+  <div class="sub" id="win-stats"></div>
+  <button id="next-btn">NEXT LEVEL</button>
+</div>
+
+<script>
+// ── Levels ────────────────────────────────────────────────────────────────────
+// XSB notation: # wall, @ player, $ box, . target, * box+target, + player+target
+const LEVELS = [
+  {
+    name: 'CORRIDOR',
+    map: [
+      '#####',
+      '#@$.#',
+      '#####',
+    ]
+  },
+  {
+    name: 'TURN',
+    map: [
+      '#####',
+      '#.  #',
+      '#$  #',
+      '# @ #',
+      '#####',
+    ]
+  },
+  {
+    name: 'DETOUR',
+    map: [
+      '######',
+      '# .  #',
+      '#  $ #',
+      '# @  #',
+      '######',
+    ]
+  },
+  {
+    name: 'TWIN PUSH',
+    map: [
+      '#######',
+      '#..   #',
+      '#$$@  #',
+      '#     #',
+      '#######',
+    ]
+  },
+  {
+    name: 'DESCENT',
+    map: [
+      '######',
+      '# .  #',
+      '#@$  #',
+      '# $  #',
+      '#  . #',
+      '######',
+    ]
+  },
+];
+
+// ── Constants ─────────────────────────────────────────────────────────────────
+const TILE = 44;
+const WALL = 0, FLOOR = 1, TARGET = 2, OUTSIDE = 3;
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let levelIdx = 0;
+let grid = [];
+let player = { col: 0, row: 0 };
+let boxes = [];
+let moveCount = 0;
+let pushCount = 0;
+let undoStack = [];
+let levelComplete = false;
+let gameComplete = false;
+
+// ── Canvas ────────────────────────────────────────────────────────────────────
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+
+// ── Level Loading ─────────────────────────────────────────────────────────────
+function loadLevel(idx) {
+  const lvl = LEVELS[idx];
+  const mapLines = lvl.map;
+  const rows = mapLines.length;
+  const cols = Math.max(...mapLines.map(l => l.length));
+
+  grid = [];
+  boxes = [];
+  player = null;
+  moveCount = 0;
+  pushCount = 0;
+  undoStack = [];
+  levelComplete = false;
+
+  for (let r = 0; r < rows; r++) {
+    grid[r] = [];
+    for (let c = 0; c < cols; c++) {
+      const ch = (mapLines[r][c] || ' ');
+      switch (ch) {
+        case '#': grid[r][c] = WALL; break;
+        case ' ': grid[r][c] = OUTSIDE; break; // will flood-fill to distinguish
+        case '.': grid[r][c] = TARGET; break;
+        case '@': grid[r][c] = FLOOR; player = { col: c, row: r }; break;
+        case '+': grid[r][c] = TARGET; player = { col: c, row: r }; break;
+        case '$': grid[r][c] = FLOOR; boxes.push({ col: c, row: r }); break;
+        case '*': grid[r][c] = TARGET; boxes.push({ col: c, row: r }); break;
+        default:  grid[r][c] = OUTSIDE;
+      }
+    }
+  }
+
+  // Fill OUTSIDE spaces that are inside the level as FLOOR
+  // Simple approach: any space adjacent to a wall/floor is inside
+  // Actually for XSB format, just treat all ' ' as floor for simplicity
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      if (grid[r][c] === OUTSIDE) {
+        // Check if surrounded by non-outside
+        let adj = false;
+        for (const [dr, dc] of [[0,1],[0,-1],[1,0],[-1,0]]) {
+          const nr = r + dr, nc = c + dc;
+          if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && grid[nr][nc] !== OUTSIDE) adj = true;
+        }
+        if (adj) grid[r][c] = FLOOR;
+      }
+    }
+  }
+
+  // Resize canvas
+  canvas.width = cols * TILE;
+  canvas.height = rows * TILE;
+
+  // Update UI
+  document.getElementById('level-name').textContent = `LEVEL ${idx + 1} — ${lvl.name}`;
+  updateHud();
+  render();
+}
+
+function boxAt(col, row) {
+  return boxes.find(b => b.col === col && b.row === row);
+}
+
+function isTarget(col, row) {
+  return grid[row] && grid[row][col] === TARGET;
+}
+
+function isSolved() {
+  return boxes.every(b => isTarget(b.col, b.row));
+}
+
+function isWalkable(col, row) {
+  if (row < 0 || row >= grid.length || col < 0 || col >= grid[0].length) return false;
+  const cell = grid[row][col];
+  return cell === FLOOR || cell === TARGET;
+}
+
+// ── Movement ──────────────────────────────────────────────────────────────────
+function move(dc, dr) {
+  if (levelComplete) return;
+  const nc = player.col + dc;
+  const nr = player.row + dr;
+
+  if (!isWalkable(nc, nr)) return;
+
+  const box = boxAt(nc, nr);
+  if (box) {
+    const bc = nc + dc;
+    const br = nr + dr;
+    if (!isWalkable(bc, br) || boxAt(bc, br)) return; // box can't move
+    // Save state for undo
+    undoStack.push({ player: { ...player }, boxes: boxes.map(b => ({ ...b })), moves: moveCount, pushes: pushCount });
+    box.col = bc;
+    box.row = br;
+    pushCount++;
+    player.col = nc;
+    player.row = nr;
+    moveCount++;
+  } else {
+    undoStack.push({ player: { ...player }, boxes: boxes.map(b => ({ ...b })), moves: moveCount, pushes: pushCount });
+    player.col = nc;
+    player.row = nr;
+    moveCount++;
+  }
+
+  updateHud();
+  render();
+
+  if (isSolved()) {
+    levelComplete = true;
+    setTimeout(() => showWin(), 300);
+  }
+}
+
+function undo() {
+  if (!undoStack.length || levelComplete) return;
+  const state = undoStack.pop();
+  player = state.player;
+  boxes = state.boxes;
+  moveCount = state.moves;
+  pushCount = state.pushes;
+  updateHud();
+  render();
+}
+
+function restart() {
+  loadLevel(levelIdx);
+}
+
+function showWin() {
+  if (levelIdx >= LEVELS.length - 1) {
+    // Game complete
+    gameComplete = true;
+    document.getElementById('complete-msg').classList.add('active');
+    document.getElementById('win-overlay').style.display = 'none';
+    return;
+  }
+  document.getElementById('win-stats').textContent =
+    `MOVES: ${moveCount}  ·  PUSHES: ${pushCount}`;
+  document.getElementById('win-overlay').classList.add('active');
+}
+
+document.getElementById('next-btn').addEventListener('click', () => {
+  document.getElementById('win-overlay').classList.remove('active');
+  levelIdx++;
+  loadLevel(levelIdx);
+});
+
+// ── HUD ───────────────────────────────────────────────────────────────────────
+function updateHud() {
+  document.getElementById('hud-level').textContent = `${levelIdx + 1}/${LEVELS.length}`;
+  document.getElementById('hud-moves').textContent = moveCount;
+  document.getElementById('hud-pushes').textContent = pushCount;
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function render() {
+  const rows = grid.length;
+  const cols = grid[0].length;
+
+  // Background
+  ctx.fillStyle = '#050508';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const cell = grid[r][c];
+      const x = c * TILE;
+      const y = r * TILE;
+
+      if (cell === OUTSIDE) continue;
+
+      if (cell === WALL) {
+        ctx.fillStyle = '#12121e';
+        ctx.fillRect(x, y, TILE, TILE);
+        // Top-left highlight
+        ctx.fillStyle = '#1e1e30';
+        ctx.fillRect(x, y, TILE, 2);
+        ctx.fillRect(x, y, 2, TILE);
+        // Bottom-right shadow
+        ctx.fillStyle = '#0a0a14';
+        ctx.fillRect(x, y + TILE - 2, TILE, 2);
+        ctx.fillRect(x + TILE - 2, y, 2, TILE);
+      } else {
+        // Floor
+        ctx.fillStyle = '#0a0a14';
+        ctx.fillRect(x, y, TILE, TILE);
+        // Subtle grid
+        ctx.strokeStyle = '#0d0d1a';
+        ctx.lineWidth = 0.5;
+        ctx.strokeRect(x + 0.5, y + 0.5, TILE - 1, TILE - 1);
+
+        if (cell === TARGET) {
+          const cx = x + TILE / 2;
+          const cy = y + TILE / 2;
+          // Target cross
+          ctx.strokeStyle = '#2a4a5a';
+          ctx.lineWidth = 1;
+          const arm = 10;
+          ctx.beginPath();
+          ctx.moveTo(cx - arm, cy); ctx.lineTo(cx + arm, cy);
+          ctx.moveTo(cx, cy - arm); ctx.lineTo(cx, cy + arm);
+          ctx.stroke();
+          // Center dot
+          ctx.fillStyle = '#2a4a5a';
+          ctx.beginPath();
+          ctx.arc(cx, cy, 3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    }
+  }
+
+  // Draw boxes
+  for (const box of boxes) {
+    const x = box.col * TILE;
+    const y = box.row * TILE;
+    const onTarget = isTarget(box.col, box.row);
+    const pad = 6;
+
+    if (onTarget) {
+      ctx.fillStyle = '#0a2818';
+      ctx.fillRect(x + pad, y + pad, TILE - pad * 2, TILE - pad * 2);
+      ctx.strokeStyle = '#2a7a4a';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(x + pad + 0.5, y + pad + 0.5, TILE - pad * 2 - 1, TILE - pad * 2 - 1);
+      // Inner highlight
+      ctx.strokeStyle = '#1a4a30';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x + pad + 4, y + pad + 4, TILE - pad * 2 - 8, TILE - pad * 2 - 8);
+      // Check mark
+      ctx.fillStyle = '#3aaa6a';
+      ctx.font = `bold ${TILE * 0.4}px Courier New`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('■', x + TILE / 2, y + TILE / 2);
+    } else {
+      ctx.fillStyle = '#141428';
+      ctx.fillRect(x + pad, y + pad, TILE - pad * 2, TILE - pad * 2);
+      ctx.strokeStyle = '#3a4a6a';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(x + pad + 0.5, y + pad + 0.5, TILE - pad * 2 - 1, TILE - pad * 2 - 1);
+      // Inner detail
+      ctx.strokeStyle = '#1e2840';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x + pad + 4, y + pad + 4, TILE - pad * 2 - 8, TILE - pad * 2 - 8);
+    }
+  }
+
+  // Draw player
+  {
+    const x = player.col * TILE;
+    const y = player.row * TILE;
+    const cx = x + TILE / 2;
+    const cy = y + TILE / 2;
+
+    // Player body
+    ctx.fillStyle = '#5a7a8a';
+    ctx.beginPath();
+    ctx.arc(cx, cy, TILE * 0.28, 0, Math.PI * 2);
+    ctx.fill();
+    // Player highlight
+    ctx.fillStyle = '#8abacc';
+    ctx.beginPath();
+    ctx.arc(cx - 3, cy - 3, TILE * 0.1, 0, Math.PI * 2);
+    ctx.fill();
+    // Direction indicator (small triangle pointing based on last move)
+    ctx.fillStyle = '#9ab4c4';
+    ctx.font = `${TILE * 0.3}px Courier New`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('@', cx, cy);
+  }
+}
+
+// ── Input ─────────────────────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (gameComplete) return;
+  switch (e.key) {
+    case 'ArrowLeft':  case 'a': case 'A': e.preventDefault(); move(-1, 0); break;
+    case 'ArrowRight': case 'd': case 'D': e.preventDefault(); move( 1, 0); break;
+    case 'ArrowUp':    case 'w': case 'W': e.preventDefault(); move( 0,-1); break;
+    case 'ArrowDown':  case 's': case 'S': e.preventDefault(); move( 0, 1); break;
+    case 'z': case 'Z': case 'u': case 'U': e.preventDefault(); undo(); break;
+    case 'r': case 'R': e.preventDefault(); restart(); break;
+  }
+});
+
+// Touch/swipe support
+let touchStart = null;
+canvas.addEventListener('touchstart', e => {
+  touchStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  e.preventDefault();
+}, { passive: false });
+canvas.addEventListener('touchend', e => {
+  if (!touchStart) return;
+  const dx = e.changedTouches[0].clientX - touchStart.x;
+  const dy = e.changedTouches[0].clientY - touchStart.y;
+  const adx = Math.abs(dx), ady = Math.abs(dy);
+  if (adx < 10 && ady < 10) return;
+  if (adx > ady) move(dx > 0 ? 1 : -1, 0);
+  else move(0, dy > 0 ? 1 : -1);
+  touchStart = null;
+  e.preventDefault();
+}, { passive: false });
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+loadLevel(0);
+</script>
+
+<script src="/shared/matrix-nav.js"></script>
+</body>
+</html>
