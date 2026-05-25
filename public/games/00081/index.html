@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tower of Hanoi — NULL</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #050508;
+  color: #ccc;
+  font-family: monospace;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  gap: 1.5rem;
+  user-select: none;
+}
+h1 {
+  font-size: 0.7rem;
+  letter-spacing: 0.3em;
+  color: rgba(200,180,140,0.4);
+  text-transform: uppercase;
+}
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.15em;
+  color: rgba(200,180,140,0.4);
+}
+.controls select {
+  background: #0a0a10;
+  border: 1px solid rgba(200,180,140,0.3);
+  color: rgba(200,180,140,0.7);
+  font-family: monospace;
+  font-size: 0.7rem;
+  padding: 0.2rem 0.4rem;
+}
+.info {
+  font-size: 0.7rem;
+  letter-spacing: 0.15em;
+  color: rgba(200,180,140,0.4);
+  text-align: center;
+}
+.info span { color: rgba(200,180,140,0.7); }
+canvas {
+  cursor: pointer;
+  display: block;
+}
+.msg {
+  font-size: 0.8rem;
+  letter-spacing: 0.15em;
+  color: rgba(200,200,200,0.5);
+  text-align: center;
+  min-height: 1.4em;
+}
+.legend {
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  color: rgba(160,160,160,0.25);
+  text-align: center;
+  max-width: 420px;
+  line-height: 1.8;
+}
+.btn {
+  padding: 0.3rem 1rem;
+  border: 1px solid rgba(200,180,140,0.3);
+  background: transparent;
+  color: rgba(200,180,140,0.5);
+  font-family: monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.15em;
+  cursor: pointer;
+  text-transform: uppercase;
+}
+.btn:hover { border-color: rgba(200,180,140,0.7); color: rgba(200,180,140,0.9); }
+</style>
+</head>
+<body data-game="00081" data-nav="matrix">
+
+<h1>Tower of Hanoi</h1>
+
+<div class="controls">
+  RINGS:
+  <select id="ringSelect" onchange="initGame()">
+    <option value="3">3</option>
+    <option value="4">4</option>
+    <option value="5" selected>5</option>
+    <option value="6">6</option>
+    <option value="7">7</option>
+    <option value="8">8</option>
+  </select>
+  <button class="btn" onclick="initGame()">Reset</button>
+</div>
+
+<div class="info">
+  Moves: <span id="moveCount">0</span> &nbsp;|&nbsp;
+  Minimum: <span id="minMoves">—</span>
+</div>
+
+<canvas id="c" width="600" height="260"></canvas>
+
+<div class="msg" id="msg">Click a peg to pick up its top ring. Click another to place it.</div>
+
+<div class="legend">
+  The monks of Hanoi were given a tower of 64 golden rings.<br>
+  Moving one ring per second, they have been working since the beginning of time.<br>
+  When they finish, the universe ends.<br>
+  At one move per second, 64 rings takes 585 billion years.
+</div>
+
+<script src="/shared/matrix-nav.js"></script>
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+
+const COLORS = [
+  '#e94560','#c4384f','#9e2c3e','#7a2230','#5e1a24',
+  '#441420','#320f18','#220a10','#150608'
+];
+
+let pegs, selected, moves, n;
+
+function initGame() {
+  n = parseInt(document.getElementById('ringSelect').value);
+  pegs = [[], [], []];
+  for (let i = n; i >= 1; i--) pegs[0].push(i);
+  selected = null;
+  moves = 0;
+  document.getElementById('moveCount').textContent = '0';
+  document.getElementById('minMoves').textContent = (Math.pow(2, n) - 1).toLocaleString();
+  document.getElementById('msg').textContent = 'Click a peg to pick up its top ring. Click another to place it.';
+  draw();
+}
+
+function pegX(i) {
+  const margin = canvas.width * 0.18;
+  return margin + i * (canvas.width - 2 * margin) / 2;
+}
+
+const BASE_Y = canvas.height - 30;
+const PEG_H = canvas.height - 70;
+const RING_H = 16;
+const MAX_RING_W = canvas.width * 0.28;
+const MIN_RING_W = 24;
+
+function ringW(size) {
+  return MIN_RING_W + (MAX_RING_W - MIN_RING_W) * (size / 8);
+}
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Base
+  ctx.fillStyle = 'rgba(200,180,140,0.15)';
+  ctx.fillRect(30, BASE_Y, canvas.width - 60, 4);
+
+  // Pegs
+  for (let i = 0; i < 3; i++) {
+    ctx.fillStyle = selected === i
+      ? 'rgba(233,69,96,0.5)'
+      : 'rgba(200,180,140,0.2)';
+    const x = pegX(i);
+    ctx.fillRect(x - 3, BASE_Y - PEG_H, 6, PEG_H);
+
+    // Peg label
+    ctx.fillStyle = 'rgba(200,180,140,0.25)';
+    ctx.font = '10px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('PEG ' + (i + 1), x, BASE_Y + 20);
+
+    // Rings
+    pegs[i].forEach((size, j) => {
+      const rw = ringW(size);
+      const ry = BASE_Y - (j + 1) * RING_H - j * 2;
+      const rx = x - rw / 2;
+      const col = COLORS[size - 1] || '#e94560';
+
+      ctx.fillStyle = col;
+      ctx.beginPath();
+      ctx.roundRect(rx, ry, rw, RING_H, 3);
+      ctx.fill();
+
+      ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      // Size label on ring
+      ctx.fillStyle = 'rgba(255,255,255,0.3)';
+      ctx.font = '9px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(size, x, ry + RING_H - 4);
+    });
+
+    // Highlight top ring of selected peg
+    if (selected === i && pegs[i].length > 0) {
+      const j = pegs[i].length - 1;
+      const size = pegs[i][j];
+      const rw = ringW(size);
+      const ry = BASE_Y - (j + 1) * RING_H - j * 2;
+      const rx = x - rw / 2;
+      ctx.strokeStyle = '#e94560';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(rx - 2, ry - 2, rw + 4, RING_H + 4, 4);
+      ctx.stroke();
+    }
+  }
+}
+
+canvas.addEventListener('click', e => {
+  const rect = canvas.getBoundingClientRect();
+  const mx = (e.clientX - rect.left) * (canvas.width / rect.width);
+  let clicked = -1;
+  for (let i = 0; i < 3; i++) {
+    if (Math.abs(mx - pegX(i)) < 70) clicked = i;
+  }
+  if (clicked === -1) return;
+
+  if (selected === null) {
+    if (pegs[clicked].length === 0) return;
+    selected = clicked;
+  } else {
+    if (clicked === selected) {
+      selected = null;
+    } else {
+      const top = pegs[selected][pegs[selected].length - 1];
+      const dest = pegs[clicked];
+      if (dest.length === 0 || dest[dest.length - 1] > top) {
+        dest.push(pegs[selected].pop());
+        moves++;
+        document.getElementById('moveCount').textContent = moves;
+        selected = null;
+
+        // Win check
+        if (pegs[2].length === n) {
+          const min = Math.pow(2, n) - 1;
+          const extra = moves - min;
+          document.getElementById('msg').textContent =
+            extra === 0
+              ? `Solved in ${moves} moves. Optimal.`
+              : `Solved in ${moves} moves. Optimal was ${min}.`;
+          setTimeout(initGame, 3000);
+        } else {
+          document.getElementById('msg').textContent = 'Click a peg to pick up its top ring. Click another to place it.';
+        }
+      } else {
+        document.getElementById('msg').textContent = 'A larger ring cannot go on top of a smaller one.';
+        selected = null;
+      }
+    }
+  }
+  draw();
+});
+
+initGame();
+</script>
+</body>
+</html>
