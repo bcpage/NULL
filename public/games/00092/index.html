@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cheshire Cat — NULL</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body {
+  width: 100%; height: 100%;
+  background: #050508;
+  overflow: hidden;
+}
+body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: Georgia, serif;
+}
+.cat-container {
+  position: relative;
+  width: 100%;
+  max-width: 520px;
+  padding: 2rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2.5rem;
+}
+.cat-ascii {
+  font-size: clamp(0.55rem, 1.5vw, 0.8rem);
+  line-height: 1.25;
+  color: rgba(200,170,240,0.6);
+  white-space: pre;
+  font-family: monospace;
+  letter-spacing: 0.05em;
+  transition: opacity 3s ease-in-out;
+}
+.quote {
+  font-size: clamp(0.85rem, 2.5vw, 1.1rem);
+  font-style: italic;
+  color: rgba(210,185,240,0.5);
+  line-height: 1.8;
+  letter-spacing: 0.04em;
+  max-width: 400px;
+  transition: opacity 4s ease-in-out;
+}
+.attribution {
+  font-size: 0.6rem;
+  font-family: monospace;
+  letter-spacing: 0.2em;
+  color: rgba(200,170,240,0.2);
+  text-transform: uppercase;
+}
+/* The smile — always last to disappear */
+.smile {
+  font-size: clamp(1.2rem, 4vw, 2rem);
+  color: rgba(200,170,240,0.4);
+  letter-spacing: 0.3em;
+  transition: opacity 6s ease-in-out;
+}
+</style>
+</head>
+<body data-game="00092" data-nav="matrix">
+
+<div class="cat-container">
+  <div class="cat-ascii" id="catAscii">   /\_____/\
+  /  o   o  \
+ ( ==  ^  == )
+  )         (
+ (           )
+( (  )   (  ) )
+(__(__)___(__)__)</div>
+
+  <div class="quote" id="quote">
+    "We're all mad here."
+  </div>
+
+  <div class="attribution">— The Cheshire Cat</div>
+
+  <div class="smile" id="smile">∪</div>
+</div>
+
+<script src="/shared/matrix-nav.js"></script>
+<script>
+const catEl   = document.getElementById('catAscii');
+const quoteEl = document.getElementById('quote');
+const smileEl = document.getElementById('smile');
+
+const QUOTES = [
+  '"We\'re all mad here."',
+  '"Every adventure requires a first step."',
+  '"Who in the world am I?\nAh, that\'s the great puzzle."',
+  '"It doesn\'t matter which way you go."',
+  '"I\'m not crazy. My reality is just different from yours."',
+  '"Only the insane equate pain with success."',
+  '"Begin at the beginning and go on till you come to the end;\nthen stop."',
+  '"Imagination is the only weapon\nin the war against reality."',
+];
+
+let quoteIndex = 0;
+let visible = true;
+let cycleTimeout;
+
+function fadeOut() {
+  catEl.style.opacity   = '0';
+  quoteEl.style.opacity = '0';
+
+  // Smile fades last and slowest
+  setTimeout(() => { smileEl.style.opacity = '0'; }, 2000);
+
+  // After everything fades, wait then fade back in
+  setTimeout(fadeIn, 7000);
+}
+
+function fadeIn() {
+  quoteIndex = (quoteIndex + 1) % QUOTES.length;
+  quoteEl.textContent = QUOTES[quoteIndex];
+
+  // Smile comes back first
+  smileEl.style.opacity   = '1';
+  setTimeout(() => {
+    catEl.style.opacity   = '1';
+    quoteEl.style.opacity = '1';
+  }, 1500);
+
+  // Schedule next fade
+  clearTimeout(cycleTimeout);
+  cycleTimeout = setTimeout(fadeOut, 8000 + Math.random() * 4000);
+}
+
+// Start the first cycle
+cycleTimeout = setTimeout(fadeOut, 6000 + Math.random() * 3000);
+
+// Mouse movement makes it fade slightly
+let moveTimer;
+document.addEventListener('mousemove', () => {
+  const current = parseFloat(catEl.style.opacity || '1');
+  if (current > 0.3) {
+    catEl.style.transition   = 'opacity 0.5s ease-in-out';
+    catEl.style.opacity      = String(Math.max(0.3, current - 0.1));
+    clearTimeout(moveTimer);
+    moveTimer = setTimeout(() => {
+      catEl.style.transition = 'opacity 3s ease-in-out';
+      catEl.style.opacity    = '1';
+    }, 1500);
+  }
+});
+</script>
+</body>
+</html>

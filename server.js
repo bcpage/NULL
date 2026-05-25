@@ -7,7 +7,8 @@ const { networkInterfaces } = require('os');
 const PORT = 3000;
 
 // ─── Game registry ────────────────────────────────────────────────────────────
-const GAMES = ['00001', '00002', '00003', '00004', '00005', '00006', '00007', '00008', '00009', '00010', '00011', '00012', '00013', '00014', '00015', '00016', '00017', '00018', '00019', '00020', '00021', '00022', '00023', '00024', '00025', '00026', '00027', '00028', '00029', '00030', '00031', '00032', '00033', '00034', '00035', '00036', '00037', '00038', '00039', '00040', '00041', '00042', '00043', '00044', '00045', '00046', '00047', '00048', '00049', '00050', '00051', '00052', '00053', '00054', '00055', '00056', '00057', '00058', '00059', '00060', '00061', '00062', '00063', '00064', '00065', '00066', '00067', '00068', '00069', '00070', '00071', '00072', '00073', '00074', '00075', '00076', '00077', '00078', '00079', '00080', '00081', '00082', '00083', '00084', '00085'];
+const GAMES = ['00001', '00002', '00003', '00004', '00005', '00006', '00007', '00008', '00009', '00010', '00011', '00012', '00013', '00014', '00015', '00016', '00017', '00018', '00019', '00020', '00021', '00022', '00023', '00024', '00025', '00026', '00027', '00028', '00029', '00030', '00031', '00032', '00033', '00034', '00035', '00036', '00037', '00038', '00039', '00040', '00041', '00042', '00043', '00044', '00045', '00046', '00047', '00048', '00049', '00050', '00051', '00052', '00053', '00054', '00055', '00056', '00057', '00058', '00059', '00060', '00061', '00062', '00063', '00064', '00065', '00066', '00067', '00068', '00069', '00070', '00071', '00072', '00073', '00074', '00075', '00076', '00077', '00078', '00079', '00080', '00081', '00082', '00083', '00084', '00085',
+  '00086', '00087', '00088', '00089', '00090', '00091', '00092', '00093'];
 
 // ─── Matrix navigation ────────────────────────────────────────────────────────
 const MATRIX_FILE = path.join(__dirname, 'data', 'matrix.json');
@@ -97,6 +98,22 @@ if (!fs.existsSync(TICKET_DATA_DIR)) fs.mkdirSync(TICKET_DATA_DIR, { recursive: 
 let ticketData = { next: 1, issued: {} };
 try { ticketData = JSON.parse(fs.readFileSync(TICKET_FILE, 'utf8')); } catch (e) {}
 function saveTickets() { fs.writeFileSync(TICKET_FILE, JSON.stringify(ticketData)); }
+
+// ─── Bulletin Board (00086) ──────────────────────────────────────────────────
+const BULLETIN_DATA_DIR = path.join(__dirname, 'public', 'games', '00086', 'data');
+const BULLETIN_FILE = path.join(BULLETIN_DATA_DIR, 'bulletin.json');
+if (!fs.existsSync(BULLETIN_DATA_DIR)) fs.mkdirSync(BULLETIN_DATA_DIR, { recursive: true });
+let bulletinPins = [];
+try { bulletinPins = JSON.parse(fs.readFileSync(BULLETIN_FILE, 'utf8')); } catch (e) {}
+function saveBulletin() { fs.writeFileSync(BULLETIN_FILE, JSON.stringify(bulletinPins)); }
+
+// ─── Jabberwocky (00087) ─────────────────────────────────────────────────────
+const JABBER_DATA_DIR = path.join(__dirname, 'public', 'games', '00087', 'data');
+const JABBER_FILE = path.join(JABBER_DATA_DIR, 'jabber.json');
+if (!fs.existsSync(JABBER_DATA_DIR)) fs.mkdirSync(JABBER_DATA_DIR, { recursive: true });
+let jabberData = {}; // { id: [word, word, ...] }
+try { jabberData = JSON.parse(fs.readFileSync(JABBER_FILE, 'utf8')); } catch (e) {}
+function saveJabber() { fs.writeFileSync(JABBER_FILE, JSON.stringify(jabberData)); }
 
 // ─── Monty Hall (00080) ───────────────────────────────────────────────────────
 const MONTY_DATA_DIR = path.join(__dirname, 'public', 'games', '00080', 'data');
@@ -791,6 +808,52 @@ const httpServer = http.createServer((req, res) => {
     const id = userDeleteMatch[1];
     if (users[id]) { delete users[id]; saveUsers(); }
     sendJSON(res, { ok: true });
+    return;
+  }
+
+  // API: Bulletin Board
+  if (pathname === '/api/bulletin' && method === 'GET') {
+    sendJSON(res, bulletinPins); return;
+  }
+  if (pathname === '/api/bulletin' && method === 'POST') {
+    let body = '';
+    req.on('data', c => body += c);
+    req.on('end', () => {
+      try {
+        const { text, author } = JSON.parse(body);
+        const t = String(text || '').slice(0, 280).trim();
+        if (!t) { res.writeHead(400); res.end(); return; }
+        bulletinPins.push({ text: t, author: String(author || '').slice(0, 30).trim(), ts: Date.now() });
+        if (bulletinPins.length > 200) bulletinPins = bulletinPins.slice(-200);
+        saveBulletin();
+        sendJSON(res, bulletinPins);
+      } catch (e) { res.writeHead(400); res.end(); }
+    });
+    return;
+  }
+
+  // API: Jabberwocky
+  if (pathname === '/api/jabberwocky' && method === 'GET') {
+    sendJSON(res, jabberData); return;
+  }
+  if (pathname === '/api/jabberwocky' && method === 'POST') {
+    let body = '';
+    req.on('data', c => body += c);
+    req.on('end', () => {
+      try {
+        const { words } = JSON.parse(body);
+        if (typeof words !== 'object') { res.writeHead(400); res.end(); return; }
+        Object.entries(words).forEach(([id, val]) => {
+          const v = String(val || '').slice(0, 30).trim();
+          if (!v) return;
+          if (!jabberData[id]) jabberData[id] = [];
+          jabberData[id].push(v);
+          if (jabberData[id].length > 500) jabberData[id] = jabberData[id].slice(-500);
+        });
+        saveJabber();
+        sendJSON(res, jabberData);
+      } catch (e) { res.writeHead(400); res.end(); }
+    });
     return;
   }
 

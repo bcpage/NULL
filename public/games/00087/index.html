@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jabberwocky — NULL</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&display=swap');
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #050508;
+  color: #c8b890;
+  font-family: 'IM Fell English', Georgia, serif;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 3rem 1.5rem 6rem;
+  gap: 2rem;
+}
+h1 {
+  font-size: 2rem;
+  letter-spacing: 0.05em;
+  color: rgba(200,180,140,0.5);
+  font-style: italic;
+  text-align: center;
+}
+.subtitle {
+  font-size: 0.65rem;
+  font-family: monospace;
+  letter-spacing: 0.25em;
+  color: rgba(200,180,140,0.2);
+  text-transform: uppercase;
+  text-align: center;
+}
+.poem {
+  max-width: 560px;
+  width: 100%;
+  font-size: clamp(0.9rem, 2.5vw, 1.05rem);
+  line-height: 2.2;
+  color: rgba(200,180,140,0.7);
+}
+.poem p { margin-bottom: 1rem; text-indent: 0; }
+.poem p:nth-child(even) { padding-left: 2em; }
+.blank-wrap {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  vertical-align: bottom;
+  margin: 0 2px;
+  gap: 1px;
+}
+.blank {
+  border: none;
+  border-bottom: 1px solid rgba(200,180,140,0.3);
+  background: transparent;
+  color: #e8d8a0;
+  font-family: 'IM Fell English', Georgia, serif;
+  font-size: inherit;
+  font-style: italic;
+  text-align: center;
+  width: 100px;
+  outline: none;
+  padding: 0 2px;
+  transition: border-color 0.2s;
+}
+.blank:focus { border-color: rgba(200,180,140,0.7); }
+.blank.filled { color: #f0e0b0; }
+.others {
+  font-size: 0.55rem;
+  font-family: monospace;
+  letter-spacing: 0.05em;
+  color: rgba(200,180,140,0.2);
+  white-space: nowrap;
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.actions {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.btn {
+  padding: 0.5rem 1.4rem;
+  border: 1px solid rgba(200,180,140,0.25);
+  background: transparent;
+  color: rgba(200,180,140,0.5);
+  font-family: monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn:hover { border-color: rgba(200,180,140,0.6); color: rgba(200,180,140,0.9); }
+.btn.primary { border-color: rgba(200,180,140,0.4); color: rgba(200,180,140,0.7); }
+</style>
+</head>
+<body data-game="00087" data-nav="matrix">
+
+<h1>Jabberwocky</h1>
+<div class="subtitle">Fill in the nonsense words — Lewis Carroll, 1871</div>
+
+<div class="poem" id="poem"></div>
+
+<div class="actions">
+  <button class="btn primary" onclick="saveWords()">Submit my version</button>
+  <button class="btn" onclick="loadOthers()">See what others wrote</button>
+</div>
+
+<script src="/shared/matrix-nav.js"></script>
+<script>
+// The poem with blanks keyed by index
+// Format: ['literal text', {id: 0, placeholder: 'brillig'}, 'more text', ...]
+const STANZAS = [
+  ["'Twas ", {id:0,w:90,ph:"brillig"}, ", and the ", {id:1,w:80,ph:"slithy"}, " ", {id:2,w:70,ph:"toves"}],
+  ["Did ", {id:3,w:80,ph:"gyre"}, " and ", {id:4,w:80,ph:"gimble"}, " in the ", {id:5,w:70,ph:"wabe"}],
+  ["All ", {id:6,w:80,ph:"mimsy"}, " were the ", {id:7,w:90,ph:"borogoves"}],
+  ["And the ", {id:8,w:70,ph:"mome"}, " ", {id:9,w:80,ph:"raths"}, " ", {id:10,w:90,ph:"outgrabe"}, "."],
+
+  ['"Beware the ', {id:11,w:100,ph:"Jabberwock"}, ', my son!'],
+  ["The jaws that bite, the claws that catch!"],
+  ['Beware the ', {id:12,w:80,ph:"Jubjub"}, ' bird, and shun'],
+  ['The ', {id:13,w:90,ph:"frumious"}, ' ', {id:14,w:100,ph:"Bandersnatch"}, '!"'],
+
+  ['He took his ', {id:15,w:80,ph:"vorpal"}, ' sword in hand;'],
+  ['Long time the ', {id:16,w:80,ph:"manxome"}, ' foe he sought—'],
+  ['So rested he by the ', {id:17,w:80,ph:"Tumtum"}, ' tree'],
+  ['And stood awhile in thought.'],
+
+  ['And, as in ', {id:18,w:80,ph:"uffish"}, ' thought he stood,'],
+  ['The ', {id:11,w:100,ph:"Jabberwock"}, ', with eyes of flame,'],
+  ['Came ', {id:19,w:90,ph:"whiffling"}, ' through the ', {id:20,w:80,ph:"tulgey"}, ' wood,'],
+  ['And burbled as it came!'],
+
+  ['One, two! One, two! And through and through'],
+  ['The ', {id:15,w:80,ph:"vorpal"}, ' blade went snicker-snack!'],
+  ['He left it dead, and with its head'],
+  ['He went ', {id:21,w:80,ph:"galumphing"}, ' back.'],
+
+  ['"And hast thou slain the ', {id:11,w:100,ph:"Jabberwock"}, '?'],
+  ['Come to my arms, my ', {id:22,w:90,ph:"beamish"}, ' boy!'],
+  ['O ', {id:23,w:80,ph:"frabjous"}, ' day! ', {id:24,w:80,ph:"Callooh"}, '! ', {id:25,w:80,ph:"Callay"}, '!"'],
+  ['He ', {id:26,w:80,ph:"chortled"}, ' in his joy.'],
+
+  ["'Twas ", {id:0,w:90,ph:"brillig"}, ", and the ", {id:1,w:80,ph:"slithy"}, " ", {id:2,w:70,ph:"toves"}],
+  ["Did ", {id:3,w:80,ph:"gyre"}, " and ", {id:4,w:80,ph:"gimble"}, " in the ", {id:5,w:70,ph:"wabe"}],
+  ["All ", {id:6,w:80,ph:"mimsy"}, " were the ", {id:7,w:90,ph:"borogoves"}],
+  ["And the ", {id:8,w:70,ph:"mome"}, " ", {id:9,w:80,ph:"raths"}, " ", {id:10,w:90,ph:"outgrabe"}, "."],
+];
+
+const STANZA_BREAKS = [3,7,11,15,19,23]; // line indices after which to break
+
+// Dedupe blank IDs
+const uniqueIds = [...new Set(
+  STANZAS.flat().filter(t => typeof t === 'object').map(t => t.id)
+)];
+
+let userWords = {}; // id → value
+let othersWords = {}; // id → [array of strings]
+
+function buildPoem() {
+  const poemEl = document.getElementById('poem');
+  poemEl.innerHTML = '';
+
+  STANZAS.forEach((line, li) => {
+    const p = document.createElement('p');
+    line.forEach(token => {
+      if (typeof token === 'string') {
+        p.appendChild(document.createTextNode(token));
+      } else {
+        const wrap = document.createElement('span');
+        wrap.className = 'blank-wrap';
+
+        const inp = document.createElement('input');
+        inp.type = 'text';
+        inp.className = 'blank' + (userWords[token.id] ? ' filled' : '');
+        inp.placeholder = token.ph;
+        inp.style.width = token.w + 'px';
+        inp.maxLength = 30;
+        inp.value = userWords[token.id] || '';
+        inp.dataset.id = token.id;
+        inp.addEventListener('input', () => {
+          userWords[token.id] = inp.value;
+          inp.classList.toggle('filled', !!inp.value);
+          // Update all inputs with same id
+          document.querySelectorAll(`.blank[data-id="${token.id}"]`).forEach(el => {
+            if (el !== inp) { el.value = inp.value; el.classList.toggle('filled', !!inp.value); }
+          });
+        });
+
+        const othersEl = document.createElement('div');
+        othersEl.className = 'others';
+        othersEl.dataset.otherId = token.id;
+        if (othersWords[token.id]) {
+          othersEl.textContent = othersWords[token.id].slice(0,3).join(', ');
+        }
+
+        wrap.appendChild(inp);
+        wrap.appendChild(othersEl);
+        p.appendChild(wrap);
+      }
+    });
+    poemEl.appendChild(p);
+
+    if (STANZA_BREAKS.includes(li)) {
+      const br = document.createElement('p');
+      br.innerHTML = '&nbsp;';
+      br.style.marginBottom = '0.5rem';
+      poemEl.appendChild(br);
+    }
+  });
+}
+
+function saveWords() {
+  fetch('/api/jabberwocky', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ words: userWords })
+  }).then(r => r.json()).then(data => {
+    othersWords = data;
+    updateOthers();
+  }).catch(() => {});
+}
+
+function loadOthers() {
+  fetch('/api/jabberwocky').then(r => r.json()).then(data => {
+    othersWords = data;
+    updateOthers();
+  }).catch(() => {});
+}
+
+function updateOthers() {
+  document.querySelectorAll('[data-other-id]').forEach(el => {
+    const id = el.dataset.otherId;
+    const words = othersWords[id] || [];
+    el.textContent = words.slice(0,3).join(', ');
+  });
+}
+
+buildPoem();
+loadOthers();
+</script>
+</body>
+</html>
