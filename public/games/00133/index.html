@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>00133 — Llama</title>
+<link rel="icon" href="data:,">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #050508;
+    color: #8a9aaa;
+    font-family: 'Courier New', monospace;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    overflow: hidden;
+    user-select: none;
+  }
+  .hud {
+    display: flex;
+    gap: 28px;
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: #334;
+  }
+  .hud .val { color: #7a9aaa; }
+  #canvas-wrap { position: relative; }
+  canvas {
+    display: block;
+    border: 1px solid #1a1a2a;
+    image-rendering: pixelated;
+  }
+  .controls {
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: #223;
+  }
+  .controls span { color: #334; }
+
+  #overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(5,5,8,0.88);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+  }
+  #overlay .big { font-size: 13px; letter-spacing: 6px; color: #9ab4c4; }
+  #overlay .sub { font-size: 10px; letter-spacing: 3px; color: #445; }
+  #overlay button {
+    background: #0c0c18;
+    border: 1px solid #2a3a4a;
+    color: #8a9aaa;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    letter-spacing: 3px;
+    padding: 10px 28px;
+    cursor: pointer;
+    margin-top: 8px;
+  }
+  #overlay button:hover { background: #10101e; color: #9ab4c4; }
+</style>
+</head>
+<body data-game="00133" data-nav="matrix">
+
+<div class="hud">
+  <span>LEVEL <span class="val" id="hud-level">1</span></span>
+  <span>GEMS <span class="val" id="hud-gems">0/0</span></span>
+  <span>DEATHS <span class="val" id="hud-deaths">0</span></span>
+</div>
+
+<div id="canvas-wrap">
+  <canvas id="c"></canvas>
+  <div id="overlay">
+    <div class="big" id="overlay-title">LLAMA</div>
+    <div class="sub" id="overlay-sub">Navigate the facility</div>
+    <button id="overlay-btn">BEGIN</button>
+  </div>
+</div>
+
+<div class="controls">
+  <span>A/D or ←/→</span> MOVE &nbsp;|&nbsp; <span>W / SPACE / ↑</span> JUMP &nbsp;|&nbsp; <span>R</span> RESTART
+</div>
+
+<script src="/shared/matrix-nav.js"></script>
+
+<script>
+// ── Constants ─────────────────────────────────────────────────────────────────
+const TW = 560, TH = 320; // canvas logical size
+const TILE = 20;
+const GRAVITY = 0.45;
+const JUMP_V = -9.5;
+const SPEED = 3.2;
+const COLS = TW / TILE;
+const ROWS = TH / TILE;
+
+// ── Levels ────────────────────────────────────────────────────────────────────
+// Legend: # wall, . empty, G gem, E exit, S spawn, P platform (moving)
+const LEVELS = [
+  {
+    name: 'ENTRY CORRIDOR',
+    tiles: [
+      '############################',
+      '#...........................#',
+      '#...........................#',
+      '#.S.G...G.........G.......E#',
+      '#######.##....########.#####',
+      '#.......#.....#.............#',
+      '#.G.....G.....G..G..G..G....#',
+      '#########.....##############',
+      '#.............#.............#',
+      '#.G.....G.....G.G..G.G......#',
+      '############################',
+      '############################',
+      '############################',
+      '############################',
+      '############################',
+      '############################',
+    ],
+    bgColor: '#050508',
+    platforms: []
+  },
+  {
+    name: 'LOWER DECKS',
+    tiles: [
+      '############################',
+      '#..........................E#',
+      '#..........................##',
+      '#...........G...G...G.......#',
+      '#......####.....####........#',
+      '#...........G.....G.........#',
+      '#....####...........####....#',
+      '#G.....G.....G..G.....G....G#',
+      '####..####.####.####..####.##',
+      '#.S.............................#',
+      '#.G....G....G....G....G.....#',
+      '############################',
+      '############################',
+      '############################',
+      '############################',
+      '############################',
+    ],
+    bgColor: '#050508',
+    platforms: [
+      { x: 7*TILE, y: 5*TILE, w: 3*TILE, h: TILE, dx: 1.2, minX: 5*TILE, maxX: 15*TILE }
+    ]
+  },
+  {
+    name: 'TERMINAL SECTOR',
+    tiles: [
+      '############################',
+      '#.......G.......G.......G.E#',
+      '#...........................#',
+      '#.##.....##.....##.....##...#',
+      '#.G.......G.....G.......G...#',
+      '#...........................#',
+      '#.####...........####.......#',
+      '#.G.G.....G..G.....G.G......#',
+      '###.###...########...###.###',
+      '#.......G.......G.......G...#',
+      '#S..........................#',
+      '############################',
+      '############################',
+      '############################',
+      '############################',
+      '############################',
+    ],
+    bgColor: '#050508',
+    platforms: [
+      { x: 9*TILE, y: 3*TILE, w: 4*TILE, h: TILE, dx: 1.5, minX: 8*TILE, maxX: 18*TILE },
+      { x: 5*TILE, y: 6*TILE, w: 3*TILE, h: TILE, dx: -1.0, minX: 3*TILE, maxX: 12*TILE }
+    ]
+  }
+];
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let levelIdx = 0;
+let grid = [];
+let gems = [];
+let exitPos = null;
+let spawnPos = { x: TILE, y: TILE };
+let platforms = [];
+let player = {};
+let keys = {};
+let deaths = 0;
+let totalGems = 0;
+let collectedGems = 0;
+let running = false;
+let animId = null;
+let won = false;
+
+// ── Canvas ────────────────────────────────────────────────────────────────────
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+canvas.width = TW;
+canvas.height = TH;
+
+// Scale canvas to fit screen
+function scaleCanvas() {
+  const maxW = Math.min(window.innerWidth - 40, 700);
+  const maxH = window.innerHeight - 160;
+  const scale = Math.min(maxW / TW, maxH / TH, 1);
+  canvas.style.width = `${TW * scale}px`;
+  canvas.style.height = `${TH * scale}px`;
+}
+scaleCanvas();
+window.addEventListener('resize', scaleCanvas);
+
+// ── Level loading ─────────────────────────────────────────────────────────────
+function loadLevel(idx) {
+  const lvl = LEVELS[idx];
+  const lines = lvl.tiles;
+  grid = [];
+  gems = [];
+  exitPos = null;
+  platforms = lvl.platforms.map(p => ({ ...p, origX: p.x, origY: p.y, dir: 1 }));
+  totalGems = 0;
+  collectedGems = 0;
+
+  for (let r = 0; r < ROWS; r++) {
+    grid[r] = [];
+    const line = lines[r] || '';
+    for (let c = 0; c < COLS; c++) {
+      const ch = line[c] || '.';
+      if (ch === '#') {
+        grid[r][c] = 'wall';
+      } else if (ch === 'G') {
+        grid[r][c] = 'empty';
+        gems.push({ col: c, row: r, collected: false });
+        totalGems++;
+      } else if (ch === 'E') {
+        grid[r][c] = 'exit';
+        exitPos = { x: c * TILE, y: r * TILE };
+      } else if (ch === 'S') {
+        grid[r][c] = 'empty';
+        spawnPos = { x: c * TILE + 2, y: r * TILE - 24 };
+      } else {
+        grid[r][c] = 'empty';
+      }
+    }
+  }
+
+  spawnPlayer();
+  document.getElementById('hud-level').textContent = `${idx + 1}/${LEVELS.length} — ${lvl.name}`;
+  updateHud();
+}
+
+function spawnPlayer() {
+  player = {
+    x: spawnPos.x,
+    y: spawnPos.y,
+    w: 14,
+    h: 20,
+    vx: 0,
+    vy: 0,
+    onGround: false,
+    jumping: false,
+    facingRight: true,
+    frame: 0,
+    frameTimer: 0,
+  };
+}
+
+function updateHud() {
+  document.getElementById('hud-gems').textContent = `${collectedGems}/${totalGems}`;
+  document.getElementById('hud-deaths').textContent = deaths;
+}
+
+// ── Physics ───────────────────────────────────────────────────────────────────
+function tileAt(px, py) {
+  const c = Math.floor(px / TILE);
+  const r = Math.floor(py / TILE);
+  if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return 'wall';
+  return grid[r][c];
+}
+
+function isWall(px, py) {
+  const t = tileAt(px, py);
+  return t === 'wall';
+}
+
+function isExit(px, py) {
+  const t = tileAt(px, py);
+  return t === 'exit';
+}
+
+function checkPlatform(px, py, pw, ph) {
+  for (const plat of platforms) {
+    if (px + pw > plat.x && px < plat.x + plat.w &&
+        py + ph >= plat.y && py + ph <= plat.y + plat.h + 4 &&
+        player.vy >= 0) {
+      return plat;
+    }
+  }
+  return null;
+}
+
+function update() {
+  if (!running) return;
+
+  // Input
+  const left = keys['ArrowLeft'] || keys['a'] || keys['A'];
+  const right = keys['ArrowRight'] || keys['d'] || keys['D'];
+  const jump = keys['ArrowUp'] || keys['w'] || keys['W'] || keys[' '];
+
+  // Horizontal
+  if (left) { player.vx = -SPEED; player.facingRight = false; }
+  else if (right) { player.vx = SPEED; player.facingRight = true; }
+  else { player.vx = 0; }
+
+  // Jump
+  if (jump && player.onGround && !player.jumping) {
+    player.vy = JUMP_V;
+    player.jumping = true;
+    player.onGround = false;
+  }
+  if (!jump) player.jumping = false;
+
+  // Gravity
+  player.vy += GRAVITY;
+  if (player.vy > 14) player.vy = 14;
+
+  // Move platforms
+  for (const plat of platforms) {
+    plat.x += plat.dx * plat.dir;
+    if (plat.x >= plat.maxX || plat.x <= plat.minX) {
+      plat.dir *= -1;
+    }
+  }
+
+  // Horizontal movement
+  player.x += player.vx;
+  const margin = 2;
+  if (player.vx > 0) {
+    if (isWall(player.x + player.w, player.y + margin) ||
+        isWall(player.x + player.w, player.y + player.h - margin)) {
+      player.x = Math.floor((player.x + player.w) / TILE) * TILE - player.w;
+      player.vx = 0;
+    }
+  } else if (player.vx < 0) {
+    if (isWall(player.x, player.y + margin) ||
+        isWall(player.x, player.y + player.h - margin)) {
+      player.x = Math.ceil(player.x / TILE) * TILE;
+      player.vx = 0;
+    }
+  }
+
+  // Vertical movement
+  player.y += player.vy;
+  player.onGround = false;
+
+  if (player.vy > 0) {
+    // Falling — check floor tiles
+    if (isWall(player.x + margin, player.y + player.h) ||
+        isWall(player.x + player.w - margin, player.y + player.h)) {
+      player.y = Math.floor((player.y + player.h) / TILE) * TILE - player.h;
+      player.vy = 0;
+      player.onGround = true;
+    }
+    // Check moving platforms
+    const plat = checkPlatform(player.x, player.y, player.w, player.h);
+    if (plat && !player.onGround) {
+      player.y = plat.y - player.h;
+      player.vy = 0;
+      player.onGround = true;
+      player.x += plat.dx * plat.dir;
+    }
+  } else if (player.vy < 0) {
+    if (isWall(player.x + margin, player.y) ||
+        isWall(player.x + player.w - margin, player.y)) {
+      player.y = Math.ceil(player.y / TILE) * TILE;
+      player.vy = 0;
+    }
+  }
+
+  // Gems
+  for (const gem of gems) {
+    if (!gem.collected &&
+        player.x + player.w > gem.col * TILE + 4 &&
+        player.x < gem.col * TILE + TILE - 4 &&
+        player.y + player.h > gem.row * TILE + 4 &&
+        player.y < gem.row * TILE + TILE - 4) {
+      gem.collected = true;
+      collectedGems++;
+      updateHud();
+    }
+  }
+
+  // Exit
+  if (exitPos &&
+      player.x + player.w > exitPos.x + 2 &&
+      player.x < exitPos.x + TILE - 2 &&
+      player.y + player.h > exitPos.y + 2 &&
+      player.y < exitPos.y + TILE - 2) {
+    levelComplete();
+  }
+
+  // Fall off bottom
+  if (player.y > TH + TILE) {
+    die();
+  }
+
+  // Animation
+  if (player.vx !== 0 && player.onGround) {
+    player.frameTimer++;
+    if (player.frameTimer >= 6) { player.frame = (player.frame + 1) % 2; player.frameTimer = 0; }
+  } else {
+    player.frame = 0;
+  }
+}
+
+function die() {
+  deaths++;
+  updateHud();
+  spawnPlayer();
+}
+
+function levelComplete() {
+  running = false;
+  if (levelIdx >= LEVELS.length - 1) {
+    won = true;
+    showOverlay('FACILITY CLEARED', `All sectors traversed. Deaths: ${deaths}`, 'AGAIN', () => {
+      deaths = 0; levelIdx = 0; loadLevel(0); running = true;
+    });
+  } else {
+    levelIdx++;
+    loadLevel(levelIdx);
+    showOverlay(`LEVEL ${levelIdx + 1}`, LEVELS[levelIdx].name, 'CONTINUE', () => { running = true; });
+  }
+}
+
+// ── Rendering ─────────────────────────────────────────────────────────────────
+function drawTile(c, r, type) {
+  const x = c * TILE, y = r * TILE;
+  if (type === 'wall') {
+    ctx.fillStyle = '#0e0e1c';
+    ctx.fillRect(x, y, TILE, TILE);
+    ctx.fillStyle = '#14142a';
+    ctx.fillRect(x, y, TILE, 1);
+    ctx.fillRect(x, y, 1, TILE);
+    ctx.fillStyle = '#080812';
+    ctx.fillRect(x, y + TILE - 1, TILE, 1);
+    ctx.fillRect(x + TILE - 1, y, 1, TILE);
+  } else if (type === 'exit') {
+    ctx.fillStyle = '#0a1a10';
+    ctx.fillRect(x, y, TILE, TILE);
+    ctx.strokeStyle = '#2a6a3a';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x + 1, y + 1, TILE - 2, TILE - 2);
+    ctx.fillStyle = '#3a9a5a';
+    ctx.font = `${TILE - 6}px Courier New`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('⬛', x + TILE / 2, y + TILE / 2);
+    ctx.fillStyle = '#55cc88';
+    ctx.font = '10px Courier New';
+    ctx.fillText('EXIT', x + TILE / 2, y + TILE / 2);
+  }
+}
+
+let gemPulse = 0;
+function drawGem(gem) {
+  if (gem.collected) return;
+  const x = gem.col * TILE + TILE / 2;
+  const y = gem.row * TILE + TILE / 2;
+  const r = 5 + Math.sin(gemPulse + gem.col * 0.5) * 1;
+  ctx.fillStyle = '#2a5a7a';
+  ctx.beginPath();
+  ctx.arc(x, y, r + 1, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#5a9acc';
+  ctx.beginPath();
+  ctx.arc(x, y, r - 1, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#9ad4ee';
+  ctx.beginPath();
+  ctx.arc(x - 1, y - 1, r / 3, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawPlayer() {
+  const { x, y, w, h, facingRight, onGround, vy } = player;
+  const cx = x + w / 2;
+  const cy = y + h / 2;
+
+  ctx.save();
+  if (!facingRight) { ctx.translate(cx * 2, 0); ctx.scale(-1, 1); }
+
+  // Body
+  ctx.fillStyle = '#7a9aaa';
+  ctx.fillRect(x + 2, y + 6, w - 4, h - 8);
+
+  // Head
+  ctx.fillStyle = '#9ab4c4';
+  ctx.fillRect(x + 3, y, w - 6, 10);
+
+  // Ear
+  ctx.fillStyle = '#8aa4b4';
+  ctx.fillRect(x + w - 8, y - 5, 4, 6);
+  ctx.fillRect(x + w - 10, y - 5, 3, 4);
+
+  // Eye
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(x + w - 7, y + 2, 3, 3);
+  ctx.fillStyle = '#1a2a3a';
+  ctx.fillRect(x + w - 6, y + 3, 2, 2);
+
+  // Legs
+  const legY = y + h - 6;
+  const legOffset = onGround && player.frame === 1 ? 2 : 0;
+  ctx.fillStyle = '#5a7a8a';
+  ctx.fillRect(x + 2, legY, 5, 6 + legOffset);
+  ctx.fillRect(x + w - 7, legY, 5, 6 - legOffset);
+
+  // Neck (llama has a long neck)
+  ctx.fillStyle = '#8aa4b4';
+  ctx.fillRect(x + w - 7, y + 5, 4, 8);
+
+  ctx.restore();
+}
+
+function drawPlatform(plat) {
+  ctx.fillStyle = '#121228';
+  ctx.fillRect(plat.x, plat.y, plat.w, plat.h);
+  ctx.fillStyle = '#1e1e40';
+  ctx.fillRect(plat.x, plat.y, plat.w, 2);
+  ctx.strokeStyle = '#2a2a5a';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(plat.x + 0.5, plat.y + 0.5, plat.w - 1, plat.h - 1);
+}
+
+function render() {
+  ctx.fillStyle = '#050508';
+  ctx.fillRect(0, 0, TW, TH);
+
+  // Grid
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const t = grid[r][c];
+      if (t !== 'empty') drawTile(c, r, t);
+    }
+  }
+
+  // Platforms
+  platforms.forEach(drawPlatform);
+
+  // Gems
+  gemPulse += 0.05;
+  gems.forEach(drawGem);
+
+  // Player
+  drawPlayer();
+}
+
+// ── Overlay ───────────────────────────────────────────────────────────────────
+function showOverlay(title, sub, btnText, onBtn) {
+  const ov = document.getElementById('overlay');
+  document.getElementById('overlay-title').textContent = title;
+  document.getElementById('overlay-sub').textContent = sub;
+  const btn = document.getElementById('overlay-btn');
+  btn.textContent = btnText;
+  btn._cb = onBtn;
+  ov.style.display = 'flex';
+}
+
+document.getElementById('overlay-btn').addEventListener('click', function() {
+  document.getElementById('overlay').style.display = 'none';
+  if (this._cb) this._cb();
+});
+
+// ── Loop ──────────────────────────────────────────────────────────────────────
+function loop() {
+  update();
+  render();
+  animId = requestAnimationFrame(loop);
+}
+
+// ── Input ─────────────────────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  keys[e.key] = true;
+  if (e.key === 'r' || e.key === 'R') { spawnPlayer(); deaths++; updateHud(); }
+  if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown',' '].includes(e.key)) e.preventDefault();
+});
+document.addEventListener('keyup', e => { keys[e.key] = false; });
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+loadLevel(0);
+showOverlay('LLAMA', 'Navigate the facility corridors', 'BEGIN', () => { running = true; });
+loop();
+</script>
+</body>
+</html>

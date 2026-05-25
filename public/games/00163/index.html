@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>00163 — Morse Code</title>
+<link rel="icon" href="data:,">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #050508; color: #8a9aaa;
+    font-family: 'Courier New', monospace;
+    min-height: 100vh; display: flex; flex-direction: column;
+    align-items: center; gap: 14px;
+    padding: 30px 20px 50px;
+  }
+  .room-id { font-size: 10px; letter-spacing: 5px; color: #223; }
+  .title { font-size: 11px; letter-spacing: 5px; color: #445; text-transform: uppercase; }
+
+  .panel { max-width: 520px; width: 100%; border: 1px solid #0f0f1a; background: #030306; }
+  .panel-label { font-size: 8px; letter-spacing: 4px; color: #1a1a28; padding: 8px 12px; border-bottom: 1px solid #0a0a14; }
+  textarea {
+    width: 100%; background: #030306; border: none; color: #6a8a9a;
+    font-family: 'Courier New', monospace; font-size: 12px; letter-spacing: 1px;
+    padding: 12px; resize: none; outline: none; line-height: 1.8;
+  }
+  .morse-output {
+    padding: 12px; font-size: 13px; letter-spacing: 3px; color: #3a5a7a;
+    line-height: 2.2; min-height: 70px; word-break: break-all;
+  }
+  .morse-output .dot { color: #6a9acc; }
+  .morse-output .dash { color: #4a7aaa; }
+  .morse-output .space { color: #1a2a3a; }
+
+  .controls { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  button {
+    background: #060610; border: 1px solid #111120; color: #445;
+    font-family: 'Courier New', monospace; font-size: 9px;
+    letter-spacing: 2px; padding: 7px 14px; cursor: pointer;
+  }
+  button:hover { background: #0a0a18; color: #667; }
+  button.playing { border-color: #2a4a2a; color: #7acc7a; }
+
+  .ref-table {
+    display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px;
+    max-width: 520px; width: 100%;
+  }
+  .ref-item {
+    border: 1px solid #0a0a14; padding: 5px 6px;
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+  }
+  .ref-char { font-size: 10px; color: #3a5a7a; }
+  .ref-morse { font-size: 9px; color: #1a2a3a; letter-spacing: 2px; }
+
+  #decode-input {
+    width: 100%; background: #030306; border: none; color: #6a8a9a;
+    font-family: 'Courier New', monospace; font-size: 12px; letter-spacing: 3px;
+    padding: 12px; resize: none; outline: none; line-height: 1.8;
+  }
+  .decode-output {
+    padding: 12px; font-size: 14px; letter-spacing: 3px; color: #3a6a5a;
+    min-height: 50px;
+  }
+
+  .note { font-size: 10px; letter-spacing: 1px; color: #223; text-align: center; line-height: 2.2; max-width: 380px; border-top: 1px solid #111120; padding-top: 12px; }
+</style>
+</head>
+<body data-game="00163" data-nav="matrix">
+<div class="room-id">ROOM 00163</div>
+<div class="title">Morse Code</div>
+
+<div class="panel">
+  <div class="panel-label">TEXT → MORSE</div>
+  <textarea id="text-input" rows="3" placeholder="type something..." maxlength="200"></textarea>
+  <div class="morse-output" id="morse-out">—</div>
+</div>
+
+<div class="controls">
+  <button id="play-btn">▶ PLAY AUDIO</button>
+  <button id="clear-btn">CLEAR</button>
+  <button id="sos-btn">SOS</button>
+</div>
+
+<div class="panel">
+  <div class="panel-label">MORSE → TEXT (enter · and - with spaces between letters)</div>
+  <textarea id="decode-input" rows="3" placeholder="... --- ... (SOS)" maxlength="400"></textarea>
+  <div class="decode-output" id="decode-out">—</div>
+</div>
+
+<div class="ref-table" id="ref-table"></div>
+
+<div class="note">
+  Samuel Morse, 1836.<br>
+  · is a dit. — is a dah.<br>
+  Dah is three times the length of dit.<br>
+  SOS is · · · — — — · · ·<br>
+  It has no meaning. Only urgency.
+</div>
+
+<script src="/shared/matrix-nav.js"></script>
+<script>
+const MORSE = {
+  A:'.-', B:'-...', C:'-.-.', D:'-..', E:'.', F:'..-.', G:'--.', H:'....',
+  I:'..', J:'.---', K:'-.-', L:'.-..', M:'--', N:'-.', O:'---', P:'.--.',
+  Q:'--.-', R:'.-.', S:'...', T:'-', U:'..-', V:'...-', W:'.--', X:'-..-',
+  Y:'-.--', Z:'--..',
+  '0':'-----', '1':'.----', '2':'..---', '3':'...--', '4':'....-', '5':'.....',
+  '6':'-....', '7':'--...', '8':'---..', '9':'----.',
+  '.':'.-.-.-', ',':'--..--', '?':'..--..', "'":'.----.', '!':'-.-.--',
+  '/':'-..-.', '(':'-.--.', ')':'-.--.-', '&':'.-...', ':':'---...',
+  ';':'-.-.-.', '=':'-...-', '+':'.-.-.', '-':'-....-', '_':'..--.-',
+  '"':'.-..-.', '$':'...-..-', '@':'.--.-.', ' ':'/'
+};
+const MORSE_REV = Object.fromEntries(Object.entries(MORSE).map(([k,v]) => [v, k]));
+
+function textToMorse(text) {
+  return text.toUpperCase().split('').map(c => MORSE[c] || '').filter(Boolean).join(' ');
+}
+
+function morseToText(morse) {
+  return morse.trim().split('   ').map(word =>
+    word.split(' ').map(c => MORSE_REV[c] || '?').join('')
+  ).join(' ');
+}
+
+function renderMorse(morse) {
+  return morse.split('').map(c => {
+    if (c === '.') return `<span class="dot">·</span>`;
+    if (c === '-') return `<span class="dash">—</span>`;
+    if (c === '/') return `<span class="space"> / </span>`;
+    return c;
+  }).join('');
+}
+
+// Text → Morse
+const textInput = document.getElementById('text-input');
+const morseOut = document.getElementById('morse-out');
+textInput.addEventListener('input', () => {
+  const m = textToMorse(textInput.value);
+  morseOut.innerHTML = m ? renderMorse(m) : '—';
+  plainMorse = m;
+});
+
+// Decode: Morse → Text
+const decodeInput = document.getElementById('decode-input');
+const decodeOut = document.getElementById('decode-out');
+decodeInput.addEventListener('input', () => {
+  const normalized = decodeInput.value
+    .replace(/[•·]/g, '.') // bullet → dot
+    .replace(/[—–]/g, '-') // em/en dash → hyphen
+    .trim();
+  decodeOut.textContent = normalized ? morseToText(normalized) : '—';
+});
+
+// Controls
+document.getElementById('clear-btn').addEventListener('click', () => {
+  textInput.value = '';
+  morseOut.innerHTML = '—';
+  plainMorse = '';
+});
+
+document.getElementById('sos-btn').addEventListener('click', () => {
+  textInput.value = 'SOS';
+  const m = textToMorse('SOS');
+  morseOut.innerHTML = renderMorse(m);
+  plainMorse = m;
+});
+
+// Audio playback using Web Audio API
+let plainMorse = '';
+let audioCtx = null;
+let playBtn = document.getElementById('play-btn');
+
+async function playMorse() {
+  if (!plainMorse) return;
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+  playBtn.textContent = '■ STOP';
+  playBtn.classList.add('playing');
+
+  const DIT = 0.08;  // seconds
+  const DAH = DIT * 3;
+  const PAUSE = DIT;   // between symbols
+  const LETTER_GAP = DIT * 3;
+  const WORD_GAP = DIT * 7;
+  const FREQ = 700;
+
+  let t = audioCtx.currentTime + 0.1;
+
+  function beep(dur) {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.frequency.value = FREQ;
+    osc.type = 'sine';
+    gain.gain.setValueAtTime(0, t);
+    gain.gain.linearRampToValueAtTime(0.3, t + 0.005);
+    gain.gain.setValueAtTime(0.3, t + dur - 0.005);
+    gain.gain.linearRampToValueAtTime(0, t + dur);
+    osc.start(t);
+    osc.stop(t + dur);
+    t += dur;
+  }
+
+  const symbols = plainMorse.split('');
+  for (let i = 0; i < symbols.length; i++) {
+    const s = symbols[i];
+    if (s === '.') { beep(DIT); t += PAUSE; }
+    else if (s === '-') { beep(DAH); t += PAUSE; }
+    else if (s === ' ') { t += LETTER_GAP; }
+    else if (s === '/') { t += WORD_GAP; }
+  }
+
+  const totalTime = (t - audioCtx.currentTime) * 1000;
+  setTimeout(() => {
+    playBtn.textContent = '▶ PLAY AUDIO';
+    playBtn.classList.remove('playing');
+  }, totalTime);
+}
+
+playBtn.addEventListener('click', async () => {
+  if (playBtn.classList.contains('playing')) {
+    if (audioCtx) { audioCtx.close(); audioCtx = null; }
+    playBtn.textContent = '▶ PLAY AUDIO';
+    playBtn.classList.remove('playing');
+  } else {
+    await playMorse();
+  }
+});
+
+// Reference table
+const refTable = document.getElementById('ref-table');
+'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'.split('').forEach(c => {
+  const d = document.createElement('div');
+  d.className = 'ref-item';
+  d.innerHTML = `<span class="ref-char">${c}</span><span class="ref-morse">${MORSE[c]}</span>`;
+  d.addEventListener('click', () => {
+    textInput.value += c;
+    textInput.dispatchEvent(new Event('input'));
+  });
+  refTable.appendChild(d);
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Something Under the Bed — NULL</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  background: #050508;
+  color: #999;
+  font-family: monospace;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  gap: 2rem;
+  transition: background 1s;
+}
+body.dark { background: #020203; }
+
+.room-label {
+  font-size: 0.6rem;
+  letter-spacing: 0.3em;
+  color: rgba(150,140,120,0.25);
+  text-transform: uppercase;
+  text-align: center;
+}
+
+.question {
+  font-size: clamp(1rem, 3vw, 1.4rem);
+  letter-spacing: 0.04em;
+  color: rgba(190,180,160,0.7);
+  text-align: center;
+  max-width: 480px;
+  line-height: 1.7;
+  min-height: 3em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.timer-bar {
+  width: 100%;
+  max-width: 320px;
+  height: 2px;
+  background: rgba(255,255,255,0.05);
+  position: relative;
+  overflow: hidden;
+}
+.timer-fill {
+  height: 100%;
+  background: rgba(233,69,96,0.6);
+  width: 100%;
+  transform-origin: left;
+  transition: transform linear;
+}
+
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  width: 100%;
+  max-width: 320px;
+}
+.opt {
+  padding: 0.7rem 1rem;
+  border: 1px solid rgba(180,160,130,0.2);
+  background: transparent;
+  color: rgba(180,160,130,0.6);
+  font-family: monospace;
+  font-size: 0.8rem;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s;
+}
+.opt:hover { border-color: rgba(180,160,130,0.5); color: rgba(180,160,130,0.9); background: rgba(180,160,130,0.04); }
+.opt.chosen { border-color: #e94560; color: #e94560; }
+.opt.wrong { border-color: rgba(100,100,100,0.3); color: rgba(100,100,100,0.3); }
+
+.outcome {
+  font-size: 0.8rem;
+  letter-spacing: 0.1em;
+  color: rgba(200,180,150,0.5);
+  text-align: center;
+  min-height: 1.4em;
+  max-width: 420px;
+  line-height: 1.8;
+}
+
+/* Final state */
+.silence {
+  font-size: 0.75rem;
+  letter-spacing: 0.2em;
+  color: rgba(130,120,100,0.3);
+  text-align: center;
+  line-height: 2;
+}
+</style>
+</head>
+<body data-game="00085" data-nav="matrix">
+
+<div class="room-label">SUBLEVEL 2 — RESIDENTIAL WING</div>
+
+<div class="question" id="question">It is 3am. You are awake.</div>
+
+<div class="timer-bar" id="timerBar" style="display:none">
+  <div class="timer-fill" id="timerFill"></div>
+</div>
+
+<div class="options" id="options"></div>
+
+<div class="outcome" id="outcome"></div>
+
+<script src="/shared/matrix-nav.js"></script>
+<script>
+const questionEl = document.getElementById('question');
+const optionsEl  = document.getElementById('options');
+const outcomeEl  = document.getElementById('outcome');
+const timerBar   = document.getElementById('timerBar');
+const timerFill  = document.getElementById('timerFill');
+
+const QUESTIONS = [
+  {
+    q: 'Did you check?',
+    opts: ['Yes.', 'No.', "I was going to."],
+    outcomes: [
+      "You looked. Nothing there. You get back in bed.\n\nYou check again anyway.",
+      "You didn't look. You know it's probably nothing.\n\nYou are still awake at 4am.",
+      "You decided to. Then you didn't.\n\nYou are not sure which was worse."
+    ],
+    time: 8
+  },
+  {
+    q: 'You heard something. What was it?',
+    opts: ['The house settling.', 'An animal outside.', 'Something else.'],
+    outcomes: [
+      "That is almost certainly what it was.\n\nYou decide this and feel slightly better.",
+      "Probably. You've heard that before.\n\nYou listen for it again. It doesn't come.",
+      "You don't know. That is the problem.\n\nYou will not sleep for another hour."
+    ],
+    time: 10
+  }
+];
+
+let phase = 0; // 0 = intro, 1 = q1, 2 = q2, 3 = done
+let timerTimeout, timerStart, timerDuration;
+
+function clearTimer() {
+  clearTimeout(timerTimeout);
+  timerBar.style.display = 'none';
+  timerFill.style.transition = 'none';
+  timerFill.style.transform = 'scaleX(1)';
+}
+
+function startTimer(seconds, onExpire) {
+  timerBar.style.display = 'block';
+  timerDuration = seconds;
+  timerStart = Date.now();
+
+  requestAnimationFrame(() => {
+    timerFill.style.transition = 'none';
+    timerFill.style.transform = 'scaleX(1)';
+    requestAnimationFrame(() => {
+      timerFill.style.transition = `transform ${seconds}s linear`;
+      timerFill.style.transform = 'scaleX(0)';
+    });
+  });
+
+  timerTimeout = setTimeout(() => {
+    timerBar.style.display = 'none';
+    onExpire();
+  }, seconds * 1000);
+}
+
+function showQuestion(qIndex) {
+  const { q, opts, outcomes, time } = QUESTIONS[qIndex];
+  questionEl.textContent = q;
+  outcomeEl.textContent = '';
+  optionsEl.innerHTML = '';
+  optionsEl.style.display = 'flex';
+
+  opts.forEach((text, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'opt';
+    btn.textContent = text;
+    btn.onclick = () => choose(i, outcomes[i], qIndex);
+    optionsEl.appendChild(btn);
+  });
+
+  startTimer(time, () => {
+    // Time expired — force random choice
+    const i = Math.floor(Math.random() * opts.length);
+    choose(i, outcomes[i], qIndex);
+  });
+}
+
+function choose(i, outcome, qIndex) {
+  clearTimer();
+
+  const btns = optionsEl.querySelectorAll('.opt');
+  btns.forEach((b, j) => {
+    b.disabled = true;
+    b.classList.add(j === i ? 'chosen' : 'wrong');
+  });
+
+  outcomeEl.textContent = outcome;
+
+  const next = qIndex + 1;
+  if (next < QUESTIONS.length) {
+    setTimeout(() => {
+      optionsEl.innerHTML = '';
+      outcomeEl.textContent = '';
+      showQuestion(next);
+    }, 4000);
+  } else {
+    setTimeout(showEnd, 4000);
+  }
+}
+
+function showEnd() {
+  optionsEl.innerHTML = '';
+  optionsEl.style.display = 'none';
+  timerBar.style.display = 'none';
+  questionEl.textContent = '';
+  outcomeEl.textContent = '';
+
+  document.body.classList.add('dark');
+
+  setTimeout(() => {
+    document.querySelector('.room-label').textContent = '';
+    questionEl.innerHTML = `<div class="silence">
+      It is quiet now.<br><br>
+      You will not sleep.<br>
+      You know that.<br><br>
+      But you close your eyes anyway.
+    </div>`;
+  }, 1500);
+}
+
+// Intro sequence
+setTimeout(() => {
+  questionEl.textContent = '';
+  setTimeout(() => {
+    showQuestion(0);
+  }, 600);
+}, 2500);
+</script>
+</body>
+</html>

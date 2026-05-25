@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UUID Generator — NULL</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #050508;
+  color: #ccc;
+  font-family: monospace;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  gap: 2.5rem;
+}
+.title {
+  font-size: 0.65rem;
+  letter-spacing: 0.35em;
+  color: rgba(200,180,140,0.3);
+  text-transform: uppercase;
+  text-align: center;
+}
+.uuid-display {
+  font-size: clamp(0.85rem, 2.5vw, 1.3rem);
+  letter-spacing: 0.08em;
+  text-align: center;
+  line-height: 1.4;
+  cursor: pointer;
+  position: relative;
+}
+/* Color-coded UUID sections */
+.s1 { color: #e94560; }         /* time_low */
+.s2 { color: #c07830; }         /* time_mid */
+.s3 { color: #a0a020; }         /* time_hi_and_version */
+.s4 { color: #30a070; }         /* clock_seq */
+.s5 { color: #3080c0; }         /* node */
+.sep { color: rgba(200,180,140,0.2); }
+.copied {
+  position: absolute;
+  top: -1.6rem;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.6rem;
+  letter-spacing: 0.2em;
+  color: rgba(143,168,120,0.7);
+  opacity: 0;
+  transition: opacity 0.3s;
+  white-space: nowrap;
+  text-transform: uppercase;
+}
+.copied.show { opacity: 1; }
+.legend {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem 2rem;
+  max-width: 420px;
+  width: 100%;
+}
+.legend-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  font-size: 0.65rem;
+  letter-spacing: 0.06em;
+}
+.legend-color {
+  font-size: 0.65rem;
+  font-weight: bold;
+}
+.legend-label { color: rgba(200,180,140,0.35); line-height: 1.6; }
+.actions {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.btn {
+  padding: 0.5rem 1.4rem;
+  border: 1px solid rgba(200,180,140,0.25);
+  background: transparent;
+  color: rgba(200,180,140,0.5);
+  font-family: monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn:hover { border-color: rgba(200,180,140,0.6); color: rgba(200,180,140,0.9); }
+.history {
+  max-width: 500px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  max-height: 180px;
+  overflow: hidden;
+}
+.hist-item {
+  font-size: 0.65rem;
+  letter-spacing: 0.06em;
+  color: rgba(200,180,140,0.2);
+  animation: fadein 0.3s ease;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+.hist-item:first-child { color: rgba(200,180,140,0.4); }
+.note {
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  color: rgba(200,180,140,0.18);
+  text-align: center;
+  line-height: 1.9;
+  max-width: 420px;
+}
+</style>
+</head>
+<body data-game="00096" data-nav="matrix">
+
+<div class="title">UUID Generator — Version 4</div>
+
+<div class="uuid-display" id="uuidDisplay" onclick="copyUUID()" title="Click to copy">
+  <span class="copied" id="copiedMsg">Copied</span>
+  <span id="uuidText"></span>
+</div>
+
+<div class="legend">
+  <div class="legend-row"><span class="legend-color s1">■</span><span class="legend-label">time_low (32 bits)</span></div>
+  <div class="legend-row"><span class="legend-color s2">■</span><span class="legend-label">time_mid (16 bits)</span></div>
+  <div class="legend-row"><span class="legend-color s3">■</span><span class="legend-label">version + random (16 bits, v4)</span></div>
+  <div class="legend-row"><span class="legend-color s4">■</span><span class="legend-label">variant + clock (16 bits)</span></div>
+  <div class="legend-row"><span class="legend-color s5">■</span><span class="legend-label">node (48 bits, random in v4)</span></div>
+</div>
+
+<div class="actions">
+  <button class="btn" onclick="generate()">Generate New</button>
+  <button class="btn" onclick="copyUUID()">Copy</button>
+</div>
+
+<div class="history" id="history"></div>
+
+<div class="note">
+  Version 4 UUIDs are randomly generated.<br>
+  The probability of collision across all UUIDs ever generated is negligible.<br>
+  There are 2¹²² possible v4 UUIDs — roughly 5 undecillion.
+</div>
+
+<script src="/shared/matrix-nav.js"></script>
+<script>
+let currentUUID = '';
+const history = [];
+
+function generateUUID() {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  // Fallback
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = Math.random() * 16 | 0;
+    return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+  });
+}
+
+function renderUUID(uuid) {
+  const parts = uuid.split('-');
+  return `<span class="s1">${parts[0]}</span>` +
+    `<span class="sep">-</span>` +
+    `<span class="s2">${parts[1]}</span>` +
+    `<span class="sep">-</span>` +
+    `<span class="s3">${parts[2]}</span>` +
+    `<span class="sep">-</span>` +
+    `<span class="s4">${parts[3]}</span>` +
+    `<span class="sep">-</span>` +
+    `<span class="s5">${parts[4]}</span>`;
+}
+
+function generate() {
+  currentUUID = generateUUID();
+  document.getElementById('uuidText').innerHTML = renderUUID(currentUUID);
+  history.unshift(currentUUID);
+  if (history.length > 8) history.pop();
+  renderHistory();
+}
+
+function renderHistory() {
+  const el = document.getElementById('history');
+  el.innerHTML = history.slice(1).map(u =>
+    `<div class="hist-item">${u}</div>`
+  ).join('');
+}
+
+function copyUUID() {
+  if (!currentUUID) return;
+  navigator.clipboard.writeText(currentUUID).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = currentUUID;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+  });
+  const msg = document.getElementById('copiedMsg');
+  msg.classList.add('show');
+  setTimeout(() => msg.classList.remove('show'), 1500);
+}
+
+generate();
+</script>
+</body>
+</html>

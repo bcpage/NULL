@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Invisible Characters — NULL</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #050508;
+  color: #bbb;
+  font-family: monospace;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 3rem 1.5rem 6rem;
+  gap: 2rem;
+}
+.title {
+  font-size: 0.65rem;
+  letter-spacing: 0.35em;
+  color: rgba(200,180,140,0.35);
+  text-transform: uppercase;
+  text-align: center;
+}
+.intro {
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  line-height: 1.9;
+  color: rgba(180,160,130,0.4);
+  max-width: 500px;
+  text-align: center;
+}
+.input-area {
+  width: 100%;
+  max-width: 500px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+textarea {
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(200,180,140,0.2);
+  color: rgba(200,180,140,0.85);
+  font-family: monospace;
+  font-size: 0.85rem;
+  padding: 0.8rem;
+  height: 90px;
+  resize: none;
+  outline: none;
+  width: 100%;
+  transition: border-color 0.2s;
+}
+textarea:focus { border-color: rgba(200,180,140,0.45); }
+.btn {
+  padding: 0.5rem 1.4rem;
+  border: 1px solid rgba(200,180,140,0.25);
+  background: transparent;
+  color: rgba(200,180,140,0.5);
+  font-family: monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s;
+  align-self: flex-start;
+}
+.btn:hover { border-color: rgba(200,180,140,0.6); color: rgba(200,180,140,0.9); }
+.results {
+  width: 100%;
+  max-width: 500px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.results-title {
+  font-size: 0.6rem;
+  letter-spacing: 0.25em;
+  color: rgba(200,180,140,0.2);
+  text-transform: uppercase;
+  border-bottom: 1px solid rgba(200,180,140,0.07);
+  padding-bottom: 0.4rem;
+}
+.finding {
+  display: flex;
+  gap: 1rem;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid rgba(200,180,140,0.08);
+  font-size: 0.72rem;
+  line-height: 1.6;
+}
+.finding.hit { border-color: rgba(233,69,96,0.2); }
+.finding-code {
+  color: rgba(233,69,96,0.7);
+  flex-shrink: 0;
+  min-width: 60px;
+  font-size: 0.65rem;
+}
+.finding-name { color: rgba(200,180,140,0.6); }
+.finding-desc { color: rgba(200,180,140,0.3); font-size: 0.65rem; }
+.finding.miss .finding-code { color: rgba(200,180,140,0.15); }
+.finding.miss .finding-name { color: rgba(200,180,140,0.2); }
+.clean {
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  color: rgba(143,168,120,0.4);
+  padding: 0.5rem 0;
+}
+.inject-section {
+  width: 100%;
+  max-width: 500px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+.inject-title {
+  font-size: 0.6rem;
+  letter-spacing: 0.25em;
+  color: rgba(200,180,140,0.2);
+  text-transform: uppercase;
+  border-bottom: 1px solid rgba(200,180,140,0.07);
+  padding-bottom: 0.4rem;
+}
+.inject-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.7rem;
+}
+.inject-label { color: rgba(200,180,140,0.4); flex: 1; line-height: 1.6; }
+.inject-label small { display: block; color: rgba(200,180,140,0.2); font-size: 0.6rem; }
+.inject-btn {
+  padding: 0.3rem 0.8rem;
+  border: 1px solid rgba(200,180,140,0.2);
+  background: transparent;
+  color: rgba(200,180,140,0.4);
+  font-family: monospace;
+  font-size: 0.65rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.inject-btn:hover { border-color: rgba(200,180,140,0.5); color: rgba(200,180,140,0.8); }
+</style>
+</head>
+<body data-game="00089" data-nav="matrix">
+
+<div class="title">The Invisible Character Room</div>
+<div class="intro">
+  Text contains characters that cannot be seen. Paste anything below to find them.
+</div>
+
+<div class="input-area">
+  <textarea id="inputText" placeholder="Paste text here to scan for invisible characters..."></textarea>
+  <button class="btn" onclick="scan()">Scan</button>
+</div>
+
+<div class="results" id="results"></div>
+
+<div class="inject-section">
+  <div class="inject-title">Insert invisible characters into your clipboard</div>
+
+  <div class="inject-item">
+    <div class="inject-label">
+      Zero-Width Space
+      <small>U+200B — often used to break word detection</small>
+    </div>
+    <button class="inject-btn" onclick="copyChar('​')">Copy</button>
+  </div>
+
+  <div class="inject-item">
+    <div class="inject-label">
+      Zero-Width Non-Joiner
+      <small>U+200C — affects Arabic/Indic script joining</small>
+    </div>
+    <button class="inject-btn" onclick="copyChar('‌')">Copy</button>
+  </div>
+
+  <div class="inject-item">
+    <div class="inject-label">
+      Zero-Width Joiner
+      <small>U+200D — joins emoji and complex scripts</small>
+    </div>
+    <button class="inject-btn" onclick="copyChar('‍')">Copy</button>
+  </div>
+
+  <div class="inject-item">
+    <div class="inject-label">
+      Soft Hyphen
+      <small>U+00AD — invisible break hint, breaks string equality</small>
+    </div>
+    <button class="inject-btn" onclick="copyChar('­')">Copy</button>
+  </div>
+
+  <div class="inject-item">
+    <div class="inject-label">
+      Word Joiner
+      <small>U+2060 — prevents line breaks, invisible filler</small>
+    </div>
+    <button class="inject-btn" onclick="copyChar('⁠')">Copy</button>
+  </div>
+
+  <div class="inject-item">
+    <div class="inject-label">
+      Left-to-Right Mark
+      <small>U+200E — forces LTR direction, used in bidirectional attacks</small>
+    </div>
+    <button class="inject-btn" onclick="copyChar('‎')">Copy</button>
+  </div>
+
+  <div class="inject-item">
+    <div class="inject-label">
+      Byte Order Mark (BOM)
+      <small>U+FEFF — invisible at start of text, breaks many parsers</small>
+    </div>
+    <button class="inject-btn" onclick="copyChar('﻿')">Copy</button>
+  </div>
+
+  <div class="inject-item">
+    <div class="inject-label">
+      Non-Breaking Space
+      <small>U+00A0 — looks like a space, breaks word splitting</small>
+    </div>
+    <button class="inject-btn" onclick="copyChar(' ')">Copy</button>
+  </div>
+</div>
+
+<script src="/shared/matrix-nav.js"></script>
+<script>
+const CHARS = [
+  { code: 'U+200B', name: 'Zero-Width Space',       char: '​', desc: 'Often injected to break word detection or keyword filters' },
+  { code: 'U+200C', name: 'Zero-Width Non-Joiner',  char: '‌', desc: 'Affects Arabic and Indic script joining' },
+  { code: 'U+200D', name: 'Zero-Width Joiner',       char: '‍', desc: 'Used in emoji sequences (family, professions, flags)' },
+  { code: 'U+200E', name: 'Left-to-Right Mark',     char: '‎', desc: 'Forces LTR text direction; used in bidi spoofing attacks' },
+  { code: 'U+200F', name: 'Right-to-Left Mark',     char: '‏', desc: 'Forces RTL direction; can reverse displayed text' },
+  { code: 'U+00AD', name: 'Soft Hyphen',            char: '­', desc: 'Invisible break hint; breaks string equality and regex' },
+  { code: 'U+00A0', name: 'Non-Breaking Space',     char: ' ', desc: 'Renders as space but is a different character' },
+  { code: 'U+FEFF', name: 'Byte Order Mark',        char: '﻿', desc: 'Invisible at text start; breaks JSON.parse and many parsers' },
+  { code: 'U+2060', name: 'Word Joiner',            char: '⁠', desc: 'Prevents line breaks; invisible filler in obfuscation' },
+  { code: 'U+180E', name: 'Mongolian Vowel Sep.',   char: '᠎', desc: 'Width varies by platform; causes rendering inconsistencies' },
+  { code: 'U+034F', name: 'Combining Grapheme Joiner', char: '͏', desc: 'Attaches to preceding character invisibly' },
+  { code: 'U+2062', name: 'Invisible Times',        char: '⁢', desc: 'Mathematical invisible operator' },
+  { code: 'U+2063', name: 'Invisible Separator',    char: '⁣', desc: 'Mathematical invisible separator' },
+];
+
+function scan() {
+  const text = document.getElementById('inputText').value;
+  const results = document.getElementById('results');
+
+  if (!text) { results.innerHTML = ''; return; }
+
+  const found = CHARS.filter(c => text.includes(c.char));
+  const total = CHARS.reduce((n, c) => {
+    let count = 0;
+    let i = text.indexOf(c.char);
+    while (i !== -1) { count++; i = text.indexOf(c.char, i + 1); }
+    return n + count;
+  }, 0);
+
+  let html = `<div class="results-title">Scan results — ${text.length} characters total, ${total} invisible</div>`;
+
+  if (found.length === 0) {
+    html += '<div class="clean">✓ No invisible characters detected.</div>';
+  }
+
+  CHARS.forEach(c => {
+    const count = (text.match(new RegExp(c.char.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'), 'g')) || []).length;
+    const cls = count > 0 ? 'hit' : 'miss';
+    html += `<div class="finding ${cls}">
+      <div class="finding-code">${c.code}${count > 0 ? ' ×'+count : ''}</div>
+      <div>
+        <div class="finding-name">${c.name}</div>
+        <div class="finding-desc">${c.desc}</div>
+      </div>
+    </div>`;
+  });
+
+  results.innerHTML = html;
+}
+
+function copyChar(ch) {
+  navigator.clipboard.writeText(ch).catch(() => {
+    // Fallback
+    const ta = document.createElement('textarea');
+    ta.value = ch;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+  });
+}
+</script>
+</body>
+</html>

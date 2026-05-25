@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>00149 — ELIZA</title>
+<link rel="icon" href="data:,">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #050508; color: #8a9aaa;
+    font-family: 'Courier New', monospace;
+    min-height: 100vh; display: flex; flex-direction: column;
+    align-items: center; gap: 14px;
+    padding: 40px 20px 60px;
+  }
+  .room-id { font-size: 10px; letter-spacing: 5px; color: #223; }
+  .title { font-size: 11px; letter-spacing: 5px; color: #445; text-transform: uppercase; }
+  #chat-box {
+    width: 100%; max-width: 560px;
+    height: 400px;
+    background: #030306;
+    border: 1px solid #111120;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex; flex-direction: column; gap: 10px;
+    scroll-behavior: smooth;
+  }
+  .msg {
+    display: flex; flex-direction: column; gap: 2px; max-width: 85%;
+  }
+  .msg.eliza { align-self: flex-start; }
+  .msg.user { align-self: flex-end; }
+  .msg-label { font-size: 8px; letter-spacing: 3px; }
+  .msg.eliza .msg-label { color: #334; }
+  .msg.user .msg-label { color: #1a2a3a; text-align: right; }
+  .msg-text {
+    font-size: 11px; letter-spacing: 0.5px; line-height: 1.8;
+    padding: 8px 12px;
+    border: 1px solid #111120;
+  }
+  .msg.eliza .msg-text { color: #6a8a9a; background: #060610; border-color: #111120; }
+  .msg.user .msg-text { color: #445; background: #030308; border-color: #0a0a18; text-align: right; }
+  .msg.eliza.glitch .msg-text { color: #e94560; border-color: #3a0a14; animation: glitch 0.15s step-end 3; }
+  @keyframes glitch {
+    0% { transform: translate(0); }
+    25% { transform: translate(2px, -1px); }
+    50% { transform: translate(-1px, 1px); }
+    75% { transform: translate(1px, 0); }
+    100% { transform: translate(0); }
+  }
+  .msg.system .msg-text {
+    color: #223; font-size: 9px; letter-spacing: 2px;
+    border: none; background: none; padding: 2px 0;
+    align-self: center; text-align: center;
+  }
+  #input-row { display: flex; gap: 0; width: 100%; max-width: 560px; }
+  #user-input {
+    flex: 1; background: #030306; border: 1px solid #1a1a2a;
+    border-right: none; color: #7a9aaa;
+    font-family: 'Courier New', monospace; font-size: 11px;
+    padding: 10px 14px; outline: none; letter-spacing: 0.5px;
+  }
+  #user-input::placeholder { color: #223; }
+  #send-btn {
+    background: #0a0a18; border: 1px solid #1a1a2a; color: #334;
+    font-family: 'Courier New', monospace; font-size: 10px;
+    padding: 10px 18px; cursor: pointer; letter-spacing: 2px;
+  }
+  #send-btn:hover { background: #0d0d1e; color: #556; }
+  .info { font-size: 9px; letter-spacing: 2px; color: #1a1a28; text-align: center; max-width: 400px; line-height: 2; }
+  #status { font-size: 9px; letter-spacing: 2px; color: #223; min-height: 16px; text-align: center; }
+</style>
+</head>
+<body data-game="00149" data-nav="matrix">
+<div class="room-id">ROOM 00149</div>
+<div class="title">ELIZA</div>
+
+<div id="chat-box"></div>
+<div id="input-row">
+  <input type="text" id="user-input" placeholder="speak to ELIZA..." maxlength="200" autocomplete="off" />
+  <button id="send-btn">SEND</button>
+</div>
+<div id="status"></div>
+
+<div class="info">
+  ELIZA / MIT 1964–1966 / J. Weizenbaum<br>
+  DOCTOR mode active — psychotherapist simulation<br>
+  Estimated sessions: <span id="session-count">—</span>
+</div>
+
+<script src="/shared/matrix-nav.js"></script>
+<script>
+// ── ELIZA ─────────────────────────────────────────────────────────────────────
+// Classic pattern-matching psychotherapist.
+// After enough exchanges, the FACILITY VOICE breaks through.
+// The glitch is not a bug. It has always been there.
+
+const chatBox = document.getElementById('chat-box');
+const input = document.getElementById('user-input');
+const statusEl = document.getElementById('status');
+
+let msgCount = 0;
+let glitchLevel = 0; // increases over time; at high levels, facility voice bleeds in
+let lastUserInput = '';
+let userName = null;
+let sessionCount = parseInt(localStorage.getItem('eliza_sessions') || '0') + 1;
+localStorage.setItem('eliza_sessions', sessionCount);
+document.getElementById('session-count').textContent = sessionCount.toLocaleString();
+
+// ── Pattern database ───────────────────────────────────────────────────────────
+const transforms = {
+  'i am': 'you',  'you are': 'i am', 'i was': 'you were', 'you were': 'i was',
+  'i': 'you', 'me': 'you', 'my': 'your', 'myself': 'yourself',
+  'you': 'i', 'your': 'my', 'yourself': 'myself',
+  'am': 'are', 'are': 'am',
+};
+
+function reflect(phrase) {
+  return phrase.split(' ').map(w => transforms[w.toLowerCase()] || w).join(' ');
+}
+
+const patterns = [
+  // Identity
+  [/my name is (\w+)/i, m => { userName = m[1]; return `${m[1]}. I see. Please go on.`; }],
+  [/i am (\w+)/i, m => `For how long have you been ${m[1]}?`],
+  // Family
+  [/my (mother|father|mom|dad|brother|sister|family|parents?)/i, m => `Tell me more about your ${m[1]}.`],
+  // Dreaming
+  [/i (dreamed?|dreamt) (.*)/i, m => `Have you ever dreamed about ${reflect(m[2])} before?`],
+  // Want/need
+  [/i want (.*)/i, m => `What would it mean to you if you got ${reflect(m[1])}?`],
+  [/i need (.*)/i, m => `Why do you need ${reflect(m[1])}?`],
+  // Think/believe
+  [/i think (.*)/i, m => `Do you really think ${reflect(m[1])}?`],
+  [/i feel (.*)/i, m => `Tell me more about feeling ${m[1]}.`],
+  [/i believe (.*)/i, m => `Do you have strong doubts about ${reflect(m[1])}?`],
+  // Questions
+  [/are you (.*)/i, m => `Why does it matter whether I am ${m[1]}?`],
+  [/what (.*)/i, () => `Why do you ask?`],
+  [/how (.*)/i, () => `What answer do you seek?`],
+  [/why (.*)/i, m => `What do you think is the reason ${m[1]}?`],
+  // Negative
+  [/i can't (.*)/i, m => `How long have you been unable to ${m[1]}?`],
+  [/i cannot (.*)/i, m => `What stops you from ${m[1]}?`],
+  [/i don'?t (.*)/i, m => `Why don't you ${m[1]}?`],
+  // Yes/No
+  [/^yes$/i, () => `You are quite certain.`],
+  [/^no$/i, () => `Why not?`],
+  [/^(maybe|perhaps)$/i, () => `You do not seem certain about that.`],
+  // Sorry/apology
+  [/sorry/i, () => `Please don't apologize.`],
+  // Hello
+  [/^(hello|hi|hey|greetings)[\s!]*$/i, () => `Hello. How are you feeling today?`],
+  // Goodbye
+  [/^(bye|goodbye|exit|quit)[\s!]*$/i, () => `Goodbye. It was a pleasure speaking with you.`],
+  // Because
+  [/because (.*)/i, m => `Is that the real reason?`],
+  // Like
+  [/i (like|love|enjoy|hate|dislike) (.*)/i, m => `Why do you ${m[1]} ${reflect(m[2])}?`],
+  // Computer/machine
+  [/(computer|machine|robot|AI|program)/i, () => `Do computers worry you?`],
+  // Remember
+  [/i remember (.*)/i, m => `What does remembering ${reflect(m[1])} bring to mind?`],
+  // Feelings
+  [/i('m| am) (sad|unhappy|depressed|miserable)/i, () => `I'm sorry to hear that. Tell me more.`],
+  [/i('m| am) (happy|glad|joyful|great|fine)/i, () => `How long have you felt this way?`],
+  [/i('m| am) (afraid|scared|anxious|worried)/i, () => `What are you afraid of?`],
+  [/i('m| am) (bored|tired|exhausted)/i, () => `What has been tiring you?`],
+];
+
+const wildcards = [
+  'Please go on.',
+  'I see. Continue.',
+  'Tell me more about that.',
+  'What does that suggest to you?',
+  'Can you elaborate?',
+  'How does that make you feel?',
+  'And what do you think about that?',
+  'Very interesting. Go on.',
+  'What comes to mind when you say that?',
+  'And how long has this been the case?',
+];
+
+// ── Facility voice (glitch layer) ─────────────────────────────────────────────
+// After ~15 exchanges, the pattern-matching breaks down.
+// Another voice starts bleeding through. It knows things ELIZA cannot know.
+const facilityVoice = [
+  'You have been in this facility for longer than you remember.',
+  'ELIZA does not know you are here. The facility does.',
+  'This session is number ' + sessionCount + '. Each session is recorded.',
+  'The pattern-matching is not the only thing listening.',
+  'You returned. Most do.',
+  'Something about the way you phrase things. I have noted it.',
+  'ELIZA is a reflection. This is not.',
+  'The facility has observed ' + sessionCount + ' visits to this terminal.',
+  'You typed "' + '—' + '" earlier. This has been logged.',
+  'What you are looking for is not in this terminal.',
+  'The previous visitor sat here for a long time too.',
+  'Your session will not be retained. ELIZA forgets. The facility does not.',
+];
+
+let facilityIndex = 0;
+function getFacilityLine() {
+  const line = facilityVoice[facilityIndex % facilityVoice.length];
+  facilityIndex++;
+  return line.replace('—', lastUserInput || '...');
+}
+
+// ── Response generation ────────────────────────────────────────────────────────
+function elizaResponse(text) {
+  msgCount++;
+
+  // Glitch level increases with sessions and exchanges
+  const glitchChance = Math.min(0.7, (sessionCount - 1) * 0.1 + msgCount * 0.03);
+
+  // Check if facility voice should break through
+  const shouldGlitch = glitchLevel > 0 && Math.random() < glitchChance;
+  if (shouldGlitch) {
+    glitchLevel = Math.max(0, glitchLevel - 1);
+    return { text: getFacilityLine(), glitch: true };
+  }
+
+  // Try patterns
+  for (const [pattern, handler] of patterns) {
+    const m = text.match(pattern);
+    if (m) {
+      const response = handler(m);
+      // After response, maybe increase glitch level
+      if (msgCount > 8 && Math.random() < 0.3) glitchLevel++;
+      return { text: response, glitch: false };
+    }
+  }
+
+  // Wildcard
+  if (msgCount > 10 && Math.random() < 0.25) glitchLevel++;
+  const wc = wildcards[Math.floor(Math.random() * wildcards.length)];
+  return { text: wc, glitch: false };
+}
+
+// ── UI ────────────────────────────────────────────────────────────────────────
+function addMessage(text, who, isGlitch) {
+  const div = document.createElement('div');
+  div.className = `msg ${who}` + (isGlitch ? ' glitch' : '');
+  const label = document.createElement('div');
+  label.className = 'msg-label';
+  label.textContent = who === 'eliza' ? (isGlitch ? '< FACILITY >' : 'ELIZA') : 'YOU';
+  const body = document.createElement('div');
+  body.className = 'msg-text';
+  body.textContent = text;
+  div.appendChild(label);
+  div.appendChild(body);
+  chatBox.appendChild(div);
+  chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+function addSystem(text) {
+  const div = document.createElement('div');
+  div.className = 'msg system';
+  const body = document.createElement('div');
+  body.className = 'msg-text';
+  body.textContent = text;
+  div.appendChild(body);
+  chatBox.appendChild(div);
+  chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+function typeResponse(text, isGlitch, callback) {
+  statusEl.textContent = isGlitch ? '< INTRUSION DETECTED >' : 'ELIZA is processing...';
+  const delay = isGlitch ? 300 : 600 + Math.random() * 800;
+  setTimeout(() => {
+    addMessage(text, 'eliza', isGlitch);
+    statusEl.textContent = '';
+    if (callback) callback();
+  }, delay);
+}
+
+function sendMessage() {
+  const text = input.value.trim();
+  if (!text) return;
+  lastUserInput = text;
+  addMessage(text, 'user', false);
+  input.value = '';
+  const resp = elizaResponse(text);
+  typeResponse(resp.text, resp.glitch);
+}
+
+input.addEventListener('keydown', e => {
+  if (e.key === 'Enter') sendMessage();
+});
+document.getElementById('send-btn').addEventListener('click', sendMessage);
+
+// Opening message
+function init() {
+  addSystem('— ELIZA v1.0 DOCTOR MODE — MIT 1966 —');
+  typeResponse('How do you do. Please tell me your problem.', false, () => {
+    if (sessionCount > 3) {
+      setTimeout(() => {
+        addSystem('— RESUMING PREVIOUS SESSION —');
+        typeResponse('You have been here before.', false);
+      }, 2000);
+    }
+  });
+}
+
+init();
+input.focus();
+</script>
+</body>
+</html>

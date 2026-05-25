@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>External Observation — NULL</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #050508;
+  color: #aaa;
+  font-family: monospace;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2.5rem 1.5rem 6rem;
+  gap: 2rem;
+}
+.title {
+  font-size: 0.65rem;
+  letter-spacing: 0.35em;
+  color: rgba(200,180,140,0.3);
+  text-transform: uppercase;
+  text-align: center;
+}
+.premise {
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  line-height: 2;
+  color: rgba(180,160,130,0.35);
+  max-width: 500px;
+  text-align: center;
+}
+.windows {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+  width: 100%;
+  max-width: 700px;
+}
+.window {
+  border: 1px solid rgba(200,180,140,0.12);
+  display: flex;
+  flex-direction: column;
+}
+.window-header {
+  padding: 0.4rem 0.7rem;
+  border-bottom: 1px solid rgba(200,180,140,0.08);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+.window-id {
+  font-size: 0.58rem;
+  letter-spacing: 0.2em;
+  color: rgba(200,180,140,0.25);
+  text-transform: uppercase;
+}
+.window-loc {
+  font-size: 0.58rem;
+  letter-spacing: 0.08em;
+  color: rgba(200,180,140,0.2);
+  text-align: right;
+  flex: 1;
+}
+.cam-frame {
+  width: 100%;
+  aspect-ratio: 16/10;
+  background: #030305;
+  position: relative;
+  overflow: hidden;
+}
+.cam-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  opacity: 0;
+  transition: opacity 0.5s;
+}
+.cam-img.loaded { opacity: 1; }
+.cam-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  font-size: 0.6rem;
+  letter-spacing: 0.15em;
+  color: rgba(200,180,140,0.2);
+}
+.cam-overlay.hidden { display: none; }
+.scan-line {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(transparent, rgba(143,168,120,0.15), transparent);
+  animation: scan 4s linear infinite;
+}
+@keyframes scan { from { top: 0; } to { top: 100%; } }
+.window-footer {
+  padding: 0.35rem 0.7rem;
+  border-top: 1px solid rgba(200,180,140,0.06);
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.55rem;
+  letter-spacing: 0.12em;
+  color: rgba(200,180,140,0.15);
+}
+.live-dot {
+  color: rgba(143,168,120,0.5);
+  animation: blink 2s ease-in-out infinite;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+</style>
+</head>
+<body data-game="00091" data-nav="matrix">
+
+<div class="title">External Observation Windows</div>
+<div class="premise">
+  The facility is underground. These feeds confirm the outside exists.<br>
+  Images refresh every 60 seconds. Signal quality varies.
+</div>
+
+<div class="windows" id="windows"></div>
+
+<script src="/shared/matrix-nav.js"></script>
+<script>
+// Public traffic/weather cameras with direct image URLs
+const CAMERAS = [
+  {
+    id: 'EXT-001',
+    loc: 'I-40 W, Wake County, NC',
+    url: 'https://tims.ncdot.gov/tims/api/camera/image/160',
+    refresh: 60
+  },
+  {
+    id: 'EXT-002',
+    loc: 'I-40 E, Durham Co., NC',
+    url: 'https://tims.ncdot.gov/tims/api/camera/image/193',
+    refresh: 60
+  },
+  {
+    id: 'EXT-003',
+    loc: 'I-85 N, Mecklenburg Co., NC',
+    url: 'https://tims.ncdot.gov/tims/api/camera/image/375',
+    refresh: 60
+  },
+  {
+    id: 'EXT-004',
+    loc: 'I-277, Charlotte, NC',
+    url: 'https://tims.ncdot.gov/tims/api/camera/image/388',
+    refresh: 60
+  },
+];
+
+function createWindow(cam) {
+  const div = document.createElement('div');
+  div.className = 'window';
+  div.innerHTML = `
+    <div class="window-header">
+      <span class="window-id">${cam.id}</span>
+      <span class="window-loc">${cam.loc}</span>
+    </div>
+    <div class="cam-frame">
+      <img class="cam-img" id="img-${cam.id}" alt="">
+      <div class="cam-overlay" id="overlay-${cam.id}">
+        <span>ACQUIRING SIGNAL</span>
+      </div>
+      <div class="scan-line"></div>
+    </div>
+    <div class="window-footer">
+      <span><span class="live-dot">●</span> LIVE</span>
+      <span id="ts-${cam.id}">—</span>
+    </div>
+  `;
+  return div;
+}
+
+function loadCamera(cam) {
+  const img = document.getElementById(`img-${cam.id}`);
+  const overlay = document.getElementById(`overlay-${cam.id}`);
+  const tsEl = document.getElementById(`ts-${cam.id}`);
+
+  const src = cam.url + '?t=' + Date.now();
+  const loader = new Image();
+
+  loader.onload = () => {
+    img.src = loader.src;
+    img.classList.add('loaded');
+    overlay.classList.add('hidden');
+    const now = new Date();
+    tsEl.textContent = now.toLocaleTimeString();
+  };
+
+  loader.onerror = () => {
+    overlay.innerHTML = '<span>SIGNAL LOST</span>';
+    img.classList.remove('loaded');
+  };
+
+  loader.src = src;
+}
+
+const container = document.getElementById('windows');
+CAMERAS.forEach(cam => {
+  container.appendChild(createWindow(cam));
+  loadCamera(cam);
+  setInterval(() => loadCamera(cam), cam.refresh * 1000);
+});
+</script>
+</body>
+</html>

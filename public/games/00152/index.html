@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>00152 — Game of Life</title>
+<link rel="icon" href="data:,">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #050508; color: #8a9aaa;
+    font-family: 'Courier New', monospace;
+    min-height: 100vh; display: flex; flex-direction: column;
+    align-items: center; gap: 12px;
+    padding: 30px 20px 50px;
+  }
+  .room-id { font-size: 10px; letter-spacing: 5px; color: #223; }
+  .title { font-size: 11px; letter-spacing: 5px; color: #445; text-transform: uppercase; }
+  #life-canvas { display: block; border: 1px solid #0f0f1e; cursor: crosshair; touch-action: none; }
+  .controls { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  button {
+    background: #060610; border: 1px solid #111120; color: #445;
+    font-family: 'Courier New', monospace; font-size: 9px;
+    letter-spacing: 2px; padding: 7px 14px; cursor: pointer;
+  }
+  button:hover { background: #0a0a18; border-color: #1a1a2a; color: #667; }
+  button.active { border-color: #2a4a2a; color: #7acc7a; }
+  #play-btn.running { border-color: #4a2a2a; color: #cc7a7a; }
+  select {
+    background: #060610; border: 1px solid #111120; color: #445;
+    font-family: 'Courier New', monospace; font-size: 9px;
+    letter-spacing: 1px; padding: 7px 10px; cursor: pointer; outline: none;
+  }
+  .stats { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; }
+  .stat { font-size: 9px; letter-spacing: 2px; color: #223; text-align: center; }
+  .stat span { display: block; color: #445; font-size: 11px; margin-top: 2px; }
+  .note { font-size: 10px; letter-spacing: 1px; color: #223; text-align: center; line-height: 2.2; max-width: 360px; border-top: 1px solid #111120; padding-top: 12px; }
+</style>
+</head>
+<body data-game="00152" data-nav="matrix">
+<div class="room-id">ROOM 00152</div>
+<div class="title">Game of Life</div>
+
+<canvas id="life-canvas" width="520" height="360"></canvas>
+
+<div class="controls">
+  <button id="play-btn">▶ PLAY</button>
+  <button id="step-btn">STEP</button>
+  <button id="clear-btn">CLEAR</button>
+  <select id="pattern-sel">
+    <option value="">— load pattern —</option>
+    <option value="glider">Glider</option>
+    <option value="blinker">Blinker</option>
+    <option value="toad">Toad</option>
+    <option value="beacon">Beacon</option>
+    <option value="pulsar">Pulsar</option>
+    <option value="glidergun">Gosper Glider Gun</option>
+    <option value="lwss">LWSS</option>
+    <option value="rpentomino">R-Pentomino</option>
+    <option value="diehard">Diehard</option>
+    <option value="acorn">Acorn</option>
+  </select>
+  <select id="speed-sel">
+    <option value="100">Slow</option>
+    <option value="50" selected>Medium</option>
+    <option value="16">Fast</option>
+    <option value="4">Ultra</option>
+  </select>
+</div>
+
+<div class="stats">
+  <div class="stat">GENERATION<span id="gen">0</span></div>
+  <div class="stat">POPULATION<span id="pop">0</span></div>
+  <div class="stat">PEAK<span id="peak">0</span></div>
+  <div class="stat">STATUS<span id="status-lbl">paused</span></div>
+</div>
+
+<div class="note">
+  Three rules. Underpopulation kills the lonely.<br>
+  Overpopulation kills the crowded.<br>
+  Exactly three neighbors birth new life.<br>
+  John Conway, 1970.
+</div>
+
+<script src="/shared/matrix-nav.js"></script>
+<script>
+const canvas = document.getElementById('life-canvas');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+const CELL = 8;
+const COLS = Math.floor(W / CELL);
+const ROWS = Math.floor(H / CELL);
+
+let grid = new Uint8Array(COLS * ROWS);
+let next = new Uint8Array(COLS * ROWS);
+let gen = 0, pop = 0, peak = 0;
+let running = false;
+let timer = null;
+
+function idx(x, y) {
+  return ((y + ROWS) % ROWS) * COLS + ((x + COLS) % COLS);
+}
+
+function countNeighbors(x, y) {
+  let n = 0;
+  for (let dy = -1; dy <= 1; dy++)
+    for (let dx = -1; dx <= 1; dx++)
+      if (dx !== 0 || dy !== 0) n += grid[idx(x + dx, y + dy)];
+  return n;
+}
+
+function step() {
+  let count = 0;
+  for (let y = 0; y < ROWS; y++) {
+    for (let x = 0; x < COLS; x++) {
+      const n = countNeighbors(x, y);
+      const alive = grid[idx(x, y)];
+      if (alive) {
+        next[idx(x, y)] = (n === 2 || n === 3) ? 1 : 0;
+      } else {
+        next[idx(x, y)] = n === 3 ? 1 : 0;
+      }
+      if (next[idx(x, y)]) count++;
+    }
+  }
+  [grid, next] = [next, grid];
+  gen++;
+  pop = count;
+  if (pop > peak) peak = pop;
+  updateStats();
+}
+
+function draw() {
+  ctx.fillStyle = '#030306';
+  ctx.fillRect(0, 0, W, H);
+
+  // Grid lines (subtle)
+  ctx.strokeStyle = '#06060e';
+  ctx.lineWidth = 0.5;
+  for (let x = 0; x <= COLS; x++) {
+    ctx.beginPath(); ctx.moveTo(x * CELL, 0); ctx.lineTo(x * CELL, H); ctx.stroke();
+  }
+  for (let y = 0; y <= ROWS; y++) {
+    ctx.beginPath(); ctx.moveTo(0, y * CELL); ctx.lineTo(W, y * CELL); ctx.stroke();
+  }
+
+  // Cells
+  for (let y = 0; y < ROWS; y++) {
+    for (let x = 0; x < COLS; x++) {
+      if (grid[idx(x, y)]) {
+        const n = countNeighbors(x, y);
+        // Color cells by neighbor count (aging effect)
+        const brightness = 40 + n * 20;
+        ctx.fillStyle = `rgb(${brightness},${brightness + 60},${brightness + 30})`;
+        ctx.fillRect(x * CELL + 1, y * CELL + 1, CELL - 1, CELL - 1);
+      }
+    }
+  }
+}
+
+function updateStats() {
+  document.getElementById('gen').textContent = gen.toLocaleString();
+  document.getElementById('pop').textContent = pop.toLocaleString();
+  document.getElementById('peak').textContent = peak.toLocaleString();
+}
+
+function calcPop() {
+  pop = 0;
+  for (let i = 0; i < grid.length; i++) if (grid[i]) pop++;
+  if (pop > peak) peak = pop;
+  updateStats();
+}
+
+// ── Patterns ──────────────────────────────────────────────────────────────────
+const PATTERNS = {
+  glider: [[1,0],[2,1],[0,2],[1,2],[2,2]],
+  blinker: [[0,0],[1,0],[2,0]],
+  toad: [[1,0],[2,0],[3,0],[0,1],[1,1],[2,1]],
+  beacon: [[0,0],[1,0],[0,1],[3,2],[2,3],[3,3]],
+  pulsar: [
+    [2,0],[3,0],[4,0],[8,0],[9,0],[10,0],
+    [0,2],[5,2],[7,2],[12,2],
+    [0,3],[5,3],[7,3],[12,3],
+    [0,4],[5,4],[7,4],[12,4],
+    [2,5],[3,5],[4,5],[8,5],[9,5],[10,5],
+    [2,7],[3,7],[4,7],[8,7],[9,7],[10,7],
+    [0,8],[5,8],[7,8],[12,8],
+    [0,9],[5,9],[7,9],[12,9],
+    [0,10],[5,10],[7,10],[12,10],
+    [2,12],[3,12],[4,12],[8,12],[9,12],[10,12],
+  ],
+  glidergun: [
+    [24,0],[22,1],[24,1],[12,2],[13,2],[20,2],[21,2],[34,2],[35,2],
+    [11,3],[15,3],[20,3],[21,3],[34,3],[35,3],
+    [0,4],[1,4],[10,4],[16,4],[20,4],[21,4],
+    [0,5],[1,5],[10,5],[14,5],[16,5],[17,5],[22,5],[24,5],
+    [10,6],[16,6],[24,6],
+    [11,7],[15,7],
+    [12,8],[13,8],
+  ],
+  lwss: [[1,0],[4,0],[0,1],[0,2],[4,2],[0,3],[1,3],[2,3],[3,3]],
+  rpentomino: [[1,0],[2,0],[0,1],[1,1],[1,2]],
+  diehard: [[6,0],[0,1],[1,1],[1,2],[5,2],[6,2],[7,2]],
+  acorn: [[1,0],[3,1],[0,2],[1,2],[4,2],[5,2],[6,2]],
+};
+
+function loadPattern(name, ox, oy) {
+  const pts = PATTERNS[name];
+  if (!pts) return;
+  pts.forEach(([x, y]) => {
+    const gx = ((ox + x) + COLS) % COLS;
+    const gy = ((oy + y) + ROWS) % ROWS;
+    grid[idx(gx, gy)] = 1;
+  });
+  calcPop();
+  draw();
+}
+
+// ── Controls ──────────────────────────────────────────────────────────────────
+function setRunning(r) {
+  running = r;
+  const btn = document.getElementById('play-btn');
+  if (r) {
+    btn.textContent = '■ STOP';
+    btn.classList.add('running');
+    document.getElementById('status-lbl').textContent = 'running';
+    const speed = parseInt(document.getElementById('speed-sel').value);
+    timer = setInterval(() => { step(); draw(); }, speed);
+  } else {
+    btn.textContent = '▶ PLAY';
+    btn.classList.remove('running');
+    document.getElementById('status-lbl').textContent = 'paused';
+    clearInterval(timer);
+  }
+}
+
+document.getElementById('play-btn').addEventListener('click', () => setRunning(!running));
+
+document.getElementById('step-btn').addEventListener('click', () => {
+  if (running) setRunning(false);
+  step(); draw();
+});
+
+document.getElementById('clear-btn').addEventListener('click', () => {
+  setRunning(false);
+  grid.fill(0);
+  gen = 0; pop = 0; peak = 0;
+  updateStats(); draw();
+});
+
+document.getElementById('pattern-sel').addEventListener('change', e => {
+  const name = e.target.value;
+  if (!name) return;
+  e.target.value = '';
+  if (running) setRunning(false);
+  grid.fill(0);
+  gen = 0; pop = 0; peak = 0;
+  // Center the pattern
+  const pts = PATTERNS[name];
+  if (pts) {
+    const maxX = Math.max(...pts.map(p => p[0]));
+    const maxY = Math.max(...pts.map(p => p[1]));
+    const ox = Math.floor((COLS - maxX) / 2);
+    const oy = Math.floor((ROWS - maxY) / 2);
+    loadPattern(name, ox, oy);
+  }
+  draw();
+});
+
+document.getElementById('speed-sel').addEventListener('change', () => {
+  if (running) { setRunning(false); setRunning(true); }
+});
+
+// ── Mouse drawing ─────────────────────────────────────────────────────────────
+let painting = false;
+let paintValue = 1;
+
+function getCell(e) {
+  const rect = canvas.getBoundingClientRect();
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  const x = Math.floor((clientX - rect.left) / CELL);
+  const y = Math.floor((clientY - rect.top) / CELL);
+  return { x, y };
+}
+
+function paintCell(e) {
+  const { x, y } = getCell(e);
+  if (x >= 0 && x < COLS && y >= 0 && y < ROWS) {
+    grid[idx(x, y)] = paintValue;
+    calcPop();
+    draw();
+  }
+}
+
+canvas.addEventListener('mousedown', e => {
+  painting = true;
+  const { x, y } = getCell(e);
+  paintValue = (x >= 0 && x < COLS && y >= 0 && y < ROWS && grid[idx(x, y)]) ? 0 : 1;
+  paintCell(e);
+});
+canvas.addEventListener('mousemove', e => { if (painting) paintCell(e); });
+canvas.addEventListener('mouseup', () => painting = false);
+canvas.addEventListener('mouseleave', () => painting = false);
+canvas.addEventListener('touchstart', e => { e.preventDefault(); painting = true; paintValue = 1; paintCell(e); }, { passive: false });
+canvas.addEventListener('touchmove', e => { e.preventDefault(); if (painting) paintCell(e); }, { passive: false });
+canvas.addEventListener('touchend', () => painting = false);
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+// Random initial state
+for (let i = 0; i < grid.length; i++) grid[i] = Math.random() < 0.15 ? 1 : 0;
+calcPop();
+draw();
+</script>
+</body>
+</html>

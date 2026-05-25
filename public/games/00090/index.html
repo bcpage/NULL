@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Peg Solitaire — NULL</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #050508;
+  color: #ccc;
+  font-family: monospace;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  gap: 1.5rem;
+  user-select: none;
+}
+h1 {
+  font-size: 0.65rem;
+  letter-spacing: 0.3em;
+  color: rgba(200,180,140,0.35);
+  text-transform: uppercase;
+  text-align: center;
+}
+#board {
+  display: grid;
+  gap: 8px;
+  justify-content: center;
+  align-content: center;
+}
+.peg-cell {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.peg-cell.empty-space { cursor: default; }
+.peg {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(200,180,140,0.3);
+  border: 1px solid rgba(200,180,140,0.2);
+  transition: all 0.15s;
+  cursor: pointer;
+}
+.peg:hover { background: rgba(200,180,140,0.5); }
+.peg.selected { background: #e94560; border-color: #e94560; box-shadow: 0 0 10px rgba(233,69,96,0.4); }
+.hole {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid rgba(200,180,140,0.1);
+  background: rgba(255,255,255,0.01);
+}
+.hole.valid-move {
+  border-color: rgba(233,69,96,0.5);
+  background: rgba(233,69,96,0.05);
+  cursor: pointer;
+}
+.status {
+  font-size: 0.7rem;
+  letter-spacing: 0.15em;
+  color: rgba(200,180,140,0.35);
+  text-align: center;
+  min-height: 1.4em;
+}
+.verdict {
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  color: rgba(200,180,140,0.5);
+  text-align: center;
+  min-height: 1.4em;
+  line-height: 1.8;
+}
+.btn {
+  padding: 0.4rem 1.2rem;
+  border: 1px solid rgba(200,180,140,0.25);
+  background: transparent;
+  color: rgba(200,180,140,0.5);
+  font-family: monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn:hover { border-color: rgba(200,180,140,0.6); color: rgba(200,180,140,0.9); }
+</style>
+</head>
+<body data-game="00090" data-nav="matrix">
+
+<h1>Cracker Barrel Peg Solitaire</h1>
+
+<div id="board"></div>
+
+<div class="status" id="status">Click any peg to remove it. Then jump pegs to clear the board.</div>
+<div class="verdict" id="verdict"></div>
+<button class="btn" id="resetBtn" onclick="init()" style="display:none">Play Again</button>
+
+<script src="/shared/matrix-nav.js"></script>
+<script>
+// Triangle layout: row 0 has 1 peg, row 1 has 2, ..., row 4 has 5
+// Total 15 pegs. Positions mapped to grid coordinates.
+// grid column offset: row r starts at col (4-r)
+
+// Grid: 5 rows, each row i has i+1 pegs
+// We use a flat array of 15 positions, null = empty, true = peg
+// Position index: row r, col c (0-based within row) → index = r*(r+1)/2 + c
+
+const ROWS = 5;
+function idx(r, c) { return r*(r+1)/2 + c; }
+function pos(i) {
+  let r = 0;
+  while (idx(r+1,0) <= i) r++;
+  return { r, c: i - idx(r,0) };
+}
+
+let pegs, phase, selected;
+
+const VERDICTS = [
+  '', // 0 left — impossible
+  '"Genius" — only one peg remaining.',
+  '"Purty Smart" — two pegs remaining.',
+  '"Just Plain Dumb" — three pegs remaining.',
+];
+
+function init() {
+  pegs = new Array(15).fill(true);
+  phase = 'remove'; // first click removes a peg
+  selected = null;
+  document.getElementById('verdict').textContent = '';
+  document.getElementById('status').textContent = 'Click any peg to remove it from the board.';
+  document.getElementById('resetBtn').style.display = 'none';
+  render();
+}
+
+function getJumps(from) {
+  const { r, c } = pos(from);
+  const jumps = [];
+  // Possible jump directions in triangle grid:
+  const dirs = [
+    { dr: 0, dc: -2 }, { dr: 0, dc: 2 },  // horizontal
+    { dr: -2, dc: -2 }, { dr: -2, dc: 0 }, // up-left, up-right
+    { dr: 2, dc: 0 }, { dr: 2, dc: 2 },    // down-left, down-right (row grows)
+  ];
+  // midpoint dirs (half of above)
+  const mids = [
+    { dr: 0, dc: -1 }, { dr: 0, dc: 1 },
+    { dr: -1, dc: -1 }, { dr: -1, dc: 0 },
+    { dr: 1, dc: 0 }, { dr: 1, dc: 1 },
+  ];
+  dirs.forEach(({ dr, dc }, i) => {
+    const tr = r + dr, tc = c + dc;
+    const mr = r + mids[i].dr, mc = c + mids[i].dc;
+    if (tr < 0 || tr >= ROWS || tc < 0 || tc > tr) return;
+    if (mr < 0 || mr >= ROWS || mc < 0 || mc > mr) return;
+    const ti = idx(tr, tc), mi = idx(mr, mc);
+    if (pegs[ti] === false && pegs[mi] === true) {
+      jumps.push({ to: ti, over: mi });
+    }
+  });
+  return jumps;
+}
+
+function hasAnyMove() {
+  for (let i = 0; i < 15; i++) {
+    if (pegs[i] && getJumps(i).length > 0) return true;
+  }
+  return false;
+}
+
+function countPegs() { return pegs.filter(Boolean).length; }
+
+function render() {
+  const board = document.getElementById('board');
+  board.innerHTML = '';
+  board.style.gridTemplateColumns = `repeat(${ROWS * 2 - 1}, 44px)`;
+
+  // Valid move targets for selected peg
+  const validTos = selected !== null
+    ? new Set(getJumps(selected).map(j => j.to))
+    : new Set();
+
+  for (let r = 0; r < ROWS; r++) {
+    for (let gridCol = 0; gridCol < ROWS * 2 - 1; gridCol++) {
+      const cell = document.createElement('div');
+      const pegStartCol = (ROWS - 1 - r); // offset in grid
+      const pegCol = gridCol - pegStartCol;
+
+      if (pegCol < 0 || pegCol > r * 2 || pegCol % 2 !== 0) {
+        cell.className = 'peg-cell empty-space';
+        board.appendChild(cell);
+        continue;
+      }
+
+      const c = pegCol / 2;
+      const i = idx(r, c);
+      cell.className = 'peg-cell';
+
+      if (pegs[i]) {
+        const peg = document.createElement('div');
+        peg.className = 'peg' + (selected === i ? ' selected' : '');
+        peg.onclick = () => clickPeg(i);
+        cell.appendChild(peg);
+      } else {
+        const hole = document.createElement('div');
+        hole.className = 'hole' + (validTos.has(i) ? ' valid-move' : '');
+        if (validTos.has(i)) {
+          hole.onclick = () => clickHole(i);
+        }
+        cell.appendChild(hole);
+      }
+      board.appendChild(cell);
+    }
+  }
+}
+
+function clickPeg(i) {
+  if (phase === 'remove') {
+    pegs[i] = false;
+    phase = 'play';
+    document.getElementById('status').textContent = 'Jump a peg over another to remove it.';
+    selected = null;
+    render();
+    return;
+  }
+  if (phase !== 'play') return;
+  if (selected === i) { selected = null; render(); return; }
+  selected = i;
+  render();
+}
+
+function clickHole(to) {
+  if (selected === null) return;
+  const jumps = getJumps(selected);
+  const jump = jumps.find(j => j.to === to);
+  if (!jump) return;
+
+  pegs[jump.over] = false;
+  pegs[to] = true;
+  pegs[selected] = false;
+  selected = null;
+
+  const remaining = countPegs();
+  if (!hasAnyMove()) {
+    phase = 'done';
+    const v = VERDICTS[remaining] || `${remaining} pegs remaining.`;
+    document.getElementById('verdict').textContent = v;
+    document.getElementById('status').textContent = 'No more moves.';
+    document.getElementById('resetBtn').style.display = 'inline-block';
+  }
+  render();
+}
+
+init();
+</script>
+</body>
+</html>

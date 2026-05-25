@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MASH — NULL</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #050508;
+  color: #ccc;
+  font-family: monospace;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2.5rem 1.5rem 6rem;
+  gap: 1.8rem;
+}
+h1 {
+  font-size: 0.65rem;
+  letter-spacing: 0.35em;
+  color: rgba(200,180,140,0.3);
+  text-transform: uppercase;
+  text-align: center;
+}
+.subtitle {
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  color: rgba(200,180,140,0.2);
+  text-align: center;
+}
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.2rem;
+  width: 100%;
+  max-width: 520px;
+}
+.category {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.cat-label {
+  font-size: 0.6rem;
+  letter-spacing: 0.2em;
+  color: rgba(200,180,140,0.35);
+  text-transform: uppercase;
+}
+.options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+input[type=text] {
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(200,180,140,0.15);
+  color: rgba(200,180,140,0.75);
+  font-family: monospace;
+  font-size: 0.75rem;
+  padding: 0.35rem 0.5rem;
+  outline: none;
+  width: 100%;
+  transition: all 0.2s;
+}
+input[type=text]:focus { border-color: rgba(200,180,140,0.45); }
+input[type=text].eliminated {
+  text-decoration: line-through;
+  color: rgba(200,180,140,0.2);
+  border-color: rgba(200,180,140,0.07);
+}
+input[type=text].chosen {
+  color: #e8d8a0;
+  border-color: rgba(200,180,140,0.5);
+  background: rgba(200,180,140,0.04);
+}
+.mash-row {
+  display: flex;
+  gap: 0.4rem;
+  width: 100%;
+  max-width: 520px;
+}
+.mash-label {
+  font-size: 0.6rem;
+  letter-spacing: 0.2em;
+  color: rgba(200,180,140,0.35);
+  text-transform: uppercase;
+  margin-bottom: 0.2rem;
+}
+.mash-options {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+.mash-btn {
+  padding: 0.3rem 0.6rem;
+  border: 1px solid rgba(200,180,140,0.15);
+  background: transparent;
+  color: rgba(200,180,140,0.5);
+  font-family: monospace;
+  font-size: 0.7rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.mash-btn:hover { border-color: rgba(200,180,140,0.4); color: rgba(200,180,140,0.8); }
+.mash-btn.eliminated { text-decoration: line-through; color: rgba(200,180,140,0.2); border-color: rgba(200,180,140,0.07); }
+.mash-btn.chosen { color: #e94560; border-color: rgba(233,69,96,0.5); }
+.btn {
+  padding: 0.5rem 1.4rem;
+  border: 1px solid rgba(200,180,140,0.25);
+  background: transparent;
+  color: rgba(200,180,140,0.5);
+  font-family: monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn:hover { border-color: rgba(200,180,140,0.6); color: rgba(200,180,140,0.9); }
+.result-block {
+  display: none;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+  max-width: 520px;
+  border: 1px solid rgba(200,180,140,0.1);
+  padding: 1.5rem;
+}
+.result-block.visible { display: flex; }
+.result-title {
+  font-size: 0.6rem;
+  letter-spacing: 0.3em;
+  color: rgba(200,180,140,0.3);
+  text-transform: uppercase;
+  border-bottom: 1px solid rgba(200,180,140,0.07);
+  padding-bottom: 0.6rem;
+}
+.fortune-line {
+  font-size: 0.8rem;
+  letter-spacing: 0.1em;
+  color: rgba(200,180,140,0.6);
+  line-height: 2;
+}
+.fortune-line strong { color: rgba(200,180,140,0.9); }
+</style>
+</head>
+<body data-game="00097" data-nav="matrix">
+
+<h1>M.A.S.H.</h1>
+<div class="subtitle">Mansion · Apartment · Shack · House</div>
+
+<div class="grid" id="catGrid"></div>
+
+<div>
+  <div class="mash-label">Your Home</div>
+  <div class="mash-options" id="mashOpts">
+    <button class="mash-btn" data-val="Mansion">Mansion</button>
+    <button class="mash-btn" data-val="Apartment">Apartment</button>
+    <button class="mash-btn" data-val="Shack">Shack</button>
+    <button class="mash-btn" data-val="House">House</button>
+  </div>
+</div>
+
+<button class="btn" id="goBtn" onclick="runMASH()">Reveal My Fortune</button>
+
+<div class="result-block" id="result">
+  <div class="result-title">Your Future</div>
+  <div id="fortune"></div>
+  <button class="btn" onclick="reset()">Play Again</button>
+</div>
+
+<script src="/shared/matrix-nav.js"></script>
+<script>
+const CATEGORIES = [
+  { id: 'partner', label: 'Partner', defaults: ['', '', '', ''] },
+  { id: 'job',     label: 'Job',     defaults: ['Astronaut', 'Plumber', 'CEO', 'Artist'] },
+  { id: 'city',    label: 'City',    defaults: ['Tokyo', 'Detroit', 'Mars', 'Paris'] },
+  { id: 'kids',    label: 'Kids',    defaults: ['0', '2', '5', '12'] },
+];
+
+function buildGrid() {
+  const grid = document.getElementById('catGrid');
+  grid.innerHTML = '';
+  CATEGORIES.forEach(cat => {
+    const div = document.createElement('div');
+    div.className = 'category';
+    div.innerHTML = `<div class="cat-label">${cat.label}</div><div class="options-list" id="cat-${cat.id}"></div>`;
+    const list = div.querySelector('.options-list');
+    cat.defaults.forEach((d, i) => {
+      const inp = document.createElement('input');
+      inp.type = 'text';
+      inp.placeholder = `Option ${i + 1}`;
+      inp.value = d;
+      inp.id = `${cat.id}-${i}`;
+      list.appendChild(inp);
+    });
+    grid.appendChild(div);
+  });
+}
+
+function getOptions(catId) {
+  return [0,1,2,3].map(i => {
+    const v = document.getElementById(`${catId}-${i}`).value.trim();
+    return v || `Option ${i+1}`;
+  });
+}
+
+function getMASH() {
+  const btns = document.querySelectorAll('#mashOpts .mash-btn');
+  const active = [...btns].filter(b => !b.classList.contains('eliminated'));
+  return active.length ? active[Math.floor(Math.random() * active.length)].dataset.val : 'Unknown';
+}
+
+function runMASH() {
+  // Collect all options
+  const allGroups = CATEGORIES.map(cat => ({
+    label: cat.label,
+    opts: getOptions(cat.id)
+  }));
+
+  // Add MASH
+  const mashOpts = [...document.querySelectorAll('#mashOpts .mash-btn')].map(b => b.dataset.val);
+  allGroups.push({ label: 'Home', opts: mashOpts });
+
+  // Pick a magic number 3-8
+  const n = 3 + Math.floor(Math.random() * 6);
+
+  // Elimination loop
+  let counter = 0;
+  let remaining = allGroups.map(g => [...g.opts.keys()]);
+  let eliminated = allGroups.map(() => new Set());
+  let groupIdx = 0, optIdx = 0;
+  let iterations = 0;
+  const MAX = 1000;
+
+  while (iterations++ < MAX) {
+    // Find next non-eliminated option
+    let found = false;
+    for (let g = 0; g < allGroups.length; g++) {
+      const gi = (groupIdx + g) % allGroups.length;
+      const opts = allGroups[gi].opts;
+      for (let o = 0; o < opts.length; o++) {
+        const oi = (optIdx + o) % opts.length;
+        if (!eliminated[gi].has(oi)) {
+          counter++;
+          if (counter === n) {
+            counter = 0;
+            eliminated[gi].add(oi);
+          }
+          groupIdx = gi;
+          optIdx = (oi + 1) % opts.length;
+          found = true;
+          break;
+        }
+      }
+      if (found) break;
+    }
+
+    // Check if each group has exactly 1 remaining
+    const done = allGroups.every((g, i) =>
+      g.opts.length - eliminated[i].size <= 1
+    );
+    if (done) break;
+  }
+
+  // Pick winners
+  const winners = allGroups.map((g, i) => {
+    const rem = g.opts.filter((_, j) => !eliminated[i].has(j));
+    return rem[0] || g.opts[0];
+  });
+
+  // Animate eliminations
+  CATEGORIES.forEach((cat, ci) => {
+    const elim = eliminated[ci];
+    [0,1,2,3].forEach(oi => {
+      const inp = document.getElementById(`${cat.id}-${oi}`);
+      if (elim.has(oi)) {
+        inp.classList.add('eliminated');
+      } else {
+        inp.classList.add('chosen');
+      }
+      inp.disabled = true;
+    });
+  });
+  document.querySelectorAll('#mashOpts .mash-btn').forEach((b, i) => {
+    const elim = eliminated[allGroups.length - 1];
+    b.classList.add(elim.has(i) ? 'eliminated' : 'chosen');
+    b.onclick = null;
+  });
+
+  // Show fortune
+  const [partnerW, jobW, cityW, kidsW, homeW] = winners;
+  const kidsNum = parseInt(kidsW);
+  const kidsStr = isNaN(kidsNum) ? kidsW :
+    kidsNum === 0 ? 'no children' :
+    kidsNum === 1 ? '1 child' : `${kidsW} children`;
+
+  document.getElementById('fortune').innerHTML =
+    `<div class="fortune-line">You will live in a <strong>${homeW}</strong>.</div>` +
+    `<div class="fortune-line">Your partner will be <strong>${partnerW}</strong>.</div>` +
+    `<div class="fortune-line">You will work as a <strong>${jobW}</strong>.</div>` +
+    `<div class="fortune-line">You will live in <strong>${cityW}</strong>.</div>` +
+    `<div class="fortune-line">You will have <strong>${kidsStr}</strong>.</div>`;
+
+  document.getElementById('result').classList.add('visible');
+  document.getElementById('goBtn').style.display = 'none';
+}
+
+function reset() {
+  buildGrid();
+  document.querySelectorAll('#mashOpts .mash-btn').forEach(b => {
+    b.className = 'mash-btn';
+    b.onclick = null;
+  });
+  document.getElementById('result').classList.remove('visible');
+  document.getElementById('goBtn').style.display = '';
+}
+
+buildGrid();
+</script>
+</body>
+</html>

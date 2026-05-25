@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>00136 — Paper Soccer</title>
+<link rel="icon" href="data:,">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #050508; color: #8a9aaa;
+    font-family: 'Courier New', monospace;
+    min-height: 100vh; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 16px; padding: 40px 20px; user-select: none;
+  }
+  .room-id { font-size: 10px; letter-spacing: 5px; color: #223; }
+  .title { font-size: 11px; letter-spacing: 5px; color: #445; text-transform: uppercase; }
+  .hud { display: flex; gap: 28px; font-size: 10px; letter-spacing: 3px; color: #334; }
+  .hud .p1 { color: #5a9acc; } .hud .p2 { color: #cc7a3a; }
+  #canvas-wrap { border: 1px solid #1a1a2a; background: #060609; position: relative; }
+  canvas { display: block; cursor: crosshair; }
+  #overlay {
+    position: absolute; inset: 0;
+    background: rgba(5,5,8,0.92);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 16px;
+  }
+  #overlay.hidden { display: none; }
+  #overlay .big { font-size: 13px; letter-spacing: 6px; color: #9ab4c4; }
+  #overlay .sub { font-size: 10px; letter-spacing: 2px; color: #445; line-height: 2; text-align: center; max-width: 280px; }
+  #overlay button {
+    background: #0c0c18; border: 1px solid #2a3a4a; color: #8a9aaa;
+    font-family: 'Courier New', monospace; font-size: 11px; letter-spacing: 3px;
+    padding: 10px 28px; cursor: pointer;
+  }
+  #overlay button:hover { background: #10101e; }
+  #status-msg { font-size: 11px; letter-spacing: 3px; color: #445; min-height: 18px; text-align: center; }
+  .legend { font-size: 10px; letter-spacing: 2px; color: #223; text-align: center; line-height: 2; }
+  .legend .p1c { color: #5a9acc; } .legend .p2c { color: #cc7a3a; }
+</style>
+</head>
+<body data-game="00136" data-nav="matrix">
+<div class="room-id">ROOM 00136</div>
+<div class="title">Paper Soccer</div>
+
+<div class="hud">
+  <span class="p1">PLAYER 1 — attacks top goal</span>
+  <span class="p2">PLAYER 2 — attacks bottom goal</span>
+</div>
+
+<div id="canvas-wrap">
+  <canvas id="c"></canvas>
+  <div id="overlay">
+    <div class="big">PAPER SOCCER</div>
+    <div class="sub" id="overlay-sub">Move the ball by clicking adjacent nodes.<br>Land on a used node → bounce (play again).<br>Score by reaching the opponent's goal.</div>
+    <button id="overlay-btn">TAKE SEAT</button>
+  </div>
+</div>
+
+<div id="status-msg"></div>
+<div class="legend">
+  <span class="p1c">■</span> Player 1 &nbsp; <span class="p2c">■</span> Player 2 &nbsp; Click a highlighted node to move the ball
+</div>
+
+<script src="/shared/matrix-nav.js"></script>
+<script>
+const SOCC_W = 9, SOCC_H = 13;
+const NODE = 34; // px per cell
+const PAD = 20;
+const CW = PAD*2 + (SOCC_W-1)*NODE;
+const CH = PAD*2 + (SOCC_H-1)*NODE;
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+canvas.width = CW;
+canvas.height = CH;
+
+const P_COLORS = ['#5a9acc', '#cc7a3a'];
+
+let ws, state = null, mySeat = -1, joined = false;
+let hoverNode = null;
+
+// ── Server connection ─────────────────────────────────────────────────────────
+function connect() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  ws = new WebSocket(`${proto}://${location.host}`);
+  ws.onmessage = e => {
+    const msg = JSON.parse(e.data);
+    if (msg.game === 'soccer' && msg.type === 'seat') { mySeat = msg.seat; }
+    if (msg.game === 'soccer' && msg.type === 'state') { state = msg; render(); updateUI(); }
+  };
+  ws.onclose = () => setTimeout(connect, 2000);
+}
+function send(obj) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(obj)); }
+
+// ── Geometry helpers ──────────────────────────────────────────────────────────
+function nodeXY(col, row) {
+  return { x: PAD + col * NODE, y: PAD + row * NODE };
+}
+function isGoalNode(col, row) {
+  return (row === 0 || row === SOCC_H-1) && col >= 3 && col <= 5;
+}
+function isValidNode(col, row) {
+  if (col < 0 || col >= SOCC_W || row < 0 || row >= SOCC_H) return false;
+  if ((row === 0 || row === SOCC_H-1) && (col < 3 || col > 5)) return false;
+  return true;
+}
+
+// ── Rendering ─────────────────────────────────────────────────────────────────
+function render() {
+  ctx.fillStyle = '#060609';
+  ctx.fillRect(0, 0, CW, CH);
+  if (!state) return;
+
+  const { ball, edges, turn, status, winner, seats } = state;
+
+  // ── Pitch outline ──
+  const fl = PAD, fr = PAD + (SOCC_W-1)*NODE;
+  const ft = PAD + 1*NODE, fb = PAD + (SOCC_H-2)*NODE;
+  // Goal areas
+  const gLeft = PAD + 3*NODE, gRight = PAD + 5*NODE;
+
+  ctx.strokeStyle = '#1a2a1a';
+  ctx.lineWidth = 1.5;
+  // Side lines
+  ctx.beginPath();
+  ctx.moveTo(fl, ft); ctx.lineTo(fl, fb);
+  ctx.moveTo(fr, ft); ctx.lineTo(fr, fb);
+  ctx.stroke();
+  // Top goal
+  ctx.beginPath();
+  ctx.moveTo(fl, ft); ctx.lineTo(fr, ft);
+  ctx.moveTo(gLeft, PAD); ctx.lineTo(gLeft, ft);
+  ctx.moveTo(gRight, PAD); ctx.lineTo(gRight, ft);
+  ctx.moveTo(gLeft, PAD); ctx.lineTo(gRight, PAD);
+  ctx.stroke();
+  // Bottom goal
+  ctx.beginPath();
+  ctx.moveTo(fl, fb); ctx.lineTo(fr, fb);
+  ctx.moveTo(gLeft, fb); ctx.lineTo(gLeft, PAD+(SOCC_H-1)*NODE);
+  ctx.moveTo(gRight, fb); ctx.lineTo(gRight, PAD+(SOCC_H-1)*NODE);
+  ctx.moveTo(gLeft, PAD+(SOCC_H-1)*NODE); ctx.lineTo(gRight, PAD+(SOCC_H-1)*NODE);
+  ctx.stroke();
+  // Center line
+  ctx.strokeStyle = '#141e14';
+  ctx.setLineDash([3,4]);
+  ctx.beginPath();
+  const midY = PAD + ((SOCC_H-1)/2)*NODE;
+  ctx.moveTo(fl, midY); ctx.lineTo(fr, midY);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // ── Edges ──
+  edges.forEach(([x1,y1,x2,y2]) => {
+    const a = nodeXY(x1, y1), b = nodeXY(x2, y2);
+    ctx.strokeStyle = '#2a3a4a';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
+    ctx.stroke();
+  });
+
+  // ── Valid moves highlight ──
+  const isMyTurn = status === 'playing' && turn === mySeat;
+  if (isMyTurn && ball) {
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++) {
+        if (!dx && !dy) continue;
+        const nx = ball.x + dx, ny = ball.y + dy;
+        if (!isValidNode(nx, ny)) continue;
+        // Check edge not already used
+        const key1 = `${Math.min(ball.x,nx)},${Math.min(ball.y,ny)},${Math.max(ball.x,nx)},${Math.max(ball.y,ny)}`;
+        // Simple check: not in edges list
+        const used = edges.some(([ax,ay,bx,by]) =>
+          (ax===ball.x&&ay===ball.y&&bx===nx&&by===ny) ||
+          (ax===nx&&ay===ny&&bx===ball.x&&by===ball.y)
+        );
+        if (!used) {
+          const { x, y } = nodeXY(nx, ny);
+          const isHover = hoverNode && hoverNode.col===nx && hoverNode.row===ny;
+          ctx.beginPath();
+          ctx.arc(x, y, isHover ? 9 : 6, 0, Math.PI*2);
+          ctx.fillStyle = isHover ? `${P_COLORS[mySeat]}cc` : `${P_COLORS[mySeat]}44`;
+          ctx.fill();
+        }
+      }
+    }
+  }
+
+  // ── Nodes ──
+  for (let row = 0; row < SOCC_H; row++) {
+    for (let col = 0; col < SOCC_W; col++) {
+      if (!isValidNode(col, row)) continue;
+      const { x, y } = nodeXY(col, row);
+      ctx.beginPath();
+      ctx.arc(x, y, 3, 0, Math.PI*2);
+      ctx.fillStyle = isGoalNode(col, row) ? '#1a4a1a' : '#1a2a3a';
+      ctx.fill();
+    }
+  }
+
+  // ── Ball ──
+  if (ball) {
+    const { x, y } = nodeXY(ball.x, ball.y);
+    // Glow
+    const grad = ctx.createRadialGradient(x, y, 2, x, y, 14);
+    grad.addColorStop(0, status === 'won' ? '#44cc44' : '#cccccc');
+    grad.addColorStop(1, 'transparent');
+    ctx.beginPath();
+    ctx.arc(x, y, 14, 0, Math.PI*2);
+    ctx.fillStyle = grad;
+    ctx.fill();
+    // Ball
+    ctx.beginPath();
+    ctx.arc(x, y, 7, 0, Math.PI*2);
+    ctx.fillStyle = status === 'won' ? '#55cc55' : '#cccccc';
+    ctx.fill();
+    ctx.strokeStyle = '#88aaaa';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+}
+
+// ── UI ────────────────────────────────────────────────────────────────────────
+function updateUI() {
+  if (!state) return;
+  const overlay = document.getElementById('overlay');
+  const sub = document.getElementById('overlay-sub');
+  const btn = document.getElementById('overlay-btn');
+  const statusEl = document.getElementById('status-msg');
+
+  if (state.status === 'won') {
+    overlay.classList.remove('hidden');
+    overlay.querySelector('.big').textContent = `PLAYER ${state.winner+1} SCORES`;
+    sub.textContent = 'New game begins shortly.';
+    btn.style.display = 'none';
+    statusEl.textContent = '';
+    setTimeout(() => {
+      overlay.classList.add('hidden');
+    }, 3000);
+    return;
+  }
+
+  if (state.status === 'waiting') {
+    overlay.classList.remove('hidden');
+    const taken = (state.seats[0]?1:0)+(state.seats[1]?1:0);
+    if (joined && mySeat >= 0) {
+      overlay.querySelector('.big').textContent = 'WAITING';
+      sub.textContent = `Seat ${mySeat+1} taken.\nWaiting for opponent.`;
+      btn.style.display = 'none';
+    } else {
+      overlay.querySelector('.big').textContent = 'PAPER SOCCER';
+      sub.textContent = 'Two players. Move the ball by clicking adjacent nodes.\nLand on a used node — play again (bounce).\nScore at the opponent\'s goal.';
+      btn.style.display = taken < 2 ? '' : 'none';
+      btn.textContent = 'TAKE SEAT';
+    }
+    statusEl.textContent = '';
+    return;
+  }
+
+  overlay.classList.add('hidden');
+  const isMyTurn = state.turn === mySeat && state.status === 'playing';
+  if (isMyTurn) {
+    statusEl.textContent = 'YOUR TURN — click a highlighted node';
+    statusEl.style.color = P_COLORS[mySeat];
+  } else {
+    statusEl.textContent = 'WAITING FOR OPPONENT';
+    statusEl.style.color = '#334';
+  }
+}
+
+// ── Input ─────────────────────────────────────────────────────────────────────
+canvas.addEventListener('mousemove', e => {
+  const rect = canvas.getBoundingClientRect();
+  const mx = (e.clientX - rect.left) / rect.width * CW;
+  const my = (e.clientY - rect.top) / rect.height * CH;
+  let closest = null, minD = 16;
+  for (let row = 0; row < SOCC_H; row++) {
+    for (let col = 0; col < SOCC_W; col++) {
+      if (!isValidNode(col, row)) continue;
+      const { x, y } = nodeXY(col, row);
+      const d = Math.sqrt((mx-x)**2 + (my-y)**2);
+      if (d < minD) { minD = d; closest = { col, row }; }
+    }
+  }
+  hoverNode = closest;
+  render();
+});
+
+canvas.addEventListener('click', e => {
+  if (!state || !state.ball || state.status !== 'playing' || state.turn !== mySeat) return;
+  if (!hoverNode) return;
+  const { col, row } = hoverNode;
+  const { x, y } = state.ball;
+  // Must be adjacent
+  if (Math.abs(col-x) > 1 || Math.abs(row-y) > 1 || (col===x && row===y)) return;
+  // Must be valid move (edge not used) — server validates too
+  send({ game:'soccer', type:'move', tx: col, ty: row });
+});
+
+document.getElementById('overlay-btn').addEventListener('click', () => {
+  joined = true;
+  send({ game:'soccer', type:'join' });
+});
+
+connect();
+</script>
+</body>
+</html>

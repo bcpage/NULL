@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Unix Time — NULL</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #050508;
+  color: #b0c0a0;
+  font-family: 'Share Tech Mono', monospace;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+.timestamp {
+  font-size: clamp(2rem, 8vw, 5.5rem);
+  letter-spacing: 0.08em;
+  color: #c8d8b0;
+  text-shadow: 0 0 30px rgba(160, 200, 120, 0.15);
+  margin-bottom: 2.5rem;
+  font-variant-numeric: tabular-nums;
+}
+.digit {
+  display: inline-block;
+  min-width: 0.62em;
+  text-align: center;
+  transition: color 0.1s;
+}
+.digit.changed {
+  color: #e0ffe0;
+}
+.label {
+  font-size: 0.7rem;
+  letter-spacing: 0.25em;
+  color: rgba(160, 190, 130, 0.4);
+  text-transform: uppercase;
+  margin-bottom: 4rem;
+}
+.context {
+  max-width: 460px;
+  text-align: center;
+  font-size: 0.75rem;
+  line-height: 1.9;
+  color: rgba(160, 190, 130, 0.35);
+  letter-spacing: 0.05em;
+}
+.context p { margin-bottom: 1.2rem; }
+.context p:last-child { margin-bottom: 0; }
+</style>
+</head>
+<body data-game="00079" data-nav="matrix">
+
+<div class="timestamp" id="ts"></div>
+<div class="label">seconds since 1970-01-01 00:00:00 UTC</div>
+<div class="context">
+  <p>
+    This number has been counting since midnight, January 1st, 1970.
+    Every second, every system on Earth increments it together.
+  </p>
+  <p>
+    The facility started running sometime after that.
+    It has never stopped.
+  </p>
+  <p>
+    When this number reaches 2,147,483,647 it will overflow<br>
+    on 32-bit systems. That is January 19, 2038.
+  </p>
+</div>
+
+<script src="/shared/matrix-nav.js"></script>
+<script>
+const tsEl = document.getElementById('ts');
+
+let prevDigits = [];
+
+function render() {
+  const now = Math.floor(Date.now() / 1000);
+  const s = String(now);
+  const digits = s.split('');
+
+  if (prevDigits.length === 0) {
+    tsEl.innerHTML = digits.map(d =>
+      `<span class="digit">${d}</span>`
+    ).join('');
+  } else {
+    const spans = tsEl.querySelectorAll('.digit');
+    digits.forEach((d, i) => {
+      if (spans[i]) {
+        if (spans[i].textContent !== d) {
+          spans[i].textContent = d;
+          spans[i].classList.add('changed');
+          setTimeout(() => spans[i].classList.remove('changed'), 200);
+        }
+      }
+    });
+  }
+
+  prevDigits = digits;
+}
+
+render();
+setInterval(render, 250);
+</script>
+</body>
+</html>

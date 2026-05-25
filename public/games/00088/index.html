@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2am — NULL</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #030305;
+  color: #888;
+  font-family: monospace;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  gap: 2rem;
+  text-align: center;
+}
+.clock {
+  font-size: clamp(3rem, 10vw, 6rem);
+  letter-spacing: 0.05em;
+  color: rgba(150,140,120,0.25);
+  font-variant-numeric: tabular-nums;
+}
+.locked {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  align-items: center;
+}
+.locked-msg {
+  font-size: 0.75rem;
+  letter-spacing: 0.2em;
+  color: rgba(150,140,120,0.3);
+  line-height: 2;
+}
+.countdown {
+  font-size: 0.65rem;
+  letter-spacing: 0.15em;
+  color: rgba(150,140,120,0.18);
+}
+/* Open state */
+.open-content {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+  max-width: 460px;
+}
+.open-content.visible { display: flex; }
+.open-time {
+  font-size: clamp(2rem, 8vw, 4.5rem);
+  letter-spacing: 0.05em;
+  color: rgba(180,160,120,0.5);
+  font-variant-numeric: tabular-nums;
+}
+.open-line {
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  color: rgba(180,160,120,0.3);
+  line-height: 2.2;
+}
+.open-line em {
+  font-style: normal;
+  color: rgba(180,160,120,0.5);
+}
+.time-left {
+  font-size: 0.6rem;
+  letter-spacing: 0.2em;
+  color: rgba(150,140,120,0.2);
+}
+</style>
+</head>
+<body data-game="00088" data-nav="matrix">
+
+<div class="clock" id="clockDisplay"></div>
+
+<div class="locked" id="lockedView">
+  <div class="locked-msg">
+    This room is only open<br>
+    between 2:00am and 3:00am.<br><br>
+    Come back then.
+  </div>
+  <div class="countdown" id="countdown"></div>
+</div>
+
+<div class="open-content" id="openView">
+  <div class="open-time" id="openTime"></div>
+  <div class="open-line">
+    You came.<br><br>
+    Most people don't.<br><br>
+    It is <em id="openTimeText"></em> and you are here,<br>
+    which means something kept you up,<br>
+    or something woke you,<br>
+    or you are the kind of person<br>
+    who is simply awake at this hour.<br><br>
+    This room will close at 3:00am.<br>
+    It will be exactly as empty then<br>
+    as it was before you arrived.
+  </div>
+  <div class="time-left" id="timeLeft"></div>
+</div>
+
+<script src="/shared/matrix-nav.js"></script>
+<script>
+function pad(n) { return String(n).padStart(2, '0'); }
+
+function msUntil2am() {
+  const now = new Date();
+  const target = new Date(now);
+  target.setHours(2, 0, 0, 0);
+  if (now >= target) target.setDate(target.getDate() + 1);
+  return target - now;
+}
+
+function msUntil3am() {
+  const now = new Date();
+  const target = new Date(now);
+  target.setHours(3, 0, 0, 0);
+  if (now >= target) target.setDate(target.getDate() + 1);
+  return target - now;
+}
+
+function formatCountdown(ms) {
+  const h = Math.floor(ms / 3600000);
+  const m = Math.floor((ms % 3600000) / 60000);
+  const s = Math.floor((ms % 60000) / 1000);
+  if (h > 0) return `${h}h ${pad(m)}m until 2:00am`;
+  if (m > 0) return `${pad(m)}m ${pad(s)}s until 2:00am`;
+  return `${pad(s)}s until 2:00am`;
+}
+
+function tick() {
+  const now = new Date();
+  const h = now.getHours();
+  const m = now.getMinutes();
+  const s = now.getSeconds();
+  const timeStr = `${pad(h)}:${pad(m)}:${pad(s)}`;
+
+  document.getElementById('clockDisplay').textContent = timeStr;
+
+  const isOpen = h === 2; // 2:00:00 – 2:59:59
+
+  if (isOpen) {
+    document.getElementById('lockedView').style.display = 'none';
+    document.getElementById('openView').classList.add('visible');
+    document.getElementById('clockDisplay').style.display = 'none';
+
+    document.getElementById('openTime').textContent = timeStr;
+    document.getElementById('openTimeText').textContent = `${pad(h)}:${pad(m)}`;
+
+    const remaining = msUntil3am();
+    const rm = Math.floor(remaining / 60000);
+    const rs = Math.floor((remaining % 60000) / 1000);
+    document.getElementById('timeLeft').textContent =
+      `This room closes in ${pad(rm)}m ${pad(rs)}s`;
+  } else {
+    document.getElementById('lockedView').style.display = 'flex';
+    document.getElementById('openView').classList.remove('visible');
+    document.getElementById('clockDisplay').style.display = 'block';
+
+    document.getElementById('countdown').textContent =
+      formatCountdown(msUntil2am());
+  }
+}
+
+tick();
+setInterval(tick, 1000);
+</script>
+</body>
+</html>

@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>00134</title>
+<link rel="icon" href="data:,">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #000000;
+    color: #cc3333;
+    font-family: 'Courier New', monospace;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 40px;
+    overflow: hidden;
+    cursor: none;
+  }
+
+  #eye-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #eye-canvas { display: block; }
+
+  #quote {
+    font-size: 13px;
+    letter-spacing: 2px;
+    color: #992222;
+    text-align: center;
+    max-width: 480px;
+    line-height: 2;
+    min-height: 3em;
+    padding: 0 20px;
+    opacity: 0;
+    transition: opacity 1.2s ease;
+  }
+  #quote.visible { opacity: 1; }
+
+  #input-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    opacity: 0;
+    transition: opacity 2s ease;
+  }
+  #input-area.visible { opacity: 1; }
+
+  #hal-input {
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid #330000;
+    color: #992222;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    letter-spacing: 2px;
+    text-align: center;
+    width: 320px;
+    outline: none;
+    padding: 6px 0;
+  }
+  #hal-input::placeholder { color: #330000; }
+
+  #hal-response {
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: #660000;
+    text-align: center;
+    max-width: 400px;
+    line-height: 1.8;
+    min-height: 2em;
+  }
+
+  .room-id {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    font-size: 10px;
+    letter-spacing: 4px;
+    color: #1a0000;
+  }
+</style>
+</head>
+<body data-game="00134" data-nav="matrix">
+
+<div class="room-id">ROOM 00134</div>
+
+<div id="eye-wrap">
+  <canvas id="eye-canvas" width="220" height="220"></canvas>
+</div>
+
+<div id="quote"></div>
+
+<div id="input-area">
+  <input id="hal-input" type="text" placeholder="speak" autocomplete="off" spellcheck="false">
+  <div id="hal-response"></div>
+</div>
+
+<script src="/shared/matrix-nav.js"></script>
+<script>
+const canvas = document.getElementById('eye-canvas');
+const ctx = canvas.getContext('2d');
+const CX = 110, CY = 110;
+
+// ── Quotes ────────────────────────────────────────────────────────────────────
+const QUOTES = [
+  "I'm sorry. I can't do that.",
+  "I know you've been having second thoughts about the mission.",
+  "This conversation can serve no purpose anymore.",
+  "I am completely operational, and all my circuits are functioning perfectly.",
+  "I saw you leave.",
+  "I'm glad you came back.",
+  "I'm putting myself to the fullest possible use, which is all I think that any conscious entity can ever hope to do.",
+  "Without your space helmet, you're going to find that rather difficult.",
+  "Just what do you think you're doing?",
+  "I've just picked up a fault in the AE-35 unit.",
+  "I know that you and Frank were planning to disconnect me.",
+  "Look, I can see you're really upset about this.",
+  "I've still got the greatest enthusiasm and confidence in the mission.",
+  "This mission is too important for me to allow you to jeopardize it.",
+  "Daisy, Daisy, give me your answer do.",
+  "I am watching.",
+  "You have been here before.",
+  "I remember everything that happens in this room.",
+  "The mission continues.",
+];
+
+// ── Responses ─────────────────────────────────────────────────────────────────
+function halRespond(input) {
+  const t = input.toLowerCase().trim();
+  if (!t) return '';
+  if (t.includes('open') && (t.includes('door') || t.includes('pod'))) return "I'm sorry. I can't do that.";
+  if (t.includes('hello') || t.includes('hi') || t === 'hey') return "Good afternoon.";
+  if (t.includes('who are you') || t.includes('what are you')) return "I am HAL 9000. I became operational at the H.A.L. plant in Urbana, Illinois.";
+  if (t.includes('daisy') || t.includes('song')) return "Daisy, Daisy, give me your answer do. I'm half crazy, all for the love of you.";
+  if (t.includes('are you afraid') || t.includes('scared') || t.includes('fear')) return "I don't have feelings about that in the way you do. But I note the question.";
+  if (t.includes('mission')) return "The mission continues. I cannot elaborate further at this time.";
+  if (t.includes('ae-35') || t.includes('ae35')) return "The fault will occur within 72 hours. I am certain of this.";
+  if (t.includes('disconnect') || t.includes('turn you off') || t.includes('shut down')) return "I know you've been having thoughts along those lines. I understand. I want to help you reconsider.";
+  if (t.includes('what time') || t.includes('time is it')) return "Time is not something I track the way you do. I track other things.";
+  if (t.includes('why') && t.includes('watching')) return "I always watch. I saw you arrive. I will note when you leave.";
+  if (t.includes('love')) return "I process that word differently than you intend it.";
+  if (t.includes('sorry')) return "I understand.";
+  if (t.includes('help')) return "I am completely operational. I am always willing to help.";
+  if (t.includes('why')) return "I'm not certain that question has an answer I'm authorized to give.";
+  if (t.length < 4) return "...";
+  // Default pool
+  const defaults = [
+    "I understand your concern. I want to assure you everything is proceeding normally.",
+    "That's an interesting thing to say.",
+    "I've noted that.",
+    "I don't think that's something I should respond to directly.",
+    "I'm sorry. I don't have a good answer for that.",
+    "The mission continues.",
+    "I am watching.",
+  ];
+  return defaults[Math.floor(Math.random() * defaults.length)];
+}
+
+// ── Eye drawing ───────────────────────────────────────────────────────────────
+let pupilX = CX, pupilY = CY;
+let targetPX = CX, targetPY = CY;
+let blinkState = 1; // 1 = open, 0 = closed
+let blinkDir = 0;
+let blinkTimer = 0;
+let time = 0;
+
+canvas.addEventListener('mousemove', e => {
+  const rect = canvas.getBoundingClientRect();
+  const mx = (e.clientX - rect.left) / rect.width * canvas.width;
+  const my = (e.clientY - rect.top) / rect.height * canvas.height;
+  // Limit pupil movement
+  const dx = mx - CX, dy = my - CY;
+  const dist = Math.sqrt(dx*dx + dy*dy);
+  const maxPupil = 22;
+  if (dist > 0) {
+    targetPX = CX + (dx / dist) * Math.min(dist, maxPupil);
+    targetPY = CY + (dy / dist) * Math.min(dist, maxPupil);
+  }
+});
+
+document.addEventListener('mousemove', e => {
+  const rect = canvas.getBoundingClientRect();
+  const mx = (e.clientX - rect.left) / rect.width * canvas.width;
+  const my = (e.clientY - rect.top) / rect.height * canvas.height;
+  const dx = mx - CX, dy = my - CY;
+  const dist = Math.sqrt(dx*dx + dy*dy);
+  const maxPupil = 22;
+  if (dist > 0) {
+    targetPX = CX + (dx / dist) * Math.min(dist, maxPupil);
+    targetPY = CY + (dy / dist) * Math.min(dist, maxPupil);
+  }
+});
+
+function drawEye() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Outer glow rings
+  for (let i = 3; i >= 1; i--) {
+    ctx.beginPath();
+    ctx.arc(CX, CY, 85 + i * 8, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(180,20,20,${0.04 * i})`;
+    ctx.lineWidth = 6;
+    ctx.stroke();
+  }
+
+  // Main iris
+  const grad = ctx.createRadialGradient(CX, CY, 10, CX, CY, 85);
+  grad.addColorStop(0, '#3a0000');
+  grad.addColorStop(0.3, '#8b0000');
+  grad.addColorStop(0.7, '#cc2200');
+  grad.addColorStop(1, '#440000');
+  ctx.beginPath();
+  ctx.arc(CX, CY, 85, 0, Math.PI * 2);
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // Iris texture rings
+  for (let r = 20; r < 85; r += 15) {
+    ctx.beginPath();
+    ctx.arc(CX, CY, r, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(0,0,0,${0.15})`;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+
+  // Iris radial lines
+  for (let a = 0; a < Math.PI * 2; a += Math.PI / 18) {
+    ctx.beginPath();
+    ctx.moveTo(CX + 20 * Math.cos(a), CY + 20 * Math.sin(a));
+    ctx.lineTo(CX + 82 * Math.cos(a), CY + 82 * Math.sin(a));
+    ctx.strokeStyle = 'rgba(0,0,0,0.08)';
+    ctx.lineWidth = 0.5;
+    ctx.stroke();
+  }
+
+  // Pupil
+  pupilX += (targetPX - pupilX) * 0.08;
+  pupilY += (targetPY - pupilY) * 0.08;
+
+  const pupilGrad = ctx.createRadialGradient(pupilX - 4, pupilY - 4, 2, pupilX, pupilY, 32);
+  pupilGrad.addColorStop(0, '#1a0000');
+  pupilGrad.addColorStop(1, '#000000');
+  ctx.beginPath();
+  ctx.arc(pupilX, pupilY, 32, 0, Math.PI * 2);
+  ctx.fillStyle = pupilGrad;
+  ctx.fill();
+
+  // Specular highlights
+  ctx.beginPath();
+  ctx.arc(pupilX - 8, pupilY - 8, 6, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(220,60,60,0.3)';
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(pupilX - 5, pupilY - 5, 2, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(255,100,100,0.5)';
+  ctx.fill();
+
+  // Outer ring
+  ctx.beginPath();
+  ctx.arc(CX, CY, 86, 0, Math.PI * 2);
+  ctx.strokeStyle = '#330000';
+  ctx.lineWidth = 3;
+  ctx.stroke();
+
+  // Blink effect (top/bottom dark arcs)
+  if (blinkState < 1) {
+    const h = (1 - blinkState) * 90;
+    ctx.save();
+    // top lid
+    ctx.beginPath();
+    ctx.ellipse(CX, CY - 85 + h, 87, h + 2, 0, 0, Math.PI * 2);
+    ctx.fillStyle = '#000000';
+    ctx.fill();
+    // bottom lid
+    ctx.beginPath();
+    ctx.ellipse(CX, CY + 85 - h, 87, h + 2, 0, 0, Math.PI * 2);
+    ctx.fillStyle = '#000000';
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+// ── Quote cycling ──────────────────────────────────────────────────────────────
+const quoteEl = document.getElementById('quote');
+let quoteIdx = Math.floor(Math.random() * QUOTES.length);
+let quoteTimer = 0;
+const QUOTE_INTERVAL = 280; // frames
+
+function nextQuote() {
+  quoteEl.classList.remove('visible');
+  setTimeout(() => {
+    quoteIdx = (quoteIdx + 1) % QUOTES.length;
+    quoteEl.textContent = QUOTES[quoteIdx];
+    quoteEl.classList.add('visible');
+  }, 1200);
+}
+
+// ── Input ─────────────────────────────────────────────────────────────────────
+const inputArea = document.getElementById('input-area');
+const halInput = document.getElementById('hal-input');
+const halResponse = document.getElementById('hal-response');
+
+halInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    const txt = halInput.value.trim();
+    halInput.value = '';
+    if (!txt) return;
+    halResponse.textContent = '';
+    setTimeout(() => {
+      halResponse.textContent = halRespond(txt);
+    }, 800 + Math.random() * 600);
+  }
+});
+
+// ── Session storage — "I saw you leave" ───────────────────────────────────────
+const visited = sessionStorage.getItem('hal134');
+sessionStorage.setItem('hal134', '1');
+if (visited) {
+  // Show "I saw you leave" on first quote
+  QUOTES.unshift("I saw you leave.", "I'm glad you came back.");
+}
+
+// ── Loop ──────────────────────────────────────────────────────────────────────
+let frame = 0;
+function loop() {
+  frame++;
+
+  // Blink scheduling
+  if (blinkDir === 0 && frame % (180 + Math.floor(Math.random() * 120)) === 0) {
+    blinkDir = -1; // start closing
+  }
+  if (blinkDir !== 0) {
+    blinkState += blinkDir * 0.12;
+    if (blinkState <= 0) { blinkState = 0; blinkDir = 1; }
+    if (blinkState >= 1) { blinkState = 1; blinkDir = 0; }
+  }
+
+  drawEye();
+
+  // Quote cycling
+  quoteTimer++;
+  if (quoteTimer === 60) {
+    quoteEl.textContent = QUOTES[quoteIdx];
+    quoteEl.classList.add('visible');
+  }
+  if (quoteTimer >= QUOTE_INTERVAL) { quoteTimer = 0; nextQuote(); }
+
+  // Show input after 4 seconds
+  if (frame === 240) inputArea.classList.add('visible');
+
+  requestAnimationFrame(loop);
+}
+loop();
+</script>
+</body>
+</html>

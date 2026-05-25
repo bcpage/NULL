@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Registry — NULL</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #050508;
+  color: #bbb;
+  font-family: monospace;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 3rem 1.5rem 5rem;
+  gap: 2.5rem;
+}
+.title {
+  font-size: 0.65rem;
+  letter-spacing: 0.35em;
+  color: rgba(200,180,140,0.35);
+  text-transform: uppercase;
+  text-align: center;
+}
+.subtitle {
+  font-size: 0.6rem;
+  letter-spacing: 0.2em;
+  color: rgba(200,180,140,0.2);
+  text-align: center;
+  margin-top: 0.4rem;
+}
+form {
+  width: 100%;
+  max-width: 480px;
+  border: 1px solid rgba(200,180,140,0.12);
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+label {
+  font-size: 0.6rem;
+  letter-spacing: 0.25em;
+  color: rgba(200,180,140,0.4);
+  text-transform: uppercase;
+}
+input, select, textarea {
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(200,180,140,0.18);
+  color: rgba(200,180,140,0.8);
+  font-family: monospace;
+  font-size: 0.75rem;
+  padding: 0.5rem 0.6rem;
+  width: 100%;
+  outline: none;
+  transition: border-color 0.2s;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: rgba(200,180,140,0.5);
+}
+select option { background: #0a0a12; }
+textarea { resize: none; height: 60px; }
+.submit {
+  padding: 0.6rem;
+  background: transparent;
+  border: 1px solid rgba(200,180,140,0.3);
+  color: rgba(200,180,140,0.6);
+  font-family: monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 0.5rem;
+}
+.submit:hover {
+  border-color: rgba(200,180,140,0.7);
+  color: rgba(200,180,140,0.9);
+  background: rgba(200,180,140,0.04);
+}
+.submit:disabled { opacity: 0.3; cursor: default; }
+.confirm {
+  font-size: 0.65rem;
+  letter-spacing: 0.15em;
+  color: rgba(143,168,120,0.6);
+  min-height: 1.2em;
+  text-align: center;
+}
+.ledger-head {
+  font-size: 0.6rem;
+  letter-spacing: 0.3em;
+  color: rgba(200,180,140,0.25);
+  text-transform: uppercase;
+  width: 100%;
+  max-width: 480px;
+  border-bottom: 1px solid rgba(200,180,140,0.08);
+  padding-bottom: 0.4rem;
+}
+.ledger {
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.entry {
+  font-size: 0.65rem;
+  letter-spacing: 0.06em;
+  color: rgba(180,160,120,0.35);
+  line-height: 1.7;
+  border-left: 1px solid rgba(200,180,140,0.08);
+  padding-left: 0.8rem;
+}
+.entry .designation { color: rgba(200,180,140,0.55); }
+.entry .entryid { color: rgba(200,180,140,0.2); float: right; }
+</style>
+</head>
+<body data-game="00083" data-nav="matrix">
+
+<div>
+  <div class="title">NULL Facility — Visitor Registry</div>
+  <div class="subtitle">All personnel must register upon arrival. Records are permanent.</div>
+</div>
+
+<form id="regForm" onsubmit="submitForm(event)">
+  <div class="field">
+    <label>Designation</label>
+    <input type="text" id="designation" maxlength="40" placeholder="Your name or identifier" required>
+  </div>
+  <div class="field">
+    <label>Origin Sector</label>
+    <input type="text" id="sector" maxlength="40" placeholder="Where are you from?">
+  </div>
+  <div class="field">
+    <label>Purpose of Visit</label>
+    <textarea id="purpose" maxlength="80" placeholder="State your reason for being here"></textarea>
+  </div>
+  <div class="field">
+    <label>Clearance Level</label>
+    <select id="clearance">
+      <option value="NONE">NONE</option>
+      <option value="PROVISIONAL">PROVISIONAL</option>
+      <option value="STANDARD">STANDARD</option>
+      <option value="ELEVATED">ELEVATED</option>
+      <option value="CLASSIFIED">CLASSIFIED</option>
+    </select>
+  </div>
+  <button type="submit" class="submit" id="submitBtn">Register</button>
+  <div class="confirm" id="confirm"></div>
+</form>
+
+<div class="ledger-head">Recent Entries</div>
+<div class="ledger" id="ledger"></div>
+
+<script src="/shared/matrix-nav.js"></script>
+<script>
+function formatTime(ts) {
+  return new Date(ts).toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
+}
+
+function renderEntry(e) {
+  return `<div class="entry">
+    <span class="entryid">#${String(e.id).padStart(4,'0')}</span>
+    <span class="designation">${e.designation}</span><br>
+    Sector: ${e.sector || '—'} &nbsp;|&nbsp; Clearance: ${e.clearance}<br>
+    Purpose: ${e.purpose || '—'}<br>
+    <span style="color:rgba(200,180,140,0.15)">${formatTime(e.ts)}</span>
+  </div>`;
+}
+
+function loadLedger() {
+  fetch('/api/registry').then(r => r.json()).then(entries => {
+    const ledger = document.getElementById('ledger');
+    if (entries.length === 0) {
+      ledger.innerHTML = '<div class="entry" style="color:rgba(200,180,140,0.15)">No entries yet. Be the first to register.</div>';
+      return;
+    }
+    ledger.innerHTML = [...entries].reverse().map(renderEntry).join('');
+  }).catch(() => {});
+}
+
+function submitForm(e) {
+  e.preventDefault();
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+
+  const body = {
+    designation: document.getElementById('designation').value.trim(),
+    sector:      document.getElementById('sector').value.trim(),
+    purpose:     document.getElementById('purpose').value.trim(),
+    clearance:   document.getElementById('clearance').value
+  };
+
+  fetch('/api/registry', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  }).then(r => r.json()).then(entry => {
+    document.getElementById('confirm').textContent =
+      `Registration accepted. Entry #${String(entry.id).padStart(4,'0')} recorded.`;
+    document.getElementById('regForm').reset();
+    loadLedger();
+    setTimeout(() => { document.getElementById('confirm').textContent = ''; }, 5000);
+  }).catch(() => {
+    document.getElementById('confirm').textContent = 'Registration failed. Try again.';
+  }).finally(() => { btn.disabled = false; });
+}
+
+loadLedger();
+</script>
+</body>
+</html>

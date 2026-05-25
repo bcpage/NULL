@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>00162 — Periodic Table</title>
+<link rel="icon" href="data:,">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #050508; color: #8a9aaa;
+    font-family: 'Courier New', monospace;
+    min-height: 100vh; display: flex; flex-direction: column;
+    align-items: center; gap: 12px;
+    padding: 30px 20px 50px;
+    overflow-x: hidden;
+  }
+  .room-id { font-size: 10px; letter-spacing: 5px; color: #223; }
+  .title { font-size: 11px; letter-spacing: 5px; color: #445; text-transform: uppercase; }
+
+  #table-wrap { overflow-x: auto; width: 100%; }
+  #pt-table {
+    display: grid;
+    grid-template-columns: repeat(18, 30px);
+    grid-template-rows: repeat(10, 30px);
+    gap: 2px;
+    min-width: 560px;
+    margin: 0 auto;
+    width: fit-content;
+  }
+  .el {
+    width: 30px; height: 30px; border: 1px solid #0a0a14;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 7px; line-height: 1.2;
+    transition: border-color 0.1s, background 0.1s;
+    position: relative;
+  }
+  .el:hover { border-color: #3a5a7a; z-index: 10; }
+  .el .sym { font-size: 9px; font-weight: bold; }
+  .el .num { font-size: 6px; color: rgba(255,255,255,0.4); }
+  .el-gap { width: 30px; height: 30px; }
+
+  /* Category colors */
+  .alkali    { background: #1a0f0f; color: #cc6644; border-color: #2a1010; }
+  .alkaline  { background: #1a1400; color: #cc9900; border-color: #2a2000; }
+  .lanthanide{ background: #0a1400; color: #5a9a44; border-color: #102010; }
+  .actinide  { background: #001414; color: #44aaaa; border-color: #002020; }
+  .transition{ background: #0a0a18; color: #6688cc; border-color: #10103a; }
+  .post-trans{ background: #0a1010; color: #5a9a88; border-color: #102020; }
+  .metalloid { background: #0f0f0a; color: #9a9a44; border-color: #20201a; }
+  .nonmetal  { background: #140a14; color: #cc88cc; border-color: #200020; }
+  .halogen   { background: #0a0a1a; color: #8888dd; border-color: #101030; }
+  .noble     { background: #100814; color: #aa66cc; border-color: #200030; }
+
+  /* Info panel */
+  #info-panel {
+    max-width: 560px; width: 100%; border: 1px solid #0f0f1a;
+    background: #030306; padding: 16px; display: flex; gap: 16px; align-items: flex-start;
+    min-height: 90px;
+  }
+  #info-number { font-size: 48px; color: #1a2a3a; letter-spacing: 2px; min-width: 60px; text-align: center; }
+  #info-details { flex: 1; }
+  #info-symbol { font-size: 24px; letter-spacing: 2px; color: #4a6a8a; }
+  #info-name { font-size: 11px; letter-spacing: 3px; color: #3a5a7a; margin-top: 2px; }
+  #info-meta { font-size: 9px; letter-spacing: 1px; color: #1a2a3a; margin-top: 6px; line-height: 1.8; }
+
+  .legend { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+  .leg-item { font-size: 8px; letter-spacing: 1px; display: flex; align-items: center; gap: 4px; }
+  .leg-dot { width: 10px; height: 10px; border: 1px solid; }
+
+  .note { font-size: 10px; letter-spacing: 1px; color: #223; text-align: center; line-height: 2.2; max-width: 380px; border-top: 1px solid #111120; padding-top: 12px; }
+</style>
+</head>
+<body data-game="00162" data-nav="matrix">
+<div class="room-id">ROOM 00162</div>
+<div class="title">Periodic Table</div>
+
+<div id="table-wrap"><div id="pt-table"></div></div>
+
+<div id="info-panel">
+  <div id="info-number">—</div>
+  <div id="info-details">
+    <div id="info-symbol">hover an element</div>
+    <div id="info-name"></div>
+    <div id="info-meta"></div>
+  </div>
+</div>
+
+<div class="legend">
+  <div class="leg-item"><div class="leg-dot alkali"></div> alkali metal</div>
+  <div class="leg-item"><div class="leg-dot alkaline"></div> alkaline earth</div>
+  <div class="leg-item"><div class="leg-dot transition"></div> transition metal</div>
+  <div class="leg-item"><div class="leg-dot lanthanide"></div> lanthanide</div>
+  <div class="leg-item"><div class="leg-dot actinide"></div> actinide</div>
+  <div class="leg-item"><div class="leg-dot post-trans"></div> post-transition</div>
+  <div class="leg-item"><div class="leg-dot metalloid"></div> metalloid</div>
+  <div class="leg-item"><div class="leg-dot nonmetal"></div> nonmetal</div>
+  <div class="leg-item"><div class="leg-dot halogen"></div> halogen</div>
+  <div class="leg-item"><div class="leg-dot noble"></div> noble gas</div>
+</div>
+
+<div class="note">
+  118 elements. The table has a shape.<br>
+  The shape encodes electron shell structure.<br>
+  Elements 93–118 do not occur naturally in significant quantities.<br>
+  Oganesson (118) has a half-life of 0.89 milliseconds.
+</div>
+
+<script src="/shared/matrix-nav.js"></script>
+<script>
+// Element data: [number, symbol, name, category, mass, group, period, state, discovered]
+const ELEMENTS = [
+  [1,'H','Hydrogen','nonmetal',1.008,1,1,'gas',1766],
+  [2,'He','Helium','noble',4.003,18,1,'gas',1868],
+  [3,'Li','Lithium','alkali',6.941,1,2,'solid',1817],
+  [4,'Be','Beryllium','alkaline',9.012,2,2,'solid',1798],
+  [5,'B','Boron','metalloid',10.811,13,2,'solid',1808],
+  [6,'C','Carbon','nonmetal',12.011,14,2,'solid',1789],
+  [7,'N','Nitrogen','nonmetal',14.007,15,2,'gas',1772],
+  [8,'O','Oxygen','nonmetal',15.999,16,2,'gas',1774],
+  [9,'F','Fluorine','halogen',18.998,17,2,'gas',1886],
+  [10,'Ne','Neon','noble',20.180,18,2,'gas',1898],
+  [11,'Na','Sodium','alkali',22.990,1,3,'solid',1807],
+  [12,'Mg','Magnesium','alkaline',24.305,2,3,'solid',1755],
+  [13,'Al','Aluminum','post-trans',26.982,13,3,'solid',1825],
+  [14,'Si','Silicon','metalloid',28.086,14,3,'solid',1824],
+  [15,'P','Phosphorus','nonmetal',30.974,15,3,'solid',1669],
+  [16,'S','Sulfur','nonmetal',32.065,16,3,'solid',1777],
+  [17,'Cl','Chlorine','halogen',35.453,17,3,'gas',1774],
+  [18,'Ar','Argon','noble',39.948,18,3,'gas',1894],
+  [19,'K','Potassium','alkali',39.098,1,4,'solid',1807],
+  [20,'Ca','Calcium','alkaline',40.078,2,4,'solid',1808],
+  [21,'Sc','Scandium','transition',44.956,3,4,'solid',1879],
+  [22,'Ti','Titanium','transition',47.867,4,4,'solid',1791],
+  [23,'V','Vanadium','transition',50.942,5,4,'solid',1801],
+  [24,'Cr','Chromium','transition',51.996,6,4,'solid',1798],
+  [25,'Mn','Manganese','transition',54.938,7,4,'solid',1774],
+  [26,'Fe','Iron','transition',55.845,8,4,'solid',1774],
+  [27,'Co','Cobalt','transition',58.933,9,4,'solid',1735],
+  [28,'Ni','Nickel','transition',58.693,10,4,'solid',1751],
+  [29,'Cu','Copper','transition',63.546,11,4,'solid',1800],
+  [30,'Zn','Zinc','transition',65.38,12,4,'solid',1746],
+  [31,'Ga','Gallium','post-trans',69.723,13,4,'solid',1875],
+  [32,'Ge','Germanium','metalloid',72.630,14,4,'solid',1886],
+  [33,'As','Arsenic','metalloid',74.922,15,4,'solid',1250],
+  [34,'Se','Selenium','nonmetal',78.971,16,4,'solid',1817],
+  [35,'Br','Bromine','halogen',79.904,17,4,'liquid',1826],
+  [36,'Kr','Krypton','noble',83.798,18,4,'gas',1898],
+  [37,'Rb','Rubidium','alkali',85.468,1,5,'solid',1861],
+  [38,'Sr','Strontium','alkaline',87.62,2,5,'solid',1790],
+  [39,'Y','Yttrium','transition',88.906,3,5,'solid',1794],
+  [40,'Zr','Zirconium','transition',91.224,4,5,'solid',1789],
+  [41,'Nb','Niobium','transition',92.906,5,5,'solid',1801],
+  [42,'Mo','Molybdenum','transition',95.96,6,5,'solid',1781],
+  [43,'Tc','Technetium','transition',98,7,5,'solid',1937],
+  [44,'Ru','Ruthenium','transition',101.07,8,5,'solid',1844],
+  [45,'Rh','Rhodium','transition',102.906,9,5,'solid',1803],
+  [46,'Pd','Palladium','transition',106.42,10,5,'solid',1803],
+  [47,'Ag','Silver','transition',107.868,11,5,'solid',1800],
+  [48,'Cd','Cadmium','transition',112.411,12,5,'solid',1817],
+  [49,'In','Indium','post-trans',114.818,13,5,'solid',1863],
+  [50,'Sn','Tin','post-trans',118.710,14,5,'solid',1800],
+  [51,'Sb','Antimony','metalloid',121.760,15,5,'solid',815],
+  [52,'Te','Tellurium','metalloid',127.60,16,5,'solid',1782],
+  [53,'I','Iodine','halogen',126.904,17,5,'solid',1811],
+  [54,'Xe','Xenon','noble',131.293,18,5,'gas',1898],
+  [55,'Cs','Cesium','alkali',132.905,1,6,'solid',1860],
+  [56,'Ba','Barium','alkaline',137.327,2,6,'solid',1808],
+  [57,'La','Lanthanum','lanthanide',138.905,3,6,'solid',1839],
+  [58,'Ce','Cerium','lanthanide',140.116,null,6,'solid',1803],
+  [59,'Pr','Praseodymium','lanthanide',140.908,null,6,'solid',1885],
+  [60,'Nd','Neodymium','lanthanide',144.242,null,6,'solid',1885],
+  [61,'Pm','Promethium','lanthanide',145,null,6,'solid',1945],
+  [62,'Sm','Samarium','lanthanide',150.36,null,6,'solid',1879],
+  [63,'Eu','Europium','lanthanide',151.964,null,6,'solid',1901],
+  [64,'Gd','Gadolinium','lanthanide',157.25,null,6,'solid',1880],
+  [65,'Tb','Terbium','lanthanide',158.925,null,6,'solid',1843],
+  [66,'Dy','Dysprosium','lanthanide',162.500,null,6,'solid',1886],
+  [67,'Ho','Holmium','lanthanide',164.930,null,6,'solid',1878],
+  [68,'Er','Erbium','lanthanide',167.259,null,6,'solid',1843],
+  [69,'Tm','Thulium','lanthanide',168.934,null,6,'solid',1879],
+  [70,'Yb','Ytterbium','lanthanide',173.054,null,6,'solid',1878],
+  [71,'Lu','Lutetium','lanthanide',174.967,3,6,'solid',1907],
+  [72,'Hf','Hafnium','transition',178.49,4,6,'solid',1923],
+  [73,'Ta','Tantalum','transition',180.948,5,6,'solid',1802],
+  [74,'W','Tungsten','transition',183.84,6,6,'solid',1783],
+  [75,'Re','Rhenium','transition',186.207,7,6,'solid',1925],
+  [76,'Os','Osmium','transition',190.23,8,6,'solid',1803],
+  [77,'Ir','Iridium','transition',192.217,9,6,'solid',1803],
+  [78,'Pt','Platinum','transition',195.084,10,6,'solid',1735],
+  [79,'Au','Gold','transition',196.967,11,6,'solid',1800],
+  [80,'Hg','Mercury','transition',200.592,12,6,'liquid',1759],
+  [81,'Tl','Thallium','post-trans',204.383,13,6,'solid',1861],
+  [82,'Pb','Lead','post-trans',207.2,14,6,'solid',1800],
+  [83,'Bi','Bismuth','post-trans',208.980,15,6,'solid',1753],
+  [84,'Po','Polonium','post-trans',209,16,6,'solid',1898],
+  [85,'At','Astatine','halogen',210,17,6,'solid',1940],
+  [86,'Rn','Radon','noble',222,18,6,'gas',1900],
+  [87,'Fr','Francium','alkali',223,1,7,'solid',1939],
+  [88,'Ra','Radium','alkaline',226,2,7,'solid',1898],
+  [89,'Ac','Actinium','actinide',227,3,7,'solid',1899],
+  [90,'Th','Thorium','actinide',232.038,null,7,'solid',1829],
+  [91,'Pa','Protactinium','actinide',231.036,null,7,'solid',1917],
+  [92,'U','Uranium','actinide',238.029,null,7,'solid',1789],
+  [93,'Np','Neptunium','actinide',237,null,7,'solid',1940],
+  [94,'Pu','Plutonium','actinide',244,null,7,'solid',1940],
+  [95,'Am','Americium','actinide',243,null,7,'solid',1944],
+  [96,'Cm','Curium','actinide',247,null,7,'solid',1944],
+  [97,'Bk','Berkelium','actinide',247,null,7,'solid',1949],
+  [98,'Cf','Californium','actinide',251,null,7,'solid',1950],
+  [99,'Es','Einsteinium','actinide',252,null,7,'solid',1952],
+  [100,'Fm','Fermium','actinide',257,null,7,'solid',1952],
+  [101,'Md','Mendelevium','actinide',258,null,7,'solid',1955],
+  [102,'No','Nobelium','actinide',259,null,7,'solid',1966],
+  [103,'Lr','Lawrencium','actinide',266,3,7,'solid',1961],
+  [104,'Rf','Rutherfordium','transition',267,4,7,'solid',1964],
+  [105,'Db','Dubnium','transition',268,5,7,'solid',1967],
+  [106,'Sg','Seaborgium','transition',269,6,7,'solid',1974],
+  [107,'Bh','Bohrium','transition',270,7,7,'solid',1981],
+  [108,'Hs','Hassium','transition',277,8,7,'solid',1984],
+  [109,'Mt','Meitnerium','transition',278,9,7,'solid',1982],
+  [110,'Ds','Darmstadtium','transition',281,10,7,'solid',1994],
+  [111,'Rg','Roentgenium','transition',282,11,7,'solid',1994],
+  [112,'Cn','Copernicium','transition',285,12,7,'gas',1996],
+  [113,'Nh','Nihonium','post-trans',286,13,7,'solid',2004],
+  [114,'Fl','Flerovium','post-trans',289,14,7,'gas',1999],
+  [115,'Mc','Moscovium','post-trans',290,15,7,'solid',2003],
+  [116,'Lv','Livermorium','post-trans',293,16,7,'solid',2000],
+  [117,'Ts','Tennessine','halogen',294,17,7,'solid',2010],
+  [118,'Og','Oganesson','noble',294,18,7,'gas',2002],
+];
+
+// Build the table grid
+const table = document.getElementById('pt-table');
+const elemMap = {};
+ELEMENTS.forEach(e => elemMap[e[0]] = e);
+
+// Place elements in grid (18 cols × 10 rows + f-block rows)
+// Standard layout: group = col, period = row
+// Lanthanides/actinides go below (rows 9-10 with offset col 3-17)
+
+function makeCell(el) {
+  const div = document.createElement('div');
+  div.className = `el ${el[3]}`;
+  div.innerHTML = `<span class="num">${el[0]}</span><span class="sym">${el[1]}</span>`;
+  div.addEventListener('mouseenter', () => showInfo(el));
+  div.addEventListener('click', () => showInfo(el));
+  return div;
+}
+
+function makeGap() {
+  const d = document.createElement('div');
+  d.className = 'el-gap';
+  return d;
+}
+
+// Build 10-row × 18-col grid
+const grid = Array.from({ length: 10 }, () => new Array(18).fill(null));
+
+ELEMENTS.forEach(el => {
+  const [n, sym, name, cat, mass, group, period] = el;
+  if (group !== null) {
+    // Lanthanides (57-71) and Actinides (89-103): placed in rows 6,7 but shown in rows 9,10
+    if ((n >= 58 && n <= 71) || (n >= 90 && n <= 103)) {
+      // f-block: row 8 (lanthanides) or row 9 (actinides)
+      const fRow = n <= 71 ? 8 : 9;
+      const fCol = (n <= 71 ? n - 58 : n - 90) + 2; // 0-indexed col 2-16
+      grid[fRow][fCol] = el;
+    } else {
+      grid[period - 1][group - 1] = el;
+    }
+  }
+});
+
+// Place lanthanides (58-71) and actinides (90-103) in f-rows
+for (let n = 58; n <= 71; n++) {
+  const el = elemMap[n];
+  const col = n - 58 + 2;
+  grid[8][col] = el;
+}
+for (let n = 90; n <= 103; n++) {
+  const el = elemMap[n];
+  const col = n - 90 + 2;
+  grid[9][col] = el;
+}
+
+// Add placeholder markers for La/Ac positions
+grid[5][2] = null; // La placeholder (57 goes to f-row)
+grid[6][2] = null; // Ac placeholder
+
+for (let row = 0; row < 10; row++) {
+  for (let col = 0; col < 18; col++) {
+    const el = grid[row][col];
+    if (el) table.appendChild(makeCell(el));
+    else table.appendChild(makeGap());
+  }
+}
+
+function showInfo(el) {
+  const [n, sym, name, cat, mass, group, period, state, disc] = el;
+  document.getElementById('info-number').textContent = n;
+  document.getElementById('info-symbol').textContent = sym;
+  document.getElementById('info-name').textContent = name.toUpperCase();
+  document.getElementById('info-meta').textContent =
+    `Mass: ${mass} u  ·  State: ${state}  ·  Period: ${period}  ·  Group: ${group || 'f-block'}  ·  Discovered: ${disc || 'ancient'}  ·  Category: ${cat.replace('-',' ')}`;
+}
+</script>
+</body>
+</html>

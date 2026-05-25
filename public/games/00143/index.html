@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>00143 — Zeno's Paradox</title>
+<link rel="icon" href="data:,">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #050508; color: #8a9aaa;
+    font-family: 'Courier New', monospace;
+    min-height: 100vh; display: flex; flex-direction: column;
+    align-items: center; gap: 20px;
+    padding: 40px 20px 60px;
+  }
+  .room-id { font-size: 10px; letter-spacing: 5px; color: #223; }
+  .title { font-size: 11px; letter-spacing: 5px; color: #445; text-transform: uppercase; }
+  .intro {
+    font-size: 10px; letter-spacing: 1px; color: #334; line-height: 2;
+    max-width: 500px; text-align: center;
+  }
+  #race-canvas { border: 1px solid #1a1a2a; display: block; }
+  .controls { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; justify-content: center; }
+  button {
+    background: #0c0c18; border: 1px solid #1a2a3a; color: #7a9aaa;
+    font-family: 'Courier New', monospace; font-size: 10px; letter-spacing: 2px;
+    padding: 8px 18px; cursor: pointer;
+  }
+  button:hover { background: #10101e; border-color: #2a3a4a; }
+  button:disabled { opacity: 0.4; cursor: default; }
+  .speed-label { font-size: 10px; letter-spacing: 2px; color: #334; }
+  input[type=range] { accent-color: #5a9acc; width: 100px; }
+  .sum-section { max-width: 540px; width: 100%; }
+  .sum-label { font-size: 10px; letter-spacing: 3px; color: #334; border-bottom: 1px solid #111120; padding-bottom: 4px; margin-bottom: 10px; }
+  #sum-canvas { border: 1px solid #1a1a2a; display: block; }
+  .sum-terms {
+    font-size: 9px; letter-spacing: 1px; color: #2a3a4a;
+    line-height: 2; max-height: 60px; overflow-y: auto;
+    background: #060609; border: 1px solid #111120; padding: 6px 8px;
+    word-break: break-all;
+  }
+  .stats { display: flex; gap: 24px; flex-wrap: wrap; justify-content: center; font-size: 10px; letter-spacing: 2px; color: #334; }
+  .stats span { color: #556; }
+  .paradox-text {
+    max-width: 500px; font-size: 10px; letter-spacing: 1px; color: #334; line-height: 2.2;
+    border: 1px solid #0d0d18; padding: 14px 18px; text-align: left;
+  }
+  .paradox-text em { color: #4a6a8a; font-style: normal; }
+  .note {
+    font-size: 10px; letter-spacing: 1px; color: #223; text-align: center;
+    line-height: 2.2; max-width: 460px;
+    border-top: 1px solid #111120; padding-top: 16px;
+  }
+</style>
+</head>
+<body data-game="00143" data-nav="matrix">
+<div class="room-id">ROOM 00143</div>
+<div class="title">Zeno's Paradox</div>
+
+<div class="intro">
+  Achilles gives the tortoise a 100m head start.<br>
+  To overtake it, he must first reach where it was.<br>
+  By then it has moved. He must reach that new position.<br>
+  By then it has moved again.<br>
+  Infinite steps. He never catches up.<br>
+  Except he does.
+</div>
+
+<canvas id="race-canvas" width="540" height="120"></canvas>
+
+<div class="controls">
+  <button id="start-btn">START RACE</button>
+  <button id="step-btn" disabled>NEXT STEP</button>
+  <button id="reset-btn">RESET</button>
+  <span class="speed-label">SPEED</span>
+  <input type="range" id="speed-sl" min="1" max="10" value="5">
+</div>
+
+<div class="stats">
+  <span>STEPS: <span id="stat-steps">0</span></span>
+  <span>ACHILLES: <span id="stat-ach">0.0</span>m</span>
+  <span>TORTOISE: <span id="stat-tort">100.0</span>m</span>
+  <span>GAP: <span id="stat-gap">100.0</span>m</span>
+  <span>SUM: <span id="stat-sum">0</span></span>
+</div>
+
+<div class="sum-section">
+  <div class="sum-label">CONVERGENCE — INFINITE TERMS, FINITE SUM</div>
+  <canvas id="sum-canvas" width="540" height="80"></canvas>
+  <div class="sum-terms" id="sum-terms">1/2 + 1/4 + 1/8 + …</div>
+</div>
+
+<div class="paradox-text">
+  <em>The Paradox (Zeno of Elea, ~450 BC):</em><br><br>
+  Achilles runs at 10 m/s. The tortoise at 1 m/s. The tortoise starts 100m ahead.
+  To pass the tortoise, Achilles must first reach the tortoise's starting point.
+  He covers 100m. The tortoise has moved 10m. He must cover 10m. The tortoise
+  has moved 1m. He must cover 1m. The tortoise has moved 0.1m. This continues
+  forever — an infinite sequence of tasks. Zeno argued this proves motion is
+  impossible.<br><br>
+  <em>The Resolution (calculus, ~1666 AD):</em><br><br>
+  100 + 10 + 1 + 0.1 + 0.01 + … = 111.11… = 111⅑ meters. A convergent series.
+  An infinite number of terms summing to a finite value. Achilles overtakes the
+  tortoise at t = 11.11s. The paradox reveals something true about infinity —
+  it does not reveal something true about running.
+</div>
+
+<div class="note">
+  An infinite number of steps can take a finite amount of time.<br>
+  This was not obvious.<br>
+  It required calculus to prove.<br>
+  The paradox is resolved.<br>
+  The unease it produces is not.
+</div>
+
+<script src="/shared/matrix-nav.js"></script>
+<script>
+// ── Race parameters ────────────────────────────────────────────────────────────
+const ACH_SPEED = 10; // m/s
+const TORT_SPEED = 1; // m/s
+const TORT_START = 100; // m
+const TRACK_LEN = 130; // display meters
+
+const raceCanvas = document.getElementById('race-canvas');
+const rctx = raceCanvas.getContext('2d');
+const RW = raceCanvas.width, RH = raceCanvas.height;
+
+const sumCanvas = document.getElementById('sum-canvas');
+const sctx = sumCanvas.getContext('2d');
+const SW = sumCanvas.width, SH = sumCanvas.height;
+
+// Zeno steps: step k, Achilles position after covering each sub-interval
+// Step 0: Achilles at 0, Tortoise at 100
+// Step 1: Achilles at 100, Tortoise at 110
+// Step 2: Achilles at 110, Tortoise at 111
+// ...
+// After n steps: Achilles at 100 * (1 - (1/10)^n) / (1 - 1/10) ... let's just compute
+
+let steps = [];
+let currentStep = 0;
+let running = false;
+let animTimer = null;
+
+// Precompute Zeno steps (the paradox's infinite sequence)
+function computeSteps() {
+  steps = [];
+  let ach = 0, tort = TORT_START;
+  steps.push({ ach: 0, tort: TORT_START, gap: TORT_START, term: null });
+  for (let i = 0; i < 20; i++) {
+    const gap = tort - ach;
+    const term = gap; // distance Achilles must cover this step
+    ach = tort; // Achilles reaches where tortoise was
+    const time = term / (ACH_SPEED - TORT_SPEED); // time to cover gap at relative speed
+    tort = tort + TORT_SPEED * (term / ACH_SPEED); // tortoise moves while Achilles closes
+    // Actually: time for Achilles to cover `gap` meters at 10 m/s = gap/10 seconds
+    // tortoise moves gap/10 * 1 = gap/10 meters
+    const achTime = term / ACH_SPEED;
+    tort = steps[steps.length-1 ].tort + TORT_SPEED * achTime;
+    ach = steps[steps.length-1].tort; // Achilles reaches old tortoise position
+    steps.push({ ach, tort, gap: tort - ach, term });
+  }
+  return steps;
+}
+
+// Re-compute properly:
+function buildSteps() {
+  steps = [];
+  let ach = 0, tort = TORT_START;
+  steps.push({ ach, tort, gap: tort - ach, term: null, sum: 0 });
+  let cumSum = 0;
+  for (let i = 0; i < 18; i++) {
+    const gap = tort - ach;
+    if (gap < 0.0001) break; // effectively zero
+    const t = gap / ACH_SPEED; // time for Achilles to reach tortoise's position
+    const newTort = tort + TORT_SPEED * t;
+    const newAch = tort; // Achilles reaches where tortoise was
+    cumSum += gap;
+    steps.push({ ach: newAch, tort: newTort, gap: newTort - newAch, term: gap, sum: cumSum });
+    ach = newAch;
+    tort = newTort;
+  }
+  // Add the real meeting point
+  // Meeting time: 100 / (10 - 1) = 11.111s
+  // Achilles position at meeting: 10 * 11.111 = 111.111m
+  steps.push({ ach: 1000/9, tort: 1000/9, gap: 0, term: null, sum: 1000/9, met: true });
+}
+
+function mToX(m) {
+  return 20 + (m / TRACK_LEN) * (RW - 40);
+}
+
+function drawRace() {
+  rctx.fillStyle = '#060609';
+  rctx.fillRect(0, 0, RW, RH);
+
+  // Track
+  rctx.strokeStyle = '#1a2a3a';
+  rctx.lineWidth = 1;
+  rctx.beginPath();
+  rctx.moveTo(20, RH/2); rctx.lineTo(RW - 20, RH/2);
+  rctx.stroke();
+
+  // Finish line
+  const finX = mToX(1000/9);
+  rctx.strokeStyle = '#2a4a2a';
+  rctx.lineWidth = 1.5;
+  rctx.setLineDash([3, 3]);
+  rctx.beginPath();
+  rctx.moveTo(finX, 20); rctx.lineTo(finX, RH - 20);
+  rctx.stroke();
+  rctx.setLineDash([]);
+  rctx.fillStyle = '#1a3a1a';
+  rctx.font = '8px Courier New';
+  rctx.textAlign = 'center';
+  rctx.fillText('MEET', finX, 18);
+
+  // Meter markers
+  for (let m = 0; m <= TRACK_LEN; m += 10) {
+    const x = mToX(m);
+    rctx.fillStyle = '#1a2a3a';
+    rctx.fillRect(x, RH/2 - 4, 1, 8);
+    rctx.fillStyle = '#223';
+    rctx.font = '7px Courier New';
+    rctx.textAlign = 'center';
+    rctx.fillText(m, x, RH/2 + 14);
+  }
+
+  if (currentStep >= steps.length) return;
+  const s = steps[currentStep];
+
+  // Draw Zeno step intervals
+  for (let i = 1; i <= currentStep && i < steps.length; i++) {
+    const prev = steps[i - 1];
+    const cur = steps[i];
+    if (!cur.term) continue;
+    const x1 = mToX(prev.ach), x2 = mToX(cur.ach);
+    const alpha = 0.15 + (i / steps.length) * 0.3;
+    rctx.fillStyle = `rgba(90,154,204,${alpha})`;
+    rctx.fillRect(x1, RH/2 - 10, x2 - x1, 20);
+  }
+
+  // Tortoise
+  const tx = mToX(s.tort);
+  rctx.fillStyle = '#6a8a4a';
+  rctx.font = '18px serif';
+  rctx.textAlign = 'center';
+  rctx.textBaseline = 'middle';
+  rctx.fillText('🐢', tx, RH/2 - 24);
+
+  // Achilles
+  const ax = mToX(s.ach);
+  rctx.fillStyle = '#5a9acc';
+  rctx.font = '18px serif';
+  rctx.fillText('🏃', ax, RH/2 - 24);
+
+  // Gap line
+  if (s.gap > 0.01) {
+    rctx.strokeStyle = '#cc5555';
+    rctx.lineWidth = 1;
+    rctx.setLineDash([2, 2]);
+    rctx.beginPath();
+    rctx.moveTo(ax + 10, RH/2);
+    rctx.lineTo(tx - 10, RH/2);
+    rctx.stroke();
+    rctx.setLineDash([]);
+    const gapX = (ax + tx) / 2;
+    rctx.fillStyle = '#553333';
+    rctx.font = '8px Courier New';
+    rctx.textAlign = 'center';
+    rctx.fillText(s.gap < 0.01 ? '≈0' : s.gap.toFixed(3) + 'm', gapX, RH/2 + 28);
+  } else {
+    rctx.fillStyle = '#4a8a4a';
+    rctx.font = '10px Courier New';
+    rctx.textAlign = 'center';
+    rctx.fillText('ACHILLES OVERTAKES', mToX(1000/9), RH/2 + 28);
+  }
+
+  // Step label
+  rctx.fillStyle = '#334';
+  rctx.font = '9px Courier New';
+  rctx.textAlign = 'left';
+  rctx.fillText(`STEP ${currentStep}`, 22, 18);
+}
+
+function drawSum() {
+  sctx.fillStyle = '#060609';
+  sctx.fillRect(0, 0, SW, SH);
+
+  if (steps.length < 2) return;
+  const maxSum = 1000/9; // the limit
+  const points = steps.slice(0, currentStep + 1).map((s, i) => ({
+    x: 20 + (i / (steps.length - 1)) * (SW - 40),
+    y: SH - 10 - (s.sum / maxSum) * (SH - 20),
+  }));
+
+  // Limit line
+  sctx.strokeStyle = '#2a4a2a';
+  sctx.lineWidth = 1;
+  sctx.setLineDash([2, 3]);
+  sctx.beginPath();
+  sctx.moveTo(20, 10); sctx.lineTo(SW - 20, 10);
+  sctx.stroke();
+  sctx.setLineDash([]);
+  sctx.fillStyle = '#2a4a2a';
+  sctx.font = '8px Courier New';
+  sctx.textAlign = 'right';
+  sctx.fillText('111.1̄m (limit)', SW - 22, 9);
+
+  // Sum path
+  if (points.length > 1) {
+    sctx.beginPath();
+    sctx.strokeStyle = '#5a9acc';
+    sctx.lineWidth = 1.5;
+    sctx.moveTo(points[0].x, points[0].y);
+    for (let i = 1; i < points.length; i++) sctx.lineTo(points[i].x, points[i].y);
+    sctx.stroke();
+    // Dots
+    points.forEach(p => {
+      sctx.beginPath();
+      sctx.arc(p.x, p.y, 3, 0, Math.PI*2);
+      sctx.fillStyle = '#5a9acc';
+      sctx.fill();
+    });
+  }
+
+  // Y axis labels
+  sctx.fillStyle = '#223';
+  sctx.font = '8px Courier New';
+  sctx.textAlign = 'left';
+  sctx.fillText('0', 22, SH - 10);
+}
+
+function updateStats() {
+  const s = currentStep < steps.length ? steps[currentStep] : steps[steps.length-1];
+  document.getElementById('stat-steps').textContent = currentStep;
+  document.getElementById('stat-ach').textContent = s.ach.toFixed(4);
+  document.getElementById('stat-tort').textContent = s.tort.toFixed(4);
+  document.getElementById('stat-gap').textContent = s.gap < 0.0001 ? '0' : s.gap.toFixed(6);
+  document.getElementById('stat-sum').textContent = s.sum.toFixed(4) + 'm';
+  // Terms display
+  const terms = steps.slice(1, currentStep + 1).filter(s => s.term != null)
+    .map(s => s.term < 0.001 ? s.term.toExponential(2) : s.term.toFixed(4)).join(' + ');
+  document.getElementById('sum-terms').textContent = terms || '—';
+}
+
+function render() {
+  drawRace();
+  drawSum();
+  updateStats();
+}
+
+function advance() {
+  if (currentStep < steps.length - 1) {
+    currentStep++;
+    render();
+    if (currentStep === steps.length - 1) {
+      running = false;
+      clearInterval(animTimer);
+      animTimer = null;
+      document.getElementById('step-btn').disabled = true;
+      document.getElementById('start-btn').textContent = 'START RACE';
+    }
+  }
+}
+
+buildSteps();
+render();
+
+document.getElementById('start-btn').addEventListener('click', function() {
+  if (running) {
+    running = false;
+    clearInterval(animTimer);
+    animTimer = null;
+    this.textContent = 'RESUME';
+    document.getElementById('step-btn').disabled = false;
+    return;
+  }
+  running = true;
+  this.textContent = 'PAUSE';
+  document.getElementById('step-btn').disabled = true;
+  const speed = parseInt(document.getElementById('speed-sl').value);
+  const delay = Math.round(2000 / speed);
+  animTimer = setInterval(() => { advance(); }, delay);
+});
+
+document.getElementById('step-btn').addEventListener('click', () => {
+  if (!running) advance();
+});
+
+document.getElementById('reset-btn').addEventListener('click', () => {
+  running = false;
+  clearInterval(animTimer);
+  animTimer = null;
+  currentStep = 0;
+  document.getElementById('start-btn').textContent = 'START RACE';
+  document.getElementById('step-btn').disabled = false;
+  render();
+});
+
+document.getElementById('speed-sl').addEventListener('input', () => {
+  if (running) {
+    clearInterval(animTimer);
+    const speed = parseInt(document.getElementById('speed-sl').value);
+    const delay = Math.round(2000 / speed);
+    animTimer = setInterval(() => { advance(); }, delay);
+  }
+});
+</script>
+</body>
+</html>
