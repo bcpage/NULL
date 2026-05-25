@@ -37,6 +37,7 @@
   flash.id = 'mnav-flash';
   document.body.appendChild(flash);
 
+  const num = parseInt(gameId, 10);
   let exits = {};
 
   const nav = document.createElement('div');
@@ -108,22 +109,29 @@
     if (dir) { e.preventDefault(); move(dir); }
   });
 
-  // Load exits for this room
-  fetch('/api/move?from=' + gameId + '&dir=up')
-    .then(() => {}) // warm the connection
-    .catch(() => {});
-
+  // Compute exits arithmetically: right=+1, left=-1, up=+10, down=-10
+  // Validate against the GAMES array so buttons only light up for real rooms
   function loadExits() {
-    const dirs = ['up', 'down', 'left', 'right'];
-    Promise.all(dirs.map(dir =>
-      fetch('/api/move?from=' + gameId + '&dir=' + dir)
-        .then(r => r.json())
-        .then(data => ({ dir, dest: data.destination }))
-    )).then(results => {
-      exits = {};
-      results.forEach(({ dir, dest }) => { if (dest) exits[dir] = dest; });
-      updateButtons();
-    });
+    const candidates = {
+      right: num + 1,
+      left:  num - 1,
+      up:    num + 10,
+      down:  num - 10,
+    };
+    fetch('/api/games')
+      .then(r => r.json())
+      .then(games => {
+        const gameSet = new Set(games);
+        exits = {};
+        for (const [dir, destNum] of Object.entries(candidates)) {
+          if (destNum >= 1) {
+            const destId = String(destNum).padStart(5, '0');
+            if (gameSet.has(destId)) exits[dir] = destId;
+          }
+        }
+        updateButtons();
+      })
+      .catch(() => updateButtons());
   }
 
   loadExits();
