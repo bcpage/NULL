@@ -35,8 +35,8 @@ It replaces re-generating assessments from scratch each session.
 | ~~Partial Matrix Fragments ×5~~ | 8% | **BUILT → 00128–00132** (2026-05-25). Five sector printouts A–E. Fragment C has corrupt node 00070. Fragment D flags JOSHUA/gameover rooms. Fragment E contains itself. |
 | ~~2D Platformer (Llama)~~ | 11% | **BUILT → 00133** (2026-05-25). 3 levels, moving platforms, gem collection, llama sprite with walking animation. |
 | Shape Factory | 7% | Draw custom tetromino-like pieces → they enter the Wrong Tetris piece pool (00107). Wrong Tetris is built but hardcoded client-side. Needs: server persistence for custom pieces + 00107 updated to load them. Small lift. |
-| Racetrack / Vector Race | 10% | Grid vector physics, 2-player turn-based racing. WebSocket multiplayer. Spec says "strong candidate." Clean, well-understood mechanic. |
-| Paper Soccer | 10% | Same pattern as Racetrack: grid graph, 2-player WS, bounce rules, goal detection. Build after or alongside Racetrack — shared WS pattern. |
+| ~~Racetrack / Vector Race~~ | ~~10%~~ | **BUILT → 00135** (2026-05-25). Grid vector physics, 2-player turn-based WS, 9-button velocity pad, keyboard numpad. |
+| ~~Paper Soccer~~ | ~~10%~~ | **BUILT → 00136** (2026-05-25). 9×13 grid, bounce rule, goal detection, edge drawing on canvas. |
 
 ---
 
@@ -44,8 +44,8 @@ It replaces re-generating assessments from scratch each session.
 
 | Room | Est. % | What needs deciding |
 |------|--------|---------------------|
-| Zork II: Wizard of Frobozz | 8% | **Option A** (embed a JS Z-machine + Zork II data file) has copyright issues. **Option B** (write original IF inspired by Zork II) is clear. Decision needed: which path? Option B is recommended — write the rooms, then build the IF engine around them. |
-| HAL 9000 Room(s) | 8–15% | Three ideas in spec: (1) blinking red eye + quotes (easy, ~5%), (2) AE-35 unit fault diagnostic (medium, ~8%), (3) HAL regressing to simpler states over time (hard, ~15%). Pick one. The eye version is an immediate build. |
+| ~~Zork II: Wizard of Frobozz~~ | ~~8%~~ | **BUILT → 00137** (2026-05-25). Original NULL IF with 12 rooms, full parser, Wizard of Frobozz appearances, inventory, score. |
+| ~~HAL 9000 Room(s)~~ | ~~8–15%~~ | **BUILT → 00134** (2026-05-25). Blinking red eye, pupil tracks cursor, rotating quotes, text input with contextual responses. |
 | TARDIS | 12% | Blue box exterior → step inside → much larger interior. The inside layout (what's in there? how many sub-rooms? what's the nav mechanic?) needs to be defined before writing a line of code. Visually interesting once specced. |
 | The Tile Room | 20%+ | Players mutate the live nav map in real time. Auto-separation algorithm prevents everyone ending up in the same room. The algorithm is the design unknown. Not ready. |
 | The NULL Zoo | 22%+ | 10 themed enclosures with a custom mini-map nav. Each enclosure has a creature (palindromes, uncomputable things, etc.). Needs: enclosure list, creature descriptions, nav layout. Heavy design before any code. |
@@ -86,8 +86,12 @@ Built: 00118–00125 (8 rooms)
 ~~Source Code Room + Compression Engine + Partial Matrix Fragments ×5 + Llama~~
 Built: 00126–00133 (8 rooms). Warm session ~1.5 pts/room.
 
-### Session C — ~25% budget, READY + resolve one BLOCKED
-Shape Factory + 2D Platformer + resolve presence tracking → build Observation Room + NULL Room
+### ~~Session C — ~25% budget, READY + DESIGN resolved~~ ✅ DONE (2026-05-25 session 3)
+~~HAL 9000 Eye + Vector Race + Paper Soccer + NULL Interactive Fiction~~
+Built: 00134–00137 (4 rooms, server-heavy). Warm session resumed from summary.
+
+### Session D — ~20% budget, READY + BLOCKED
+Shape Factory + resolve presence tracking → build Observation Room + consider Tamagotchi
 
 ---
 
@@ -115,3 +119,7 @@ These appear in BACKLOG_INDEX.md but are done:
 | Huffman Compression Engine | 00127 | 2026-05-25 |
 | Matrix Fragments ×5 | 00128–00132 | 2026-05-25 |
 | Llama (2D Platformer) | 00133 | 2026-05-25 |
+| HAL 9000 — The Eye | 00134 | 2026-05-25 |
+| Vector Race (Racetrack) | 00135 | 2026-05-25 |
+| Paper Soccer | 00136 | 2026-05-25 |
+| NULL Interactive Fiction | 00137 | 2026-05-25 |
