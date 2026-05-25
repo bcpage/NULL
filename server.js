@@ -13,7 +13,8 @@ const GAMES = ['00001', '00002', '00003', '00004', '00005', '00006', '00007', '0
   '00102', '00103', '00104', '00105', '00106', '00107', '00108', '00109',
   '00110', '00111', '00112', '00113', '00114', '00115', '00116', '00117',
   '00118', '00119', '00120', '00121', '00122', '00123', '00124', '00125',
-  '00126', '00127', '00128', '00129', '00130', '00131', '00132', '00133'];
+  '00126', '00127', '00128', '00129', '00130', '00131', '00132', '00133',
+  '00134', '00135', '00136', '00137'];
 
 // ─── Matrix navigation ────────────────────────────────────────────────────────
 const MATRIX_FILE = path.join(__dirname, 'data', 'matrix.json');
@@ -225,6 +226,63 @@ function updateUserFromRequest(deviceId, req, roomId) {
     if (!user.rooms.includes(roomId)) user.rooms.push(roomId);
   }
   saveUsers();
+}
+
+// ─── Racetrack / Vector Race (00135) ─────────────────────────────────────────
+const RACE_W = 24, RACE_H = 16, RACE_FINISH = 22;
+const raceSeats = new WeakMap(); // ws → seat index
+function freshRace() {
+  return {
+    players: [
+      { x: 2, y: 5,  vx: 0, vy: 0, crashed: false },
+      { x: 2, y: 10, vx: 0, vy: 0, crashed: false },
+    ],
+    turn: 0, status: 'waiting', winner: null,
+    trails: [ [[2,5]], [[2,10]] ],
+    seatCount: 0,
+  };
+}
+let race = freshRace();
+function raceStateMsg() { return { game:'race', type:'state', ...race, seats: [!!race._s0, !!race._s1] }; }
+function raceSeatIdx(ws) { return raceSeats.has(ws) ? raceSeats.get(ws) : -1; }
+
+// ─── Paper Soccer (00136) ─────────────────────────────────────────────────────
+// 9×13 grid of nodes. Goals at col 3-5, row 0 (P2 goal) and row 12 (P1 goal).
+const SOCC_W = 9, SOCC_H = 13;
+const soccSeats = new WeakMap();
+function freshSoccer() {
+  return {
+    ball: { x: 4, y: 6 },
+    edges: [],     // serialisable array of [x1,y1,x2,y2]
+    edgeSet: new Set(), // runtime lookup
+    turn: 0, status: 'waiting', winner: null, seatCount: 0,
+  };
+}
+let soccer = freshSoccer();
+function soccerStateMsg() {
+  const { ball, edges, turn, status, winner } = soccer;
+  return { game:'soccer', type:'state', ball, edges, turn, status, winner,
+    seats: [!!soccer._s0, !!soccer._s1] };
+}
+function soccEdgeKey(x1,y1,x2,y2) {
+  if (x1>x2||(x1===x2&&y1>y2)) return `${x2},${y2},${x1},${y1}`;
+  return `${x1},${y1},${x2},${y2}`;
+}
+function soccNodeDegree(x,y) {
+  return soccer.edges.filter(([ax,ay,bx,by])=>(ax===x&&ay===y)||(bx===x&&by===y)).length;
+}
+function soccValidMoves(x,y) {
+  const moves=[];
+  for(let dx=-1;dx<=1;dx++) for(let dy=-1;dy<=1;dy++) {
+    if(!dx&&!dy) continue;
+    const nx=x+dx,ny=y+dy;
+    if(nx<0||nx>=SOCC_W||ny<0||ny>=SOCC_H) continue;
+    // Goal columns: only cols 3,4,5 accessible at rows 0 and 12
+    if((ny===0||ny===SOCC_H-1)&&(nx<3||nx>5)) continue;
+    const key=soccEdgeKey(x,y,nx,ny);
+    if(!soccer.edgeSet.has(key)) moves.push([nx,ny]);
+  }
+  return moves;
 }
 
 // ─── Typewriter (00022) ───────────────────────────────────────────────────────
@@ -1073,6 +1131,8 @@ wss.on('connection', (ws) => {
   ws.send(JSON.stringify({ game: 'metro', type: 'list', metronomes: metronomeList() }));
   ws.send(JSON.stringify({ game: 'chalk', type: 'init', strokes: chalkStrokes }));
   ws.send(JSON.stringify(dotsStateMsg()));
+  ws.send(JSON.stringify(raceStateMsg()));
+  ws.send(JSON.stringify(soccerStateMsg()));
   const metroId = metronomeNextId++;
   metronomeClientIds.set(ws, metroId);
 
@@ -1312,6 +1372,98 @@ wss.on('connection', (ws) => {
         }
       }
 
+      // ── Racetrack ──
+      if (data.game === 'race' && data.type === 'join') {
+        if (!race._s0) { race._s0 = ws; raceSeats.set(ws, 0); race.seatCount++; }
+        else if (!race._s1 && race._s0 !== ws) { race._s1 = ws; raceSeats.set(ws, 1); race.seatCount++; }
+        if (race._s0 && race._s1 && race.status === 'waiting') { race.status = 'playing'; }
+        broadcast(raceStateMsg());
+      }
+      if (data.game === 'race' && data.type === 'move') {
+        if (race.status !== 'playing') return;
+        const seat = raceSeatIdx(ws);
+        if (seat !== race.turn) return;
+        const { dvx, dvy } = data;
+        if (![-1,0,1].includes(dvx) || ![-1,0,1].includes(dvy)) return;
+        const p = race.players[seat];
+        p.vx = Math.max(-4, Math.min(4, p.vx + dvx));
+        p.vy = Math.max(-4, Math.min(4, p.vy + dvy));
+        const nx = p.x + p.vx, ny = p.y + p.vy;
+        if (nx < 0 || nx >= RACE_W || ny < 0 || ny >= RACE_H) {
+          // crash — reset velocity, stay
+          p.vx = 0; p.vy = 0; p.crashed = true;
+          setTimeout(() => { p.crashed = false; broadcast(raceStateMsg()); }, 800);
+        } else if (nx >= RACE_FINISH) {
+          race.status = 'won'; race.winner = seat;
+          race.players[seat].x = nx; race.players[seat].y = ny;
+          race.trails[seat].push([nx, ny]);
+          broadcast(raceStateMsg());
+          setTimeout(() => {
+            race = freshRace();
+            if (race._s0) race.seatCount++; if (race._s1) race.seatCount++;
+            if (race._s0 && race._s1) race.status = 'playing';
+            broadcast(raceStateMsg());
+          }, 4000);
+          return;
+        } else {
+          p.x = nx; p.y = ny; p.crashed = false;
+          race.trails[seat].push([nx, ny]);
+        }
+        race.turn = race.turn === 0 ? 1 : 0;
+        broadcast(raceStateMsg());
+      }
+      if (data.game === 'race' && data.type === 'reset') {
+        const seat = raceSeatIdx(ws);
+        if (seat < 0) return;
+        race = freshRace();
+        broadcast(raceStateMsg());
+      }
+
+      // ── Paper Soccer ──
+      if (data.game === 'soccer' && data.type === 'join') {
+        if (!soccer._s0) { soccer._s0 = ws; soccSeats.set(ws, 0); soccer.seatCount++; }
+        else if (!soccer._s1 && soccer._s0 !== ws) { soccer._s1 = ws; soccSeats.set(ws, 1); soccer.seatCount++; }
+        if (soccer._s0 && soccer._s1 && soccer.status === 'waiting') { soccer.status = 'playing'; }
+        broadcast(soccerStateMsg());
+      }
+      if (data.game === 'soccer' && data.type === 'move') {
+        if (soccer.status !== 'playing') return;
+        const seat = soccSeats.has(ws) ? soccSeats.get(ws) : -1;
+        if (seat !== soccer.turn) return;
+        const { tx, ty } = data;
+        if (typeof tx !== 'number' || typeof ty !== 'number') return;
+        const { x, y } = soccer.ball;
+        const dx = tx - x, dy = ty - y;
+        if (Math.abs(dx) > 1 || Math.abs(dy) > 1 || (!dx && !dy)) return;
+        const key = soccEdgeKey(x, y, tx, ty);
+        if (soccer.edgeSet.has(key)) return;
+        const validMoves = soccValidMoves(x, y);
+        if (!validMoves.some(([mx,my]) => mx===tx && my===ty)) return;
+        soccer.edgeSet.add(key);
+        soccer.edges.push([x, y, tx, ty]);
+        soccer.ball = { x: tx, y: ty };
+        // Check goal
+        if (ty === 0 && tx >= 3 && tx <= 5) { soccer.status = 'won'; soccer.winner = 1; broadcast(soccerStateMsg()); return; }
+        if (ty === SOCC_H-1 && tx >= 3 && tx <= 5) { soccer.status = 'won'; soccer.winner = 0; broadcast(soccerStateMsg()); return; }
+        // Bounce: if landing node already has edges, same player moves again
+        const deg = soccNodeDegree(tx, ty);
+        if (deg > 1) {
+          // same turn — but check if any valid moves remain
+          const remaining = soccValidMoves(tx, ty);
+          if (!remaining.length) { soccer.status = 'won'; soccer.winner = soccer.turn === 0 ? 1 : 0; }
+          // else same turn continues
+        } else {
+          soccer.turn = soccer.turn === 0 ? 1 : 0;
+        }
+        broadcast(soccerStateMsg());
+      }
+      if (data.game === 'soccer' && data.type === 'reset') {
+        const seat = soccSeats.has(ws) ? soccSeats.get(ws) : -1;
+        if (seat < 0) return;
+        soccer = freshSoccer();
+        broadcast(soccerStateMsg());
+      }
+
     } catch (e) {}
   });
 
@@ -1320,6 +1472,12 @@ wss.on('connection', (ws) => {
     if (cid) galleryScores.delete(cid);
     const mid = metronomeClientIds.get(ws);
     if (mid) { metronomes.delete(mid); broadcast({ game: 'metro', type: 'list', metronomes: metronomeList() }); }
+    // Race seat cleanup
+    if (race._s0 === ws) { race._s0 = null; race.seatCount = Math.max(0, race.seatCount-1); if (race.status==='playing') race.status='waiting'; broadcast(raceStateMsg()); }
+    if (race._s1 === ws) { race._s1 = null; race.seatCount = Math.max(0, race.seatCount-1); if (race.status==='playing') race.status='waiting'; broadcast(raceStateMsg()); }
+    // Soccer seat cleanup
+    if (soccer._s0 === ws) { soccer._s0 = null; soccer.seatCount = Math.max(0, soccer.seatCount-1); if (soccer.status==='playing') soccer.status='waiting'; broadcast(soccerStateMsg()); }
+    if (soccer._s1 === ws) { soccer._s1 = null; soccer.seatCount = Math.max(0, soccer.seatCount-1); if (soccer.status==='playing') soccer.status='waiting'; broadcast(soccerStateMsg()); }
     console.log(`Player disconnected. Total: ${wss.clients.size}`);
   });
 });
