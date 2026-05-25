@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>00147 — Goldfish</title>
+<link rel="icon" href="data:,">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #050508; color: #8a9aaa;
+    font-family: 'Courier New', monospace;
+    min-height: 100vh; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 16px; padding: 40px 20px;
+  }
+  .room-id { font-size: 10px; letter-spacing: 5px; color: #223; }
+  .title { font-size: 11px; letter-spacing: 5px; color: #445; text-transform: uppercase; }
+  #bowl-canvas { display: block; border: 1px solid #1a1a2a; }
+  .uptime { font-size: 10px; letter-spacing: 2px; color: #223; text-align: center; }
+  .note { font-size: 10px; letter-spacing: 1px; color: #223; text-align: center; line-height: 2.2; max-width: 360px; border-top: 1px solid #111120; padding-top: 12px; }
+</style>
+</head>
+<body data-game="00147" data-nav="matrix">
+<div class="room-id">ROOM 00147</div>
+<div class="title">Goldfish</div>
+
+<canvas id="bowl-canvas" width="380" height="320"></canvas>
+<div class="uptime" id="uptime">The fish has been here since launch.</div>
+
+<div class="note">
+  The fish has been here since launch.<br>
+  It has not been fed.<br>
+  It does not seem to mind.<br>
+  It has been observed approximately<br>
+  <span id="visit-count">—</span> times.
+</div>
+
+<script src="/shared/matrix-nav.js"></script>
+<script>
+const canvas = document.getElementById('bowl-canvas');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+
+// Fish state
+const fish = {
+  x: W / 2, y: H / 2 - 20,
+  targetX: W / 2 + 60, targetY: H / 2 - 10,
+  angle: 0, speed: 0.4,
+  scale: 1 + Math.sin(0) * 0.05,
+  tailPhase: 0,
+  turnTimer: 0,
+};
+
+// Bubbles
+const bubbles = [];
+function addBubble() {
+  bubbles.push({
+    x: fish.x + (Math.random() - 0.5) * 10,
+    y: fish.y - 15,
+    r: 2 + Math.random() * 3,
+    vy: -0.3 - Math.random() * 0.3,
+    alpha: 0.6,
+  });
+}
+
+let frame = 0;
+let bubbleTimer = 0;
+
+function newTarget() {
+  // Random point inside the bowl
+  const bowlCx = W / 2, bowlCy = H / 2 - 10;
+  const bowlR = 130;
+  const angle = Math.random() * Math.PI * 2;
+  const r = 40 + Math.random() * 75;
+  fish.targetX = bowlCx + Math.cos(angle) * r;
+  fish.targetY = bowlCy + Math.sin(angle) * r * 0.7; // oval squish
+}
+
+function updateFish() {
+  const dx = fish.targetX - fish.x;
+  const dy = fish.targetY - fish.y;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+
+  if (dist < 8) {
+    fish.turnTimer++;
+    if (fish.turnTimer > 60) {
+      newTarget();
+      fish.turnTimer = 0;
+    }
+  } else {
+    const targetAngle = Math.atan2(dy, dx);
+    // Smooth turning
+    let da = targetAngle - fish.angle;
+    while (da > Math.PI) da -= Math.PI * 2;
+    while (da < -Math.PI) da += Math.PI * 2;
+    fish.angle += da * 0.04;
+    fish.x += Math.cos(fish.angle) * fish.speed;
+    fish.y += Math.sin(fish.angle) * fish.speed;
+  }
+
+  fish.tailPhase += 0.15;
+  fish.scale = 1;
+
+  // Bubble occasionally
+  bubbleTimer++;
+  if (bubbleTimer > 120 + Math.random() * 180) {
+    addBubble();
+    bubbleTimer = 0;
+  }
+
+  // Update bubbles
+  for (let i = bubbles.length - 1; i >= 0; i--) {
+    const b = bubbles[i];
+    b.y += b.vy;
+    b.x += Math.sin(frame * 0.05 + i) * 0.3;
+    b.alpha -= 0.004;
+    if (b.alpha <= 0 || b.y < H / 2 - 150) bubbles.splice(i, 1);
+  }
+}
+
+function drawBowl() {
+  // Bowl background water
+  const bowlCx = W / 2, bowlCy = H / 2 - 10;
+  const bowlRx = 145, bowlRy = 135;
+
+  // Water fill gradient
+  const wg = ctx.createRadialGradient(bowlCx - 20, bowlCy - 20, 10, bowlCx, bowlCy, bowlRx);
+  wg.addColorStop(0, '#0a1824');
+  wg.addColorStop(0.5, '#081220');
+  wg.addColorStop(1, '#040c18');
+  ctx.save();
+  ctx.beginPath();
+  ctx.ellipse(bowlCx, bowlCy, bowlRx, bowlRy, 0, 0, Math.PI * 2);
+  ctx.clip();
+  ctx.fillStyle = wg;
+  ctx.fillRect(0, 0, W, H);
+
+  // Caustic light patterns
+  ctx.globalAlpha = 0.04;
+  for (let i = 0; i < 8; i++) {
+    const lx = bowlCx + Math.cos(frame * 0.008 + i * 1.2) * 60;
+    const ly = bowlCy - 30 + Math.sin(frame * 0.006 + i * 0.9) * 30;
+    ctx.fillStyle = '#4a8acc';
+    ctx.beginPath();
+    ctx.ellipse(lx, ly, 20 + i * 3, 8, frame * 0.01 + i * 0.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  // Gravel at bottom
+  for (let i = 0; i < 30; i++) {
+    const gx = bowlCx - 80 + (i / 30) * 160 + Math.sin(i * 2.1) * 8;
+    const gy = bowlCy + 100 + Math.cos(i * 1.7) * 4;
+    ctx.beginPath();
+    ctx.ellipse(gx, gy, 4 + Math.sin(i) * 2, 3, 0, 0, Math.PI * 2);
+    ctx.fillStyle = i % 3 === 0 ? '#3a3020' : i % 3 === 1 ? '#2a2818' : '#4a4030';
+    ctx.fill();
+  }
+
+  // Small plant in corner
+  ctx.strokeStyle = '#1a3a18';
+  ctx.lineWidth = 1.5;
+  const px = bowlCx - 80, py = bowlCy + 100;
+  for (let i = 0; i < 5; i++) {
+    const wa = -Math.PI/2 + (i - 2) * 0.3 + Math.sin(frame * 0.02) * 0.05;
+    const wl = 20 + i * 5;
+    ctx.beginPath();
+    ctx.moveTo(px, py);
+    ctx.lineTo(px + Math.cos(wa) * wl, py + Math.sin(wa) * wl);
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+function drawFish() {
+  ctx.save();
+  ctx.translate(fish.x, fish.y);
+  ctx.rotate(fish.angle);
+
+  const tailWag = Math.sin(fish.tailPhase) * 0.3;
+
+  // Tail
+  ctx.save();
+  ctx.rotate(tailWag);
+  ctx.beginPath();
+  ctx.moveTo(-18, 0);
+  ctx.lineTo(-32, -12);
+  ctx.lineTo(-28, 0);
+  ctx.lineTo(-32, 12);
+  ctx.closePath();
+  ctx.fillStyle = '#e8921a';
+  ctx.fill();
+  ctx.restore();
+
+  // Body
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 22, 12, 0, 0, Math.PI * 2);
+  const bg = ctx.createRadialGradient(-5, -4, 2, 0, 0, 18);
+  bg.addColorStop(0, '#ffcc44');
+  bg.addColorStop(0.5, '#ee8822');
+  bg.addColorStop(1, '#cc5500');
+  ctx.fillStyle = bg;
+  ctx.fill();
+
+  // Scale lines
+  ctx.strokeStyle = 'rgba(200,100,0,0.3)';
+  ctx.lineWidth = 0.5;
+  for (let i = 0; i < 5; i++) {
+    ctx.beginPath();
+    ctx.arc(-8 + i * 5, 0, 5, -Math.PI/2, Math.PI/2);
+    ctx.stroke();
+  }
+
+  // Fin top
+  ctx.beginPath();
+  ctx.moveTo(-2, -11);
+  ctx.lineTo(5, -20);
+  ctx.lineTo(12, -11);
+  ctx.fillStyle = '#ee8822';
+  ctx.fill();
+
+  // Eye
+  ctx.beginPath();
+  ctx.arc(14, -3, 3.5, 0, Math.PI * 2);
+  ctx.fillStyle = '#fff';
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(15, -3, 1.5, 0, Math.PI * 2);
+  ctx.fillStyle = '#111';
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(14.5, -3.5, 0.7, 0, Math.PI * 2);
+  ctx.fillStyle = '#fff';
+  ctx.fill();
+
+  // Mouth
+  ctx.beginPath();
+  ctx.arc(20, 1, 2, 0.4, Math.PI - 0.4);
+  ctx.strokeStyle = 'rgba(180,60,0,0.5)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+function drawBowlOutline() {
+  const bowlCx = W / 2, bowlCy = H / 2 - 10;
+  const bowlRx = 145, bowlRy = 135;
+
+  // Bowl rim
+  ctx.beginPath();
+  ctx.ellipse(bowlCx, bowlCy - bowlRy + 12, bowlRx + 8, 18, 0, 0, Math.PI * 2);
+  ctx.fillStyle = '#1a1a28';
+  ctx.fill();
+  ctx.strokeStyle = '#2a2a3a';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Water surface shimmer
+  ctx.save();
+  ctx.beginPath();
+  ctx.ellipse(bowlCx, bowlCy - bowlRy + 12, bowlRx + 6, 14, 0, 0, Math.PI * 2);
+  ctx.clip();
+  for (let i = 0; i < 5; i++) {
+    const sx = bowlCx - 80 + i * 36 + Math.sin(frame * 0.04 + i) * 8;
+    ctx.strokeStyle = 'rgba(120,180,255,0.15)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(sx, bowlCy - bowlRy + 8);
+    ctx.lineTo(sx + 15, bowlCy - bowlRy + 8);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // Bowl glass outline
+  ctx.beginPath();
+  ctx.ellipse(bowlCx, bowlCy, bowlRx, bowlRy, 0, 0, Math.PI * 2);
+  ctx.strokeStyle = '#1e2030';
+  ctx.lineWidth = 3;
+  ctx.stroke();
+
+  // Glass highlight
+  ctx.beginPath();
+  ctx.ellipse(bowlCx - 60, bowlCy - 60, 30, 15, -Math.PI/4, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(200,220,255,0.08)';
+  ctx.lineWidth = 8;
+  ctx.stroke();
+
+  // Bowl base
+  ctx.beginPath();
+  ctx.moveTo(bowlCx - 40, bowlCy + bowlRy - 5);
+  ctx.lineTo(bowlCx - 28, H - 20);
+  ctx.lineTo(bowlCx + 28, H - 20);
+  ctx.lineTo(bowlCx + 40, bowlCy + bowlRy - 5);
+  ctx.fillStyle = '#141420';
+  ctx.fill();
+  ctx.strokeStyle = '#1e2030';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Base plate
+  ctx.beginPath();
+  ctx.ellipse(bowlCx, H - 20, 35, 8, 0, 0, Math.PI * 2);
+  ctx.fillStyle = '#141420';
+  ctx.fill();
+  ctx.strokeStyle = '#1e2030';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+}
+
+function drawBubbles() {
+  bubbles.forEach(b => {
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(120,180,255,${b.alpha})`;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    // Highlight
+    ctx.beginPath();
+    ctx.arc(b.x - b.r * 0.3, b.y - b.r * 0.3, b.r * 0.3, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(200,230,255,${b.alpha * 0.4})`;
+    ctx.fill();
+  });
+}
+
+function render() {
+  frame++;
+  ctx.fillStyle = '#050508';
+  ctx.fillRect(0, 0, W, H);
+
+  updateFish();
+  drawBowl();
+  drawBubbles();
+  drawFish();
+  drawBowlOutline();
+}
+
+// Visit counter
+const visits = (parseInt(localStorage.getItem('goldfish_visits') || '0')) + 1;
+localStorage.setItem('goldfish_visits', visits.toString());
+document.getElementById('visit-count').textContent = visits.toLocaleString();
+
+// Uptime display
+const LAUNCH_DATE = new Date('2025-01-01'); // approximate platform launch
+function updateUptime() {
+  const now = new Date();
+  const days = Math.floor((now - LAUNCH_DATE) / 86400000);
+  document.getElementById('uptime').textContent =
+    `The fish has been here for approximately ${days.toLocaleString()} days.`;
+}
+updateUptime();
+
+// Pick initial target
+newTarget();
+setInterval(render, 33); // ~30fps
+</script>
+</body>
+</html>

@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>00145 — Sorites Paradox</title>
+<link rel="icon" href="data:,">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #050508; color: #8a9aaa;
+    font-family: 'Courier New', monospace;
+    min-height: 100vh; display: flex; flex-direction: column;
+    align-items: center; gap: 18px;
+    padding: 40px 20px 60px;
+  }
+  .room-id { font-size: 10px; letter-spacing: 5px; color: #223; }
+  .title { font-size: 11px; letter-spacing: 5px; color: #445; text-transform: uppercase; }
+  .intro { font-size: 10px; letter-spacing: 1px; color: #334; line-height: 2; max-width: 460px; text-align: center; }
+  #heap-canvas { border: 1px solid #1a1a2a; display: block; cursor: default; }
+  .controls { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+  button {
+    background: #0c0c18; border: 1px solid #1a2a3a; color: #7a9aaa;
+    font-family: 'Courier New', monospace; font-size: 10px; letter-spacing: 2px;
+    padding: 8px 16px; cursor: pointer;
+  }
+  button:hover { background: #10101e; border-color: #2a3a4a; }
+  button.heap-btn { border-color: #4a7a2a; color: #7acc7a; }
+  button.heap-btn:hover { background: #0a140a; }
+  button:disabled { opacity: 0.4; cursor: default; }
+  .stats { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; font-size: 10px; letter-spacing: 2px; color: #334; }
+  .stats span { color: #556; }
+  #question { font-size: 11px; letter-spacing: 3px; color: #445; text-align: center; min-height: 20px; }
+  .agg-section { max-width: 540px; width: 100%; }
+  .agg-label { font-size: 10px; letter-spacing: 3px; color: #334; border-bottom: 1px solid #111120; padding-bottom: 4px; margin-bottom: 10px; }
+  #agg-canvas { border: 1px solid #1a1a2a; display: block; }
+  .agg-stats { font-size: 10px; letter-spacing: 1px; color: #334; line-height: 2; }
+  .agg-stats span { color: #556; }
+  .paradox-text { max-width: 500px; font-size: 10px; letter-spacing: 1px; color: #334; line-height: 2.2; border: 1px solid #0d0d18; padding: 14px 18px; }
+  .paradox-text em { color: #4a6a8a; font-style: normal; }
+  .note { font-size: 10px; letter-spacing: 1px; color: #223; text-align: center; line-height: 2.2; max-width: 460px; border-top: 1px solid #111120; padding-top: 16px; }
+  #result-msg { font-size: 10px; letter-spacing: 2px; color: #445; min-height: 20px; text-align: center; }
+</style>
+</head>
+<body data-game="00145" data-nav="matrix">
+<div class="room-id">ROOM 00145</div>
+<div class="title">Sorites Paradox</div>
+
+<div class="intro">
+  One grain of sand is not a heap.<br>
+  Adding one grain to a non-heap does not make a heap.<br>
+  Therefore: no number of grains is a heap.<br>
+  Yet clearly a million grains is a heap.
+</div>
+
+<div id="question">IS THIS A HEAP?</div>
+
+<canvas id="heap-canvas" width="540" height="220"></canvas>
+
+<div class="controls">
+  <button id="add-1">+ 1 GRAIN</button>
+  <button id="add-10">+ 10 GRAINS</button>
+  <button id="add-100">+ 100 GRAINS</button>
+  <button class="heap-btn" id="heap-btn" disabled>THIS IS A HEAP ▲</button>
+  <button id="reset-btn">RESET</button>
+</div>
+
+<div class="stats">
+  <span>GRAINS: <span id="grain-count">0</span></span>
+  <span>STATUS: <span id="heap-status">not a heap</span></span>
+</div>
+
+<div id="result-msg"></div>
+
+<div class="agg-section">
+  <div class="agg-label">WHEN OTHERS SAID "HEAP"</div>
+  <canvas id="agg-canvas" width="540" height="80"></canvas>
+  <div class="agg-stats" id="agg-stats">Loading…</div>
+</div>
+
+<div class="paradox-text">
+  <em>The Paradox (Eubulides of Miletus, ~4th century BC):</em><br><br>
+  The Sorites Paradox (from Greek σωρός, "heap") — also called the paradox
+  of the heap. Eubulides asked: if you have a heap of sand and remove one grain,
+  do you still have a heap? Applying this recursively, you could conclude that
+  a single grain of sand is a heap. Or that any large collection of grains is
+  not a heap. Both conclusions are absurd. The paradox has not been resolved
+  in 2,400 years. Proposed solutions include fuzzy logic, supervaluationism,
+  degree theory, and epistemicism. None are fully satisfying.<br><br>
+  <em>What it reveals:</em><br><br>
+  Some predicates — "heap," "tall," "bald," "red" — resist precise definition.
+  Language has vague predicates. Vague predicates have tolerance: applying them
+  is unaffected by small changes. This tolerance, combined with large accumulated
+  changes, produces the paradox. The problem is not with heaps. The problem is
+  with the word "heap."
+</div>
+
+<div class="note">
+  You identified the threshold at N grains.<br>
+  Others disagreed.<br>
+  The grain does not know it is in a heap.<br>
+  The heap does not know it is a heap.<br>
+  Language does not resolve this.<br>
+  Mathematics does not resolve this.<br>
+  Adding one more grain.
+</div>
+
+<script src="/shared/matrix-nav.js"></script>
+<script>
+const canvas = document.getElementById('heap-canvas');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+
+let grains = 0;
+let answered = false;
+let placed = []; // { x, y, r, color } for each visible grain
+
+const MAX_DISPLAY = 800; // max grains shown on canvas
+
+function grainColor() {
+  const v = 180 + Math.floor(Math.random() * 50);
+  const g = v - 20 + Math.floor(Math.random() * 30);
+  return `rgb(${v},${g},${Math.floor(v * 0.4)})`;
+}
+
+function addGrains(n) {
+  grains += n;
+  // Add visual grains
+  const toAdd = Math.min(n, MAX_DISPLAY - placed.length);
+  for (let i = 0; i < toAdd; i++) {
+    // Heap shape: pile in center-bottom
+    const spread = Math.min(220, 10 + Math.sqrt(placed.length + i) * 5);
+    const baseX = W / 2 + (Math.random() - 0.5) * spread;
+    const maxY = H - 10 - Math.sqrt(placed.length + i) * 1.2;
+    const y = Math.max(10, maxY + (Math.random() - 0.5) * 10);
+    placed.push({
+      x: baseX,
+      y: Math.max(10, y),
+      r: 2 + Math.random() * 2,
+      c: grainColor(),
+    });
+  }
+  document.getElementById('grain-count').textContent = grains.toLocaleString();
+  document.getElementById('heap-btn').disabled = answered;
+  updateQuestion();
+  draw();
+}
+
+function updateQuestion() {
+  const el = document.getElementById('question');
+  if (answered) { el.textContent = ''; return; }
+  if (grains === 0) { el.textContent = 'ADD GRAINS TO BEGIN'; return; }
+  el.textContent = 'IS THIS A HEAP?';
+}
+
+function draw() {
+  ctx.fillStyle = '#060609';
+  ctx.fillRect(0, 0, W, H);
+
+  // Ground line
+  ctx.strokeStyle = '#1a1a2a';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(20, H - 8);
+  ctx.lineTo(W - 20, H - 8);
+  ctx.stroke();
+
+  // Draw grains
+  for (const g of placed) {
+    ctx.beginPath();
+    ctx.ellipse(g.x, g.y, g.r, g.r * 0.7, Math.random() * 0.5, 0, Math.PI * 2);
+    ctx.fillStyle = g.c;
+    ctx.fill();
+  }
+
+  // Count label
+  if (grains > MAX_DISPLAY) {
+    ctx.fillStyle = '#334';
+    ctx.font = '9px Courier New';
+    ctx.textAlign = 'center';
+    ctx.fillText(`+ ${(grains - MAX_DISPLAY).toLocaleString()} more (not shown)`, W / 2, H - 14);
+  }
+
+  // Grain count in corner
+  ctx.fillStyle = '#223';
+  ctx.font = '9px Courier New';
+  ctx.textAlign = 'left';
+  ctx.fillText(`${grains.toLocaleString()} grain${grains !== 1 ? 's' : ''}`, 22, 18);
+}
+
+document.getElementById('add-1').addEventListener('click', () => { if (!answered) addGrains(1); });
+document.getElementById('add-10').addEventListener('click', () => { if (!answered) addGrains(10); });
+document.getElementById('add-100').addEventListener('click', () => { if (!answered) addGrains(100); });
+
+document.getElementById('heap-btn').addEventListener('click', async () => {
+  if (answered || grains === 0) return;
+  answered = true;
+  document.getElementById('heap-btn').disabled = true;
+  document.getElementById('add-1').disabled = true;
+  document.getElementById('add-10').disabled = true;
+  document.getElementById('add-100').disabled = true;
+  document.getElementById('heap-status').textContent = 'HEAP';
+  document.getElementById('heap-status').style.color = '#7acc7a';
+  updateQuestion();
+
+  const resultEl = document.getElementById('result-msg');
+  resultEl.textContent = `You identified the heap at ${grains.toLocaleString()} grains.`;
+  resultEl.style.color = '#7a9aaa';
+
+  // Submit to server
+  try {
+    await fetch('/api/sorites', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ grains }),
+    });
+    loadAggregate();
+  } catch (e) {}
+
+  localStorage.setItem('sorites_answered', grains.toString());
+});
+
+document.getElementById('reset-btn').addEventListener('click', () => {
+  if (answered) return;
+  grains = 0;
+  placed = [];
+  document.getElementById('grain-count').textContent = '0';
+  document.getElementById('heap-btn').disabled = true;
+  document.getElementById('heap-status').textContent = 'not a heap';
+  document.getElementById('heap-status').style.color = '';
+  document.getElementById('result-msg').textContent = '';
+  updateQuestion();
+  draw();
+});
+
+// Aggregate display
+const aggCanvas = document.getElementById('agg-canvas');
+const actx = aggCanvas.getContext('2d');
+const AW = aggCanvas.width, AH = aggCanvas.height;
+
+async function loadAggregate() {
+  try {
+    const res = await fetch('/api/sorites');
+    const data = await res.json();
+    drawAggregate(data);
+    let statsText = `Total responses: <span>${data.count}</span>`;
+    if (data.median !== null) statsText += ` &nbsp; Median: <span>${data.median?.toLocaleString()} grains</span>`;
+    if (data.mean !== null) statsText += ` &nbsp; Mean: <span>${Math.round(data.mean)?.toLocaleString()} grains</span>`;
+    document.getElementById('agg-stats').innerHTML = statsText;
+  } catch (e) {
+    document.getElementById('agg-stats').textContent = 'No responses yet.';
+  }
+}
+
+function drawAggregate(data) {
+  actx.fillStyle = '#060609';
+  actx.fillRect(0, 0, AW, AH);
+  if (!data.count || !data.buckets) return;
+
+  const labels = data.buckets.map(b => b.label);
+  const counts = data.buckets.map(b => b.count);
+  const max = Math.max(1, ...counts);
+  const bw = Math.floor((AW - 40) / labels.length);
+
+  counts.forEach((v, i) => {
+    const x = 20 + i * bw;
+    const h = Math.round((v / max) * (AH - 24));
+    actx.fillStyle = `rgba(122,204,122,${0.2 + (v / max) * 0.6})`;
+    actx.fillRect(x + 1, AH - 16 - h, bw - 2, h);
+    if (v > 0) {
+      actx.fillStyle = '#334';
+      actx.font = '8px Courier New';
+      actx.textAlign = 'center';
+      actx.fillText(v, x + bw/2, AH - 18 - h);
+    }
+    actx.fillStyle = '#223';
+    actx.font = '7px Courier New';
+    actx.textAlign = 'center';
+    actx.fillText(labels[i], x + bw/2, AH - 4);
+  });
+
+  // Median line
+  if (data.median !== null) {
+    const medIdx = data.buckets.findIndex(b => {
+      const [lo] = b.label.split('-').map(Number);
+      return lo > data.median;
+    });
+    if (medIdx > 0) {
+      const mx = 20 + (medIdx - 0.5) * bw;
+      actx.strokeStyle = '#cc7a3a';
+      actx.lineWidth = 1;
+      actx.setLineDash([2, 2]);
+      actx.beginPath();
+      actx.moveTo(mx, 0); actx.lineTo(mx, AH - 16);
+      actx.stroke();
+      actx.setLineDash([]);
+    }
+  }
+}
+
+// Check if previously answered
+const prev = localStorage.getItem('sorites_answered');
+if (prev) {
+  answered = true;
+  document.getElementById('heap-btn').disabled = true;
+  ['add-1','add-10','add-100'].forEach(id => document.getElementById(id).disabled = true);
+  const n = parseInt(prev);
+  document.getElementById('result-msg').textContent = `Previously answered: ${n.toLocaleString()} grains.`;
+  document.getElementById('result-msg').style.color = '#334';
+  // Show that grain count
+  grains = n;
+  document.getElementById('grain-count').textContent = n.toLocaleString();
+}
+
+draw();
+loadAggregate();
+</script>
+</body>
+</html>

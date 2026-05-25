@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>00146 — Shared Pet</title>
+<link rel="icon" href="data:,">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #050508; color: #8a9aaa;
+    font-family: 'Courier New', monospace;
+    min-height: 100vh; display: flex; flex-direction: column;
+    align-items: center; gap: 16px;
+    padding: 40px 20px 60px;
+  }
+  .room-id { font-size: 10px; letter-spacing: 5px; color: #223; }
+  .title { font-size: 11px; letter-spacing: 5px; color: #445; text-transform: uppercase; }
+  #pet-canvas { border: 1px solid #1a1a2a; display: block; background: #060609; }
+  .pet-name { font-size: 16px; letter-spacing: 6px; color: #7a9aaa; text-align: center; }
+  .stats-grid {
+    display: grid; grid-template-columns: repeat(3, 160px); gap: 10px;
+    justify-content: center;
+  }
+  .stat-box {
+    border: 1px solid #1a1a2a; padding: 10px; display: flex; flex-direction: column; gap: 4px;
+  }
+  .stat-label { font-size: 9px; letter-spacing: 3px; color: #334; }
+  .stat-bar-wrap { height: 6px; background: #0a0a14; border: 1px solid #111120; }
+  .stat-bar { height: 100%; transition: width 0.5s; }
+  .stat-val { font-size: 10px; letter-spacing: 2px; color: #556; }
+  .actions { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+  button {
+    background: #0c0c18; border: 1px solid #1a2a3a; color: #7a9aaa;
+    font-family: 'Courier New', monospace; font-size: 10px; letter-spacing: 2px;
+    padding: 10px 22px; cursor: pointer;
+  }
+  button:hover { background: #10101e; border-color: #2a3a4a; }
+  button:disabled { opacity: 0.4; cursor: default; }
+  #feed-btn { border-color: #2a4a2a; color: #7acc7a; }
+  #feed-btn:hover { background: #0a140a; }
+  #play-btn { border-color: #2a3a6a; color: #7a9acc; }
+  #play-btn:hover { background: #0a0a1e; }
+  .info { font-size: 10px; letter-spacing: 1px; color: #334; text-align: center; line-height: 2; }
+  .info span { color: #556; }
+  .history { max-width: 380px; width: 100%; }
+  .history-label { font-size: 10px; letter-spacing: 3px; color: #334; border-bottom: 1px solid #111120; padding-bottom: 4px; margin-bottom: 8px; }
+  .history-entry { font-size: 9px; letter-spacing: 1px; color: #223; line-height: 2; border-bottom: 1px solid #0d0d18; padding: 4px 0; }
+  .history-entry .age { color: #445; }
+  #status-msg { font-size: 10px; letter-spacing: 2px; color: #334; min-height: 18px; text-align: center; }
+  .deceased { color: #cc4444; }
+  .note { font-size: 10px; letter-spacing: 1px; color: #223; text-align: center; line-height: 2; max-width: 380px; border-top: 1px solid #111120; padding-top: 14px; }
+</style>
+</head>
+<body data-game="00146" data-nav="matrix">
+<div class="room-id">ROOM 00146</div>
+<div class="title">Shared Pet</div>
+
+<canvas id="pet-canvas" width="320" height="200"></canvas>
+<div class="pet-name" id="pet-name">—</div>
+
+<div class="stats-grid">
+  <div class="stat-box">
+    <div class="stat-label">HUNGER</div>
+    <div class="stat-bar-wrap"><div class="stat-bar" id="hunger-bar" style="background:#cc5555"></div></div>
+    <div class="stat-val" id="hunger-val">0%</div>
+  </div>
+  <div class="stat-box">
+    <div class="stat-label">HAPPINESS</div>
+    <div class="stat-bar-wrap"><div class="stat-bar" id="happy-bar" style="background:#7acc7a"></div></div>
+    <div class="stat-val" id="happy-val">0%</div>
+  </div>
+  <div class="stat-box">
+    <div class="stat-label">HEALTH</div>
+    <div class="stat-bar-wrap"><div class="stat-bar" id="health-bar" style="background:#5a9acc"></div></div>
+    <div class="stat-val" id="health-val">0%</div>
+  </div>
+</div>
+
+<div class="info">
+  AGE: <span id="pet-age">—</span> &nbsp; BORN: <span id="pet-born">—</span>
+</div>
+
+<div class="actions">
+  <button id="feed-btn">FEED ♥</button>
+  <button id="play-btn">PLAY ★</button>
+</div>
+
+<div id="status-msg"></div>
+
+<div class="history">
+  <div class="history-label">PREVIOUS PETS</div>
+  <div id="history-list"><div style="font-size:9px;color:#223;letter-spacing:1px">None yet.</div></div>
+</div>
+
+<div class="note">
+  One pet. Shared by everyone.<br>
+  If nobody feeds it, it gets sick.<br>
+  If nobody feeds it for two days, it dies.<br>
+  When it dies, it is recorded.<br>
+  A new pet appears.
+</div>
+
+<script src="/shared/matrix-nav.js"></script>
+<script>
+const canvas = document.getElementById('pet-canvas');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+
+let pet = null;
+let ws = null;
+let frame = 0;
+let animTimer = null;
+
+// ── Pet Animation ──────────────────────────────────────────────────────────────
+function drawPet() {
+  ctx.fillStyle = '#060609';
+  ctx.fillRect(0, 0, W, H);
+
+  if (!pet) return;
+
+  if (!pet.alive) {
+    // Dead pet
+    ctx.fillStyle = '#334';
+    ctx.font = '32px serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('😔', W/2, H/2 - 20);
+    ctx.font = '10px Courier New';
+    ctx.fillStyle = '#cc4444';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillText(`${pet.name} has passed.`, W/2, H/2 + 20);
+    ctx.fillStyle = '#334';
+    ctx.font = '9px Courier New';
+    ctx.fillText('A new companion will arrive shortly.', W/2, H/2 + 38);
+    return;
+  }
+
+  frame++;
+  const bounce = Math.sin(frame * 0.1) * 3;
+  const cx = W / 2, cy = H / 2 - 10 + bounce;
+
+  // Body — creature shape based on health/happiness
+  const bodyColor = pet.health > 60 ? '#5a9acc' : pet.health > 30 ? '#cc9a3a' : '#cc4444';
+
+  // Draw simple creature
+  // Body oval
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, 35, 28, 0, 0, Math.PI * 2);
+  ctx.fillStyle = bodyColor;
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // Eyes
+  const eyeY = cy - 6;
+  const blink = (frame % 80 < 5);
+  if (blink) {
+    // Blink
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(cx - 14, eyeY - 1, 10, 2);
+    ctx.fillRect(cx + 4, eyeY - 1, 10, 2);
+  } else {
+    // Eyes open
+    ctx.beginPath();
+    ctx.arc(cx - 10, eyeY, 5, 0, Math.PI * 2);
+    ctx.arc(cx + 10, eyeY, 5, 0, Math.PI * 2);
+    ctx.fillStyle = '#fff';
+    ctx.fill();
+    // Pupils
+    const pupilX = cx + (pet.happiness > 50 ? 0 : -1);
+    ctx.beginPath();
+    ctx.arc(cx - 10 + 1, eyeY + 1, 2.5, 0, Math.PI * 2);
+    ctx.arc(cx + 10 + 1, eyeY + 1, 2.5, 0, Math.PI * 2);
+    ctx.fillStyle = '#111';
+    ctx.fill();
+    // Happy/sad shine
+    if (pet.happiness > 60) {
+      ctx.beginPath();
+      ctx.arc(cx - 8, eyeY - 1, 1, 0, Math.PI * 2);
+      ctx.fillStyle = '#fff';
+      ctx.fill();
+    }
+  }
+
+  // Mouth
+  const mouthY = cy + 10;
+  ctx.beginPath();
+  ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+  ctx.lineWidth = 2;
+  if (pet.happiness > 60) {
+    // Smile
+    ctx.arc(cx, mouthY - 2, 10, 0.2, Math.PI - 0.2);
+    ctx.stroke();
+  } else if (pet.happiness > 30) {
+    // Neutral
+    ctx.moveTo(cx - 8, mouthY + 2);
+    ctx.lineTo(cx + 8, mouthY + 2);
+    ctx.stroke();
+  } else {
+    // Frown
+    ctx.arc(cx, mouthY + 8, 10, Math.PI + 0.2, -0.2);
+    ctx.stroke();
+  }
+
+  // Hunger indicator
+  if (pet.hunger > 70) {
+    ctx.fillStyle = '#cc5555';
+    ctx.font = '14px serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('!!!', cx, cy - 40 + bounce);
+  } else if (pet.hunger > 50) {
+    ctx.fillStyle = '#cc9a3a';
+    ctx.font = '12px serif';
+    ctx.fillText('!', cx, cy - 38 + bounce);
+  }
+
+  // Feet/legs animation
+  const walkPhase = Math.sin(frame * 0.15) * 4;
+  ctx.fillStyle = bodyColor;
+  ctx.beginPath();
+  ctx.ellipse(cx - 15, cy + 25 + walkPhase, 8, 5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(cx + 15, cy + 25 - walkPhase, 8, 5, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.beginPath();
+  ctx.ellipse(cx, cy + 33, 25, 6, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Floor
+  ctx.strokeStyle = '#111118';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(40, H - 30); ctx.lineTo(W - 40, H - 30);
+  ctx.stroke();
+
+  // Time since fed label
+  if (pet.lastFed) {
+    const hoursAgo = Math.floor((Date.now() - pet.lastFed) / 3600000);
+    const minutesAgo = Math.floor((Date.now() - pet.lastFed) / 60000) % 60;
+    const timeStr = hoursAgo > 0 ? `fed ${hoursAgo}h ago` : `fed ${minutesAgo}m ago`;
+    ctx.fillStyle = '#223';
+    ctx.font = '8px Courier New';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillText(timeStr, W/2, H - 12);
+  }
+}
+
+function startAnim() {
+  if (animTimer) return;
+  animTimer = setInterval(drawPet, 50); // 20fps
+}
+
+// ── UI Update ──────────────────────────────────────────────────────────────────
+function updateUI(data) {
+  pet = data.pet;
+  const alive = pet.alive;
+
+  document.getElementById('pet-name').textContent = pet.name;
+  document.getElementById('pet-name').className = 'pet-name' + (alive ? '' : ' deceased');
+
+  const hunger = Math.round(pet.hunger);
+  const happy = Math.round(pet.happiness);
+  const health = Math.round(pet.health);
+
+  document.getElementById('hunger-bar').style.width = hunger + '%';
+  document.getElementById('happy-bar').style.width = happy + '%';
+  document.getElementById('health-bar').style.width = health + '%';
+  document.getElementById('hunger-val').textContent = hunger + '%';
+  document.getElementById('happy-val').textContent = happy + '%';
+  document.getElementById('health-val').textContent = health + '%';
+
+  // Color coding
+  document.getElementById('hunger-bar').style.background = hunger > 80 ? '#cc3333' : hunger > 60 ? '#cc7a3a' : '#4a7a4a';
+  document.getElementById('health-bar').style.background = health > 60 ? '#5a9acc' : health > 30 ? '#cc9a3a' : '#cc4444';
+
+  const age = pet.age || 0;
+  document.getElementById('pet-age').textContent = age === 0 ? '< 1 day' : `${age} day${age !== 1 ? 's' : ''}`;
+  document.getElementById('pet-born').textContent = new Date(pet.born).toLocaleDateString();
+
+  document.getElementById('feed-btn').disabled = !alive;
+  document.getElementById('play-btn').disabled = !alive;
+
+  const statusEl = document.getElementById('status-msg');
+  if (!alive) {
+    statusEl.textContent = `${pet.name} is gone. A new companion will arrive.`;
+    statusEl.style.color = '#cc4444';
+  } else if (hunger > 80) {
+    statusEl.textContent = `${pet.name} is very hungry.`;
+    statusEl.style.color = '#cc7a3a';
+  } else if (happy < 30) {
+    statusEl.textContent = `${pet.name} seems sad.`;
+    statusEl.style.color = '#5a7acc';
+  } else {
+    statusEl.textContent = `${pet.name} is doing okay.`;
+    statusEl.style.color = '#334';
+  }
+
+  // History
+  const histEl = document.getElementById('history-list');
+  if (data.history && data.history.length > 0) {
+    histEl.innerHTML = data.history.map(h => {
+      const age = h.age || 0;
+      const died = new Date(h.died).toLocaleDateString();
+      return `<div class="history-entry"><span class="age">${h.name}</span> — lived ${age} day${age !== 1 ? 's' : ''} — ${died}</div>`;
+    }).join('');
+  } else {
+    histEl.innerHTML = '<div style="font-size:9px;color:#223;letter-spacing:1px">None yet.</div>';
+  }
+}
+
+// ── Server Connection ──────────────────────────────────────────────────────────
+function connect() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  ws = new WebSocket(`${proto}://${location.host}`);
+  ws.onmessage = e => {
+    const msg = JSON.parse(e.data);
+    if (msg.game === 'pet' && msg.type === 'state') {
+      updateUI(msg);
+    }
+  };
+  ws.onclose = () => setTimeout(connect, 3000);
+}
+
+async function feedPet() {
+  document.getElementById('feed-btn').disabled = true;
+  try {
+    const res = await fetch('/api/pet/feed', { method: 'POST' });
+    const data = await res.json();
+    if (data.pet) updateUI(data);
+  } catch (e) {}
+  setTimeout(() => {
+    if (pet && pet.alive) document.getElementById('feed-btn').disabled = false;
+  }, 2000);
+}
+
+async function playWithPet() {
+  document.getElementById('play-btn').disabled = true;
+  try {
+    const res = await fetch('/api/pet/play', { method: 'POST' });
+    const data = await res.json();
+    if (data.pet) updateUI(data);
+  } catch (e) {}
+  setTimeout(() => {
+    if (pet && pet.alive) document.getElementById('play-btn').disabled = false;
+  }, 2000);
+}
+
+document.getElementById('feed-btn').addEventListener('click', feedPet);
+document.getElementById('play-btn').addEventListener('click', playWithPet);
+
+// Initial state load
+fetch('/api/pet').then(r => r.json()).then(d => { updateUI(d); startAnim(); }).catch(() => {});
+connect();
+</script>
+</body>
+</html>

@@ -16,7 +16,8 @@ const GAMES = ['00001', '00002', '00003', '00004', '00005', '00006', '00007', '0
   '00126', '00127', '00128', '00129', '00130', '00131', '00132', '00133',
   '00134', '00135', '00136', '00137',
   '00138', '00139', '00140', '00141',
-  '00142', '00143', '00144'];
+  '00142', '00143', '00144',
+  '00145', '00146', '00147'];
 
 // ─── Matrix navigation ────────────────────────────────────────────────────────
 const MATRIX_FILE = path.join(__dirname, 'data', 'matrix.json');
@@ -152,6 +153,103 @@ const GAMEOVER_FILE = path.join(__dirname, 'data', 'gameover.json');
 let gameoverLocks = {}; // { "deviceId:roomId": unlockTimestamp }
 try { gameoverLocks = JSON.parse(fs.readFileSync(GAMEOVER_FILE, 'utf8')); } catch (e) {}
 function saveGameover() { fs.writeFileSync(GAMEOVER_FILE, JSON.stringify(gameoverLocks)); }
+
+// ─── Tamagotchi — Shared Pet (00146) ─────────────────────────────────────────
+// one pet, shared across all users
+// if nobody feeds it for 24 hours it gets sick
+// if nobody feeds it for 48 hours it dies
+// when it dies it is recorded
+// a new pet appears
+// the longest-lived pet is noted
+// the kid will remember to feed it
+// the adults will forget
+// this is the game
+const PET_NAMES = ['REDACT','THRESHOLD','LIMINAL','DATUM','SIGNAL','ANOMALY',
+  'VESTIBULE','RECURSIVE','FRAGMENT','TRANSIT','RESIDUAL','CATALYST'];
+const PET_DATA_DIR = path.join(__dirname, 'public', 'games', '00146', 'data');
+const PET_FILE = path.join(PET_DATA_DIR, 'pet.json');
+if (!fs.existsSync(PET_DATA_DIR)) fs.mkdirSync(PET_DATA_DIR, { recursive: true });
+
+function newPet() {
+  return {
+    name: PET_NAMES[Math.floor(Math.random() * PET_NAMES.length)],
+    born: Date.now(),
+    hunger: 0,     // 0=full, 100=starving
+    happiness: 80, // 0=sad, 100=happy
+    health: 100,   // 0=dead
+    lastFed: Date.now(),
+    lastPlayed: Date.now(),
+    lastDecay: Date.now(),
+    alive: true,
+  };
+}
+function newPetData() {
+  return { pet: newPet(), history: [] };
+}
+let petData = null;
+try { petData = JSON.parse(fs.readFileSync(PET_FILE, 'utf8')); } catch (e) {}
+if (!petData) petData = newPetData();
+if (!petData.pet) petData.pet = newPet();
+function savePet() { fs.writeFileSync(PET_FILE, JSON.stringify(petData)); }
+function petStateMsg() {
+  const p = petData.pet;
+  const age = Math.floor((Date.now() - p.born) / 86400000);
+  return { game:'pet', type:'state', pet: { ...p, age },
+    history: petData.history.slice(-5) };
+}
+function decayPet() {
+  const p = petData.pet;
+  if (!p.alive) return;
+  const now = Date.now();
+  const dt = (now - p.lastDecay) / 3600000; // hours since last decay
+  if (dt < 0.01) return; // less than 36 seconds, skip
+  // Hunger increases ~4/hour, capped at 100
+  p.hunger = Math.min(100, p.hunger + 4 * dt);
+  // Happiness decreases ~3/hour, capped at 0
+  p.happiness = Math.max(0, p.happiness - 3 * dt);
+  // Health: decreases if hunger > 80, otherwise recovers slowly
+  if (p.hunger > 80) {
+    p.health = Math.max(0, p.health - 5 * dt);
+  } else {
+    p.health = Math.min(100, p.health + 1 * dt);
+  }
+  p.lastDecay = now;
+  if (p.health <= 0) {
+    p.alive = false;
+    p.health = 0;
+    const age = Math.floor((now - p.born) / 86400000);
+    petData.history.unshift({ name: p.name, born: p.born, died: now, age });
+    if (petData.history.length > 20) petData.history = petData.history.slice(0, 20);
+    broadcast(petStateMsg());
+    savePet();
+    // Spawn new pet after 60 seconds
+    setTimeout(() => {
+      petData.pet = newPet();
+      broadcast(petStateMsg());
+      savePet();
+    }, 60000);
+    return;
+  }
+  savePet();
+  broadcast(petStateMsg());
+}
+// Decay loop: every 2 minutes
+setInterval(decayPet, 2 * 60 * 1000);
+
+// ─── Sorites Paradox aggregate (00145) ───────────────────────────────────────
+// users click "this is a heap" at some grain count
+// the aggregate shows when people said heap
+// the median is interesting
+// the range is more interesting
+// some people say 1 grain is a heap
+// some people say 10,000 is not
+// neither is wrong according to the paradox
+const SORITES_FILE = path.join(__dirname, 'public', 'games', '00145', 'data', 'sorites.json');
+const SORITES_DATA_DIR = path.join(__dirname, 'public', 'games', '00145', 'data');
+if (!fs.existsSync(SORITES_DATA_DIR)) fs.mkdirSync(SORITES_DATA_DIR, { recursive: true });
+let soritesData = { votes: [], count: 0 };
+try { soritesData = JSON.parse(fs.readFileSync(SORITES_FILE, 'utf8')); } catch (e) {}
+function saveSorites() { fs.writeFileSync(SORITES_FILE, JSON.stringify(soritesData)); }
 
 // ─── Ship of Theseus aggregate (00144) ───────────────────────────────────────
 // users answer: at what % replacement does the ship become a different ship?
@@ -1070,6 +1168,66 @@ const httpServer = http.createServer((req, res) => {
     return;
   }
 
+  // API: Tamagotchi pet state (00146)
+  if (pathname === '/api/pet' && method === 'GET') {
+    decayPet();
+    sendJSON(res, petStateMsg()); return;
+  }
+  if (pathname === '/api/pet/feed' && method === 'POST') {
+    decayPet();
+    const p = petData.pet;
+    if (p.alive) {
+      p.hunger = Math.max(0, p.hunger - 30);
+      p.happiness = Math.min(100, p.happiness + 5);
+      p.lastFed = Date.now();
+      savePet();
+      broadcast(petStateMsg());
+    }
+    sendJSON(res, petStateMsg()); return;
+  }
+  if (pathname === '/api/pet/play' && method === 'POST') {
+    decayPet();
+    const p = petData.pet;
+    if (p.alive) {
+      p.happiness = Math.min(100, p.happiness + 20);
+      p.lastPlayed = Date.now();
+      savePet();
+      broadcast(petStateMsg());
+    }
+    sendJSON(res, petStateMsg()); return;
+  }
+
+  // API: Sorites Paradox — heap threshold aggregate (00145)
+  if (pathname === '/api/sorites' && method === 'GET') {
+    const sorted = [...soritesData.votes].sort((a, b) => a - b);
+    const mean = sorted.length ? sorted.reduce((a, b) => a + b, 0) / sorted.length : null;
+    const median = sorted.length ? sorted[Math.floor(sorted.length / 2)] : null;
+    // Buckets: 1-9, 10-49, 50-99, 100-249, 250-499, 500-999, 1000-2499, 2500+
+    const bucketDefs = [[1,9],[10,49],[50,99],[100,249],[250,499],[500,999],[1000,2499],[2500,Infinity]];
+    const buckets = bucketDefs.map(([lo, hi]) => ({
+      label: hi === Infinity ? `${lo}+` : `${lo}-${hi}`,
+      count: sorted.filter(v => v >= lo && v <= hi).length,
+    }));
+    sendJSON(res, { count: soritesData.count, mean, median, buckets }); return;
+  }
+  if (pathname === '/api/sorites' && method === 'POST') {
+    let body = '';
+    req.on('data', d => body += d);
+    req.on('end', () => {
+      try {
+        const { grains } = JSON.parse(body);
+        const n = parseInt(grains);
+        if (isNaN(n) || n < 1 || n > 1000000) { res.writeHead(400); res.end('Bad grain count'); return; }
+        soritesData.votes.push(n);
+        if (soritesData.votes.length > 10000) soritesData.votes.shift();
+        soritesData.count++;
+        saveSorites();
+        sendJSON(res, { ok: true, count: soritesData.count }); return;
+      } catch { res.writeHead(400); res.end('Bad JSON'); return; }
+    });
+    return;
+  }
+
   // API: Ship of Theseus aggregate (00144)
   if (pathname === '/api/theseus' && method === 'GET') {
     const buckets = new Array(10).fill(0);
@@ -1240,6 +1398,7 @@ wss.on('connection', (ws) => {
   ws.send(JSON.stringify(dotsStateMsg()));
   ws.send(JSON.stringify(raceStateMsg()));
   ws.send(JSON.stringify(soccerStateMsg()));
+  ws.send(JSON.stringify(petStateMsg()));
   const metroId = metronomeNextId++;
   metronomeClientIds.set(ws, metroId);
 
